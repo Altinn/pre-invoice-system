@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Prisversjon')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side" th:with="utkast=${versjon.status() == 'UTKAST'}">
+    <a class="ds-link" th:href="@{/prisversjoner}">← Prisversjoner</a>
+    <div class="rad" style="justify-content:space-between; align-items:center;">
+        <h1 class="ds-heading" data-size="lg" th:text="${versjon.navn()}">Prisliste 2027</h1>
+        <span class="ds-tag"
+              th:data-color="${versjon.status() == 'AKTIV'} ? 'success' : (${versjon.status() == 'ARKIVERT'} ? 'neutral' : 'warning')"
+              th:text="${versjon.status()}">UTKAST</span>
+    </div>
+    <p class="ds-paragraph" data-size="sm">
+        Gyldig <span th:text="${versjon.gyldigFra()}">2027-01-01</span>
+        – <span th:text="${versjon.gyldigTil()} ?: 'åpen'">åpen</span>.
+    </p>
+
+    <p class="ds-alert" data-color="info" th:if="${utkast}">
+        Utkast: sett enhetspris per produkt, deretter aktiver. Aktivering krever pris på alle aktive
+        produkter og at datointervallet ikke overlapper en annen aktiv versjon.
+    </p>
+
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Produkt</th><th>Kode</th><th class="hoyre">Enhetspris</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="p : ${produkter}" th:with="pris=${prisPerProdukt.get(p.id())}">
+            <td th:text="${p.navn()}">Melding</td>
+            <td th:text="${p.kode()}">melding</td>
+            <td class="hoyre">
+                <form th:if="${utkast}" th:action="@{/prisversjoner/{id}/pris(id=${versjon.id()})}"
+                      method="post" class="rad" style="justify-content:flex-end;">
+                    <th:block th:replace="~{layout :: csrf}"></th:block>
+                    <input type="hidden" name="produktId" th:value="${p.id()}">
+                    <input class="ds-input" data-size="sm" name="enhetspris" type="number" step="0.0001"
+                           min="0" style="max-width:9rem;" th:value="${pris}" required>
+                    <button class="ds-button" data-variant="secondary" data-size="sm" type="submit">Lagre</button>
+                </form>
+                <span th:unless="${utkast}" th:text="${pris} ?: '—'">0.00</span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div class="rad" style="margin-top:1.5rem;">
+        <form th:if="${utkast}" th:action="@{/prisversjoner/{id}/aktiver(id=${versjon.id()})}" method="post">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <button class="ds-button" data-color="accent" type="submit">Aktiver</button>
+        </form>
+        <form th:if="${versjon.status() == 'AKTIV'}"
+              th:action="@{/prisversjoner/{id}/arkiver(id=${versjon.id()})}" method="post">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <button class="ds-button" data-variant="secondary" data-color="danger" type="submit">Arkiver</button>
+        </form>
+    </div>
+</main>
+</body>
+</html>

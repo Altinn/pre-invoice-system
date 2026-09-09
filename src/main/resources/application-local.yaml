@@ -1,0 +1,14 @@
+# Local development: runs fully offline via `docker compose up` (app + PostgreSQL + local file
+# archive + stubbed login). Login is stubbed to a fixed dev user with all roles (LocalSecurityConfig).
+# Human-readable console logs are friendlier here than JSON.
+logging:
+  structured:
+    format:
+      console: ""
+  level:
+    no.digdir.forsystem: DEBUG
+
+management:
+  endpoint:
+    health:
+      show-details: always

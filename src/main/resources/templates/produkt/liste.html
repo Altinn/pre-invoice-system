@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Produkter')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <h1 class="ds-heading" data-size="lg">Produkter</h1>
+    <p class="ds-paragraph" data-size="sm">Kontering (konto, dimensjoner, artikkel-id) er ukjent inntil
+        Økonomi svarer (OQ-2). Manglende kontering blokkerer fakturering i en senere fase.</p>
+
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr>
+            <th>Kode</th><th>Navn</th><th>Enhet</th><th>Konto</th><th>Artikkel-id</th><th>Aktiv</th><th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="p : ${produkter}">
+            <td th:text="${p.kode()}">melding</td>
+            <td th:text="${p.navn()}">Melding</td>
+            <td th:text="${p.enhet()}">transaksjon</td>
+            <td th:text="${p.konto()} ?: '—'">—</td>
+            <td th:text="${p.artikkelId()} ?: '—'">—</td>
+            <td>
+                <span class="ds-tag" th:data-color="${p.aktiv()} ? 'success' : 'neutral'"
+                      th:text="${p.aktiv()} ? 'Ja' : 'Nei'">Ja</span>
+            </td>
+            <td class="hoyre">
+                <a class="ds-button" data-variant="tertiary" data-size="sm"
+                   th:href="@{/produkter/{id}(id=${p.id()})}">Rediger</a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Nytt produkt</h2>
+    <form th:action="@{/produkter}" method="post" class="rad">
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <div class="ds-field">
+            <label class="ds-label" for="kode">Kode</label>
+            <input class="ds-input" id="kode" name="kode" required>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="navn">Navn</label>
+            <input class="ds-input" id="navn" name="navn" required>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="enhet">Enhet</label>
+            <input class="ds-input" id="enhet" name="enhet" placeholder="transaksjon">
+        </div>
+        <button class="ds-button" data-color="accent" type="submit">Legg til</button>
+    </form>
+</main>
+</body>
+</html>

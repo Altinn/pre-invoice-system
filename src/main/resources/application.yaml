@@ -1,0 +1,43 @@
+# Base configuration shared by all profiles. Everything environment-overridable (12-factor,
+# docs/02). No value here requires Azure to exist. When no profile is active, `local` applies.
+spring:
+  application:
+    name: forsystem
+  profiles:
+    default: local
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/forsystem}
+    username: ${DB_USERNAME:forsystem}
+    password: ${DB_PASSWORD:forsystem}
+  flyway:
+    # Flyway runs on startup and migrates the schema (docs/02). Baseline off — V1 is the start.
+    enabled: true
+  threads:
+    virtual:
+      enabled: true
+
+# Structured JSON logs on stdout (ECS layout), consumable by any log platform (docs/02).
+logging:
+  structured:
+    format:
+      console: ecs
+
+# Operability: liveness/readiness probes + health, info exposed. Details only to authorized users.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: forsystem
+    description: Digdir invoicing pre-system for Altinn products (FinMod)

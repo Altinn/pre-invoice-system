@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Prisversjoner')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <h1 class="ds-heading" data-size="lg">Prisversjoner</h1>
+
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Navn</th><th>Gyldig fra</th><th>Gyldig til</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="v : ${prisversjoner}">
+            <td th:text="${v.navn()}">Prisliste 2027</td>
+            <td th:text="${v.gyldigFra()}">2027-01-01</td>
+            <td th:text="${v.gyldigTil()} ?: '—'">—</td>
+            <td>
+                <span class="ds-tag"
+                      th:data-color="${v.status() == 'AKTIV'} ? 'success' : (${v.status() == 'ARKIVERT'} ? 'neutral' : 'warning')"
+                      th:text="${v.status()}">UTKAST</span>
+            </td>
+            <td class="hoyre">
+                <a class="ds-button" data-variant="tertiary" data-size="sm"
+                   th:href="@{/prisversjoner/{id}(id=${v.id()})}">Åpne</a>
+            </td>
+        </tr>
+        <tr th:if="${prisversjoner.isEmpty()}">
+            <td colspan="5" class="ds-paragraph" data-size="sm">Ingen prisversjoner ennå.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Ny prisversjon (utkast)</h2>
+    <form th:action="@{/prisversjoner}" method="post" class="rad">
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <div class="ds-field">
+            <label class="ds-label" for="navn">Navn</label>
+            <input class="ds-input" id="navn" name="navn" placeholder="Prisliste 2027" required>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="gyldigFra">Gyldig fra</label>
+            <input class="ds-input" id="gyldigFra" name="gyldigFra" type="date" required>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="gyldigTil">Gyldig til (valgfritt)</label>
+            <input class="ds-input" id="gyldigTil" name="gyldigTil" type="date">
+        </div>
+        <button class="ds-button" data-color="accent" type="submit">Opprett</button>
+    </form>
+</main>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Kjøring')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side" th:with="generert=${kjoring.status() == 'GENERERT'}">
+    <a class="ds-link" th:href="@{/kjoringer}">← Kjøringer</a>
+    <div class="rad" style="justify-content:space-between; align-items:center;">
+        <h1 class="ds-heading" data-size="lg" th:text="|Kjøring ${kjoring.periode()}|">Kjøring</h1>
+        <span class="ds-tag"
+              th:data-color="${kjoring.status() == 'GODKJENT' or kjoring.status() == 'EKSPORTERT'} ? 'success' : (${kjoring.status() == 'FORKASTET'} ? 'neutral' : 'warning')"
+              th:text="${kjoring.status()}">GENERERT</span>
+    </div>
+
+    <!-- Findings -->
+    <div th:if="${!blokkerende.isEmpty()}">
+        <h2 class="ds-heading" data-size="xs" style="margin-top:1rem;">Blokkerende kontrollfunn</h2>
+        <p class="ds-alert" data-color="danger" th:each="f : ${blokkerende}">
+            <strong th:text="${f.kode()}">KODE</strong>: <span th:text="${f.melding()}">melding</span>
+        </p>
+    </div>
+    <div th:if="${!advarsler.isEmpty()}">
+        <h2 class="ds-heading" data-size="xs" style="margin-top:1rem;">Advarsler</h2>
+        <p class="ds-alert" data-color="warning" th:each="f : ${advarsler}">
+            <strong th:text="${f.kode()}">KODE</strong>: <span th:text="${f.melding()}">melding</span>
+        </p>
+    </div>
+
+    <!-- Invoices -->
+    <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Fakturaer</h2>
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Ordre</th><th>Kundenummer</th><th>Tilleggstekst</th><th>Mottaker (orgnr)</th><th class="hoyre">Sum</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="f : ${fakturaer}">
+            <td th:text="${f.ordreNr()}">1</td>
+            <td th:text="${f.kundenummer()}">100200</td>
+            <td th:text="${f.tilleggstekst()} ?: '—'">—</td>
+            <td th:text="${f.fakturamottakerOrgnr()}">123456789</td>
+            <td class="hoyre" th:text="${f.sumBelop()}">0.00</td>
+            <td class="hoyre">
+                <a class="ds-button" data-variant="tertiary" data-size="sm"
+                   th:href="@{/kjoringer/{id}/faktura/{fid}(id=${kjoring.id()},fid=${f.id()})}">Linjer</a>
+            </td>
+        </tr>
+        <tr th:if="${fakturaer.isEmpty()}">
+            <td colspan="6" class="ds-paragraph" data-size="sm">Ingen fakturaer.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- Actions -->
+    <div class="rad" style="margin-top:1.5rem;" th:if="${generert}">
+        <form th:action="@{/kjoringer/{id}/godkjenn(id=${kjoring.id()})}" method="post">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <button class="ds-button" data-color="accent" type="submit"
+                    th:disabled="${harBlokkerende}">Godkjenn</button>
+        </form>
+        <form th:action="@{/kjoringer/{id}/forkast(id=${kjoring.id()})}" method="post">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <button class="ds-button" data-variant="secondary" data-color="danger" type="submit">Forkast</button>
+        </form>
+        <span th:if="${harBlokkerende}" class="ds-paragraph" data-size="sm">
+            Godkjenning er blokkert til de blokkerende funnene er løst (forkast, rett data, generer på nytt).
+        </span>
+    </div>
+    <div class="rad" style="margin-top:1.5rem;" th:if="${kjoring.status() == 'GODKJENT'}">
+        <form th:action="@{/kjoringer/{id}/eksporter(id=${kjoring.id()})}" method="post">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <button class="ds-button" data-color="accent" type="submit">Eksporter</button>
+        </form>
+        <form th:action="@{/kjoringer/{id}/forkast(id=${kjoring.id()})}" method="post">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <button class="ds-button" data-variant="secondary" data-color="danger" type="submit">Forkast</button>
+        </form>
+    </div>
+
+    <!-- Export files -->
+    <div th:if="${!eksportfiler.isEmpty()}">
+        <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Eksportfiler</h2>
+        <table class="ds-table" data-size="sm">
+            <thead><tr><th>Type</th><th>Filnavn</th><th>SHA-256</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="e : ${eksportfiler}">
+                <td><span class="ds-tag" data-color="neutral" th:text="${e.type()}">LG04</span></td>
+                <td th:text="${e.filnavn()}">lg04-2027-01.txt</td>
+                <td><code th:text="${#strings.abbreviate(e.sha256(), 16)}">…</code></td>
+                <td class="hoyre">
+                    <!-- hx-boost off + download: a real file download, not an htmx page swap. -->
+                    <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false" download
+                       th:href="@{/kjoringer/{id}/eksportfil/{fid}(id=${kjoring.id()},fid=${e.id()})}">Last ned</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+</body>
+</html>

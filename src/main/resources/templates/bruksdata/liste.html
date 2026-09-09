@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Bruksdata')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <h1 class="ds-heading" data-size="lg">Bruksdata</h1>
+    <p class="ds-paragraph" data-size="sm">Last opp en CSV-fil per periode. Du får en forhåndsvisning
+        med summer og eventuelle avvik før noe lagres. Formatet er beskrevet i
+        <code>docs/csv-format.md</code>.</p>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Last opp</h2>
+    <!--
+      Native (non-boosted) multipart submit; the CSRF token rides in the query string because the
+      multipart body is not parsed when the CSRF filter runs.
+    -->
+    <form th:action="@{/bruksdata/forhandsvis(_csrf=${_csrf.token})}" method="post"
+          enctype="multipart/form-data" hx-boost="false" class="rad">
+        <div class="ds-field">
+            <label class="ds-label" for="periode">Periode</label>
+            <input class="ds-input" id="periode" name="periode" type="month" required>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="fil">CSV-fil</label>
+            <input class="ds-input" id="fil" name="fil" type="file" accept=".csv,text/csv" required>
+        </div>
+        <button class="ds-button" data-color="accent" type="submit">Forhåndsvis</button>
+    </form>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Importer</h2>
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Filnavn</th><th>Periode</th><th>Kilde</th><th>Status</th><th>Rader</th><th>Lastet av</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="i : ${importer}">
+            <td th:text="${i.filnavn()}">bruk-2027-01.csv</td>
+            <td th:text="${i.periode()}">2027-01-01</td>
+            <td th:text="${i.kilde()}">CSV</td>
+            <td>
+                <span class="ds-tag"
+                      th:data-color="${i.status() == 'VALIDERT'} ? 'success' : (${i.status() == 'AVVIST'} ? 'neutral' : 'warning')"
+                      th:text="${i.status()}">VALIDERT</span>
+            </td>
+            <td th:text="${i.antallRader()}">42</td>
+            <td th:text="${i.lastetAv()}">dev</td>
+            <td class="hoyre">
+                <a class="ds-button" data-variant="tertiary" data-size="sm"
+                   th:href="@{/bruksdata/{id}(id=${i.id()})}">Åpne</a>
+            </td>
+        </tr>
+        <tr th:if="${importer.isEmpty()}">
+            <td colspan="7" class="ds-paragraph" data-size="sm">Ingen importer ennå.</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>

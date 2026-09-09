@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Kjøringer')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <h1 class="ds-heading" data-size="lg">Fakturakjøringer</h1>
+    <p class="ds-paragraph" data-size="sm">Generer fakturagrunnlag for en periode fra bruksdata og den
+        aktive prisversjonen. Kjør kontroller, godkjenn, og (senere) eksporter.</p>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Ny kjøring</h2>
+    <form th:action="@{/kjoringer}" method="post" class="rad">
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <div class="ds-field">
+            <label class="ds-label" for="periode">Periode</label>
+            <input class="ds-input" id="periode" name="periode" type="month" required>
+        </div>
+        <button class="ds-button" data-color="accent" type="submit">Generer</button>
+    </form>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Kjøringer</h2>
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Periode</th><th>Status</th><th>Generert av</th><th>Godkjent av</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="k : ${kjoringer}">
+            <td th:text="${k.periode()}">2027-01-01</td>
+            <td>
+                <span class="ds-tag"
+                      th:data-color="${k.status() == 'GODKJENT' or k.status() == 'EKSPORTERT'} ? 'success' : (${k.status() == 'FORKASTET'} ? 'neutral' : 'warning')"
+                      th:text="${k.status()}">GENERERT</span>
+            </td>
+            <td th:text="${k.generertAv()}">dev</td>
+            <td th:text="${k.godkjentAv()} ?: '—'">—</td>
+            <td class="hoyre">
+                <a class="ds-button" data-variant="tertiary" data-size="sm"
+                   th:href="@{/kjoringer/{id}(id=${k.id()})}">Åpne</a>
+            </td>
+        </tr>
+        <tr th:if="${kjoringer.isEmpty()}">
+            <td colspan="5" class="ds-paragraph" data-size="sm">Ingen kjøringer ennå.</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>

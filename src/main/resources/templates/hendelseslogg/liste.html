@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Hendelseslogg')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <h1 class="ds-heading" data-size="lg">Hendelseslogg</h1>
+    <p class="ds-paragraph" data-size="sm">De 200 nyeste endringene. Hver registerendring logges automatisk.</p>
+
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Tidspunkt</th><th>Bruker</th><th>Handling</th><th>Entitet</th><th>Id</th><th>Detaljer</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="h : ${hendelser}">
+            <td th:text="${#strings.replace(#strings.substring(h.tidspunkt().toString(), 0, 19), 'T', ' ')}">2027-01-05 09:00:00</td>
+            <td th:text="${h.bruker()}">dev</td>
+            <td><span class="ds-tag" data-color="neutral" th:text="${h.handling()}">ENDRET</span></td>
+            <td th:text="${h.entitet()}">KUNDE</td>
+            <td th:text="${h.entitetId()}">1</td>
+            <td><code th:text="${h.detaljer()} != null ? ${h.detaljer().json()} : ''"></code></td>
+        </tr>
+        <tr th:if="${hendelser.isEmpty()}">
+            <td colspan="6" class="ds-paragraph" data-size="sm">Ingen hendelser ennå.</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>

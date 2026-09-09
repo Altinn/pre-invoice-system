@@ -1,0 +1,15 @@
+# Production: OIDC login against any issuer (Entra ID in Digdir's case). All values come from the
+# environment — supplied at the platform level (e.g. Key Vault references / managed identity in
+# Azure). The application never talks to Key Vault itself (docs/02). JSON logs inherited from base.
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          entra:
+            client-id: ${OIDC_CLIENT_ID}
+            client-secret: ${OIDC_CLIENT_SECRET}
+            scope: openid,profile,email
+        provider:
+          entra:
+            issuer-uri: ${OIDC_ISSUER_URI}

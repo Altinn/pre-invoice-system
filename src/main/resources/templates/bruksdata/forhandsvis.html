@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Forhåndsvisning')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <a class="ds-link" th:href="@{/bruksdata}">← Bruksdata</a>
+    <h1 class="ds-heading" data-size="lg">Forhåndsvisning</h1>
+    <p class="ds-paragraph" data-size="sm">
+        Fil <strong th:text="${fv.filnavn()}">bruk.csv</strong> ·
+        periode <strong th:text="${fv.periode()}">2027-01</strong> ·
+        <span th:text="${fv.antallGyldige()}">0</span> gyldige,
+        <span th:text="${fv.antallAvviste()}">0</span> avviste rader.
+    </p>
+
+    <!-- Blocking reasons (e.g. an existing run) prevent import entirely. -->
+    <div th:if="${!fv.blokkeringer().isEmpty()}">
+        <p class="ds-alert" data-color="danger" th:each="b : ${fv.blokkeringer()}" th:text="${b}">Blokkert.</p>
+    </div>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Summer per produkt</h2>
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Produkt</th><th class="hoyre">Antall rader</th><th class="hoyre">Sum antall</th><th class="hoyre">Sum beløp</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${fv.summer()}">
+            <td th:text="${s.produktkode()}">melding</td>
+            <td class="hoyre" th:text="${s.antallRader()}">10</td>
+            <td class="hoyre" th:text="${s.sumAntall()}">100.00</td>
+            <td class="hoyre" th:text="${s.sumBelop()}">0.00</td>
+        </tr>
+        <tr th:if="${fv.summer().isEmpty()}">
+            <td colspan="4" class="ds-paragraph" data-size="sm">Ingen gyldige rader.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div th:if="${!fv.avviste().isEmpty()}">
+        <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Avviste rader</h2>
+        <p class="ds-alert" data-color="warning">Filen har avvik og kan ikke importeres. Rett opp og last opp på nytt
+            — ingen rader lagres før alt er gyldig.</p>
+        <table class="ds-table" data-size="sm">
+            <thead><tr><th>Linje</th><th>Årsak</th></tr></thead>
+            <tbody>
+            <tr th:each="a : ${fv.avviste()}">
+                <td th:text="${a.linjenr()}">7</td>
+                <td th:text="${a.aarsak()}">ukjent produktkode</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="rad" style="margin-top:1.5rem;">
+        <form th:if="${fv.kanImporteres()}" th:action="@{/bruksdata/bekreft}" method="post">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <button class="ds-button" data-color="accent" type="submit">Bekreft import</button>
+        </form>
+        <span th:unless="${fv.kanImporteres()}" class="ds-paragraph" data-size="sm">
+            Import er ikke mulig før alle avvik og blokkeringer er løst.
+        </span>
+        <a class="ds-button" data-variant="tertiary" th:href="@{/bruksdata}">Avbryt</a>
+    </div>
+</main>
+</body>
+</html>

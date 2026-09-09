@@ -1,0 +1,6 @@
+# Demo profile: activates the Demodata seeder (realistic, clearly-fake sample data) so the whole
+# monthly cycle can be shown locally end-to-end. Combine with `local` (stubbed login), e.g.
+# SPRING_PROFILES_ACTIVE=local,demo. The seeder is idempotent — it only runs on an empty database.
+logging:
+  level:
+    no.digdir.forsystem.demo: INFO

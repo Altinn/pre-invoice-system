@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Import')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <a class="ds-link" th:href="@{/bruksdata}">← Bruksdata</a>
+    <h1 class="ds-heading" data-size="lg" th:text="${import.filnavn()}">bruk-2027-01.csv</h1>
+    <p class="ds-paragraph" data-size="sm">
+        Periode <strong th:text="${import.periode()}">2027-01-01</strong> ·
+        kilde <span th:text="${import.kilde()}">CSV</span> ·
+        status <span th:text="${import.status()}">VALIDERT</span> ·
+        <span th:text="${import.antallRader()}">42</span> rader ·
+        lastet av <span th:text="${import.lastetAv()}">dev</span>
+    </p>
+
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Orgnr</th><th>Produkt-id</th><th>Type</th><th class="hoyre">Antall</th><th class="hoyre">Beløp</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${rader}">
+            <td th:text="${r.organisasjonsnummer()}">123456789</td>
+            <td th:text="${r.produktId()}">1</td>
+            <td th:text="${r.type()}">BRUKSVOLUM</td>
+            <td class="hoyre" th:text="${r.antall()} ?: '—'">100.00</td>
+            <td class="hoyre" th:text="${r.belop()} ?: '—'">—</td>
+        </tr>
+        <tr th:if="${rader.isEmpty()}">
+            <td colspan="5" class="ds-paragraph" data-size="sm">Ingen rader.</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>

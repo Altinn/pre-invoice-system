@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Feil')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <h1 class="ds-heading" data-size="lg">Kan ikke fullføre</h1>
+    <p class="ds-alert" data-color="danger" th:text="${melding}">En regel ble brutt.</p>
+    <p><a class="ds-link" href="javascript:history.back()">← Tilbake</a></p>
+</main>
+</body>
+</html>

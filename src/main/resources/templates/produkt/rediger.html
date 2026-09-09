@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Rediger produkt')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <h1 class="ds-heading" data-size="lg" th:text="|Produkt: ${produkt.navn()}|">Produkt</h1>
+    <p class="ds-paragraph" data-size="sm">Kode <strong th:text="${produkt.kode()}">melding</strong>
+        (kan ikke endres).</p>
+
+    <form th:action="@{/produkter/{id}(id=${produkt.id()})}" method="post"
+          style="display:grid; gap:1rem; max-width:32rem;">
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <div class="ds-field">
+            <label class="ds-label" for="navn">Navn</label>
+            <input class="ds-input" id="navn" name="navn" th:value="${produkt.navn()}" required>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="enhet">Enhet</label>
+            <input class="ds-input" id="enhet" name="enhet" th:value="${produkt.enhet()}">
+        </div>
+        <fieldset class="ds-fieldset">
+            <legend class="ds-label">Kontering (OQ-2 — la stå tomt til Økonomi svarer)</legend>
+            <div class="kort-rad">
+                <div class="ds-field">
+                    <label class="ds-label" for="artikkelId">Artikkel-id</label>
+                    <input class="ds-input" id="artikkelId" name="artikkelId" type="number"
+                           th:value="${produkt.artikkelId()}">
+                </div>
+                <div class="ds-field">
+                    <label class="ds-label" for="konto">Konto</label>
+                    <input class="ds-input" id="konto" name="konto" th:value="${produkt.konto()}">
+                </div>
+            </div>
+            <div class="kort-rad">
+                <div class="ds-field">
+                    <label class="ds-label" for="dim1">Dim 1</label>
+                    <input class="ds-input" id="dim1" name="dim1" th:value="${produkt.dim1()}">
+                </div>
+                <div class="ds-field">
+                    <label class="ds-label" for="dim2">Dim 2</label>
+                    <input class="ds-input" id="dim2" name="dim2" th:value="${produkt.dim2()}">
+                </div>
+                <div class="ds-field">
+                    <label class="ds-label" for="dim4">Dim 4</label>
+                    <input class="ds-input" id="dim4" name="dim4" th:value="${produkt.dim4()}">
+                </div>
+            </div>
+        </fieldset>
+        <div class="ds-field">
+            <label class="ds-label">
+                <input type="checkbox" name="aktiv" value="true" th:checked="${produkt.aktiv()}"> Aktiv
+            </label>
+        </div>
+        <div class="rad">
+            <button class="ds-button" data-color="accent" type="submit">Lagre</button>
+            <a class="ds-button" data-variant="tertiary" th:href="@{/produkter}">Avbryt</a>
+        </div>
+    </form>
+</main>
+</body>
+</html>

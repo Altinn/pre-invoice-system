@@ -1,0 +1,44 @@
+# `docker compose up` brings up the whole system offline: the app + PostgreSQL 16. Flyway migrates
+# on app start. Local file archive + stubbed login mean no Azure and no identity provider are needed
+# (docs/02 Phase 0). Override any value via the environment.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: forsystem
+      POSTGRES_USER: forsystem
+      POSTGRES_PASSWORD: forsystem
+    # No host port publish: the app reaches the DB over the compose network as `db:5432`.
+    # To inspect from the host, add e.g. `ports: ["5433:5432"]` (5432 often already in use).
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forsystem -d forsystem"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # `demo` seeds a realistic fake dataset on first start so the full monthly cycle is
+      # demonstrable out of the box. Drop it (SPRING_PROFILES_ACTIVE=local) for an empty system.
+      SPRING_PROFILES_ACTIVE: local,demo
+      DB_URL: jdbc:postgresql://db:5432/forsystem
+      DB_USERNAME: forsystem
+      DB_PASSWORD: forsystem
+    ports:
+      - "8080:8080"
+    volumes:
+      # Exported files (LG04/PDF/CSV/XLSX) persist here and survive restarts.
+      - arkiv-data:/app/data
+
+volumes:
+  db-data:
+  arkiv-data:

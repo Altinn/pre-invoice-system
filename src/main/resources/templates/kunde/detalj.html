@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Kunde')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <a class="ds-link" th:href="@{/kunder}">← Kunder</a>
+    <h1 class="ds-heading" data-size="lg" th:text="${kunde.virksomhetsnavn()}">Eksempel kommune</h1>
+    <p class="ds-paragraph" data-size="sm">
+        Orgnr <strong th:text="${kunde.organisasjonsnummer()}">123456789</strong> ·
+        kilde <span th:text="${kunde.kilde()}">MANUELL</span> ·
+        sist endret av <span th:text="${kunde.oppdatertAv()}">dev</span>
+    </p>
+
+    <!-- Non-blocking BRREG name-mismatch warning (flash, K-16). -->
+    <p class="ds-alert" data-color="warning" th:if="${advarsel}" th:text="${advarsel}">Advarsel.</p>
+
+    <!-- Grunndata -->
+    <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Grunndata</h2>
+    <form th:action="@{/kunder/{id}(id=${kunde.id()})}" method="post"
+          style="display:grid; gap:1rem; max-width:32rem;">
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <div class="ds-field">
+            <label class="ds-label" for="virksomhetsnavn">Virksomhetsnavn</label>
+            <input class="ds-input" id="virksomhetsnavn" name="virksomhetsnavn"
+                   th:value="${kunde.virksomhetsnavn()}" required>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="fakturamottakerOrgnr">Fakturamottaker orgnr (avvikende mottaker)</label>
+            <input class="ds-input" id="fakturamottakerOrgnr" name="fakturamottakerOrgnr"
+                   pattern="[0-9]{9}" inputmode="numeric" th:value="${kunde.fakturamottakerOrgnr()}">
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="avtalestatus">Avtalestatus</label>
+            <select class="ds-input" id="avtalestatus" name="avtalestatus">
+                <option th:each="s : ${avtalestatuser}" th:value="${s}"
+                        th:text="${s}" th:selected="${s.name() == kunde.avtalestatus()}">AKTIV</option>
+            </select>
+        </div>
+        <button class="ds-button" data-color="accent" type="submit" style="justify-self:start;">Lagre</button>
+    </form>
+
+    <!-- Fakturareferanser -->
+    <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Fakturareferanser</h2>
+    <p class="ds-paragraph" data-size="sm">Uten produkt = standard for kunden; en produktrad overstyrer.</p>
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Produkt</th><th>Fakturareferanse</th><th>Bestillingsnummer</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${referanser}">
+            <td th:text="${r.produktId() != null ? (produktNavn.containsKey(r.produktId()) ? produktNavn.get(r.produktId()) : r.produktId()) : '(standard)'}">(standard)</td>
+            <td th:text="${r.fakturareferanse()} ?: '—'">—</td>
+            <td th:text="${r.bestillingsnummer()} ?: '—'">—</td>
+            <td class="hoyre">
+                <form th:action="@{/referanser/{rid}/slett(rid=${r.id()})}" method="post">
+                    <th:block th:replace="~{layout :: csrf}"></th:block>
+                    <input type="hidden" name="kundeId" th:value="${kunde.id()}">
+                    <button class="ds-button" data-variant="tertiary" data-color="danger" data-size="sm"
+                            type="submit">Slett</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <form th:action="@{/kunder/{id}/referanser(id=${kunde.id()})}" method="post" class="rad">
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <div class="ds-field">
+            <label class="ds-label" for="refProdukt">Produkt</label>
+            <select class="ds-input" id="refProdukt" name="produktId">
+                <option value="">(standard)</option>
+                <option th:each="p : ${produkter}" th:value="${p.id()}" th:text="${p.navn()}">Melding</option>
+            </select>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="fakturareferanse">Fakturareferanse</label>
+            <input class="ds-input" id="fakturareferanse" name="fakturareferanse">
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="bestillingsnummer">Bestillingsnummer</label>
+            <input class="ds-input" id="bestillingsnummer" name="bestillingsnummer">
+        </div>
+        <button class="ds-button" data-variant="secondary" type="submit">Legg til</button>
+    </form>
+
+    <!-- Kundenummerregler -->
+    <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Kundenummerregler</h2>
+    <p class="ds-paragraph" data-size="sm">Én faktura per kundenummer. Ulik servicekode gir flere fakturaer;
+        felles kundenummer skilles med tilleggstekst.</p>
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Kundenummer</th><th>Produkt</th><th>Servicekode</th><th>Tilleggstekst</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="g : ${regler}">
+            <td th:text="${g.kundenummer()}">100200</td>
+            <td th:text="${g.produktId() != null ? (produktNavn.containsKey(g.produktId()) ? produktNavn.get(g.produktId()) : g.produktId()) : '(alle)'}">(alle)</td>
+            <td th:text="${g.servicekode()} ?: '—'">—</td>
+            <td th:text="${g.tilleggstekst()} ?: '—'">—</td>
+            <td class="hoyre">
+                <form th:action="@{/regler/{gid}/slett(gid=${g.id()})}" method="post">
+                    <th:block th:replace="~{layout :: csrf}"></th:block>
+                    <input type="hidden" name="kundeId" th:value="${kunde.id()}">
+                    <button class="ds-button" data-variant="tertiary" data-color="danger" data-size="sm"
+                            type="submit">Slett</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <form th:action="@{/kunder/{id}/regler(id=${kunde.id()})}" method="post" class="rad">
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <div class="ds-field">
+            <label class="ds-label" for="kundenummer">Kundenummer</label>
+            <input class="ds-input" id="kundenummer" name="kundenummer" required>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="regelProdukt">Produkt</label>
+            <select class="ds-input" id="regelProdukt" name="produktId">
+                <option value="">(alle)</option>
+                <option th:each="p : ${produkter}" th:value="${p.id()}" th:text="${p.navn()}">Melding</option>
+            </select>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="servicekode">Servicekode</label>
+            <input class="ds-input" id="servicekode" name="servicekode">
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="tilleggstekst">Tilleggstekst</label>
+            <input class="ds-input" id="tilleggstekst" name="tilleggstekst">
+        </div>
+        <button class="ds-button" data-variant="secondary" type="submit">Legg til</button>
+    </form>
+</main>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Kunder')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <div class="rad" style="justify-content:space-between; align-items:center;">
+        <h1 class="ds-heading" data-size="lg">Kunder</h1>
+        <a class="ds-button" data-color="accent" th:href="@{/kunder/ny}">Ny kunde</a>
+    </div>
+
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Virksomhet</th><th>Orgnr</th><th>Fakturamottaker</th><th>Avtalestatus</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="k : ${kunder}">
+            <td th:text="${k.virksomhetsnavn()}">Eksempel kommune</td>
+            <td th:text="${k.organisasjonsnummer()}">123456789</td>
+            <td th:text="${k.fakturamottakerOrgnr()} ?: '—'">—</td>
+            <td>
+                <span class="ds-tag"
+                      th:data-color="${k.avtalestatus() == 'AKTIV'} ? 'success' : (${k.avtalestatus() == 'INAKTIV'} ? 'danger' : 'warning')"
+                      th:text="${k.avtalestatus()}">AKTIV</span>
+            </td>
+            <td class="hoyre">
+                <a class="ds-button" data-variant="tertiary" data-size="sm"
+                   th:href="@{/kunder/{id}(id=${k.id()})}">Åpne</a>
+            </td>
+        </tr>
+        <tr th:if="${kunder.isEmpty()}">
+            <td colspan="5" class="ds-paragraph" data-size="sm">Ingen kunder ennå.</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>

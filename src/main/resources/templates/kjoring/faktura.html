@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Faktura')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}">← Kjøring</a>
+    <h1 class="ds-heading" data-size="lg" th:text="|Faktura ordre ${faktura.ordreNr()}|">Faktura</h1>
+    <p class="ds-paragraph" data-size="sm">
+        Kundenummer <strong th:text="${faktura.kundenummer()}">100200</strong> ·
+        mottaker orgnr <span th:text="${faktura.fakturamottakerOrgnr()}">123456789</span> ·
+        sum <strong th:text="${faktura.sumBelop()}">0.00</strong> ·
+        uuid <code th:text="${faktura.fakturaUuid()}">…</code>
+    </p>
+
+    <div th:if="${!funn.isEmpty()}">
+        <p class="ds-alert" th:each="f : ${funn}"
+           th:data-color="${f.alvorlighet() == 'BLOKKERENDE'} ? 'danger' : 'warning'">
+            <strong th:text="${f.kode()}">KODE</strong>: <span th:text="${f.melding()}">melding</span>
+        </p>
+    </div>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:1rem;">Linjer</h2>
+    <p class="ds-paragraph" data-size="sm">Hver linje er sporbar til bruksdata (bruksdata-id) og pris (pris-id).</p>
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr>
+            <th>Produkt</th><th>Beskrivelse</th><th>Servicekode</th><th>Ref.</th>
+            <th class="hoyre">Antall</th><th class="hoyre">Enhetspris</th><th class="hoyre">Beløp</th>
+            <th class="hoyre">Bruksdata-id</th><th class="hoyre">Pris-id</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="l : ${linjer}">
+            <td th:text="${produktNavn.containsKey(l.produktId()) ? produktNavn.get(l.produktId()) : l.produktId()}">Melding</td>
+            <td th:text="${l.beskrivelse()}">Bruk av melding januar 2027</td>
+            <td th:text="${l.servicekode()} ?: '—'">—</td>
+            <td th:text="${l.fakturareferanse()} ?: '—'">—</td>
+            <td class="hoyre" th:text="${l.antall()} ?: '—'">100.00</td>
+            <td class="hoyre" th:text="${l.enhetspris()} ?: '—'">1.2500</td>
+            <td class="hoyre" th:text="${l.belop()}">125.00</td>
+            <td class="hoyre" th:text="${l.bruksdataId()} ?: '—'">5</td>
+            <td class="hoyre" th:text="${l.prisId()} ?: '—'">3</td>
+        </tr>
+        <tr th:if="${linjer.isEmpty()}">
+            <td colspan="9" class="ds-paragraph" data-size="sm">Ingen linjer.</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Test profile. The datasource is supplied at runtime by a Testcontainers PostgreSQL 16 container
+# via @ServiceConnection (docs/05: Testcontainers for everything that touches SQL, no H2). Plain
+# console logs keep test output readable.
+logging:
+  structured:
+    format:
+      console: ""
+
+# Export artifacts land under target/ in tests (gitignored, not cleaned between runs).
+forsystem:
+  arkiv:
+    katalog: target/arkiv-test
+  eksport:
+    ansvarlig1: Testansvarlig
+    ansvarlig2: Testansvarlig
+    faktura-url-base: https://faktura.digdir.no/detaljer
