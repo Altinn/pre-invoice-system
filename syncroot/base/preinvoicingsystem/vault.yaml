@@ -1,0 +1,26 @@
+# Key Vault for the application (dis-vault-operator, RFC 0009).
+#
+# `externalSecrets: true` makes the operator create a namespaced SecretStore named
+# `preinvoicingsystem-secret-store`, authenticated with the `preinvoicingsystem` workload identity,
+# which the ExternalSecret in external-secrets.yaml consumes. The operator also publishes a
+# ConfigMap `preinvoicingsystem-dis-vault` with keys `AkvName` and `AkvUri` — both names are
+# derived from `identityRef.name`.
+#
+# The application itself never talks to Key Vault (docs/02): secrets arrive as environment
+# variables, projected from the Kubernetes Secret that external-secrets syncs.
+apiVersion: vault.dis.altinn.cloud/v1alpha1
+kind: Vault
+metadata:
+  name: preinvoicingsystem
+spec:
+  identityRef:
+    name: preinvoicingsystem
+  externalSecrets: true
+  # TODO(OQ-17): Entra group that gets data-plane access to the vault, i.e. the humans who put
+  # the OIDC values in. The all-zero GUID is a deliberate placeholder — it is syntactically valid
+  # for the operator's pattern check but grants nobody anything, so a forgotten value fails loudly
+  # (no one can write secrets) instead of silently granting the wrong group.
+  groupObjectId: 00000000-0000-0000-0000-000000000000
+  tags:
+    app: preinvoicingsystem
+    # `env` is added per overlay.

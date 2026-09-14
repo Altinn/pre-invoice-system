@@ -20,9 +20,12 @@ WORKDIR /app
 
 # Non-root runtime user, plus a writable archive directory it owns. Exports (LG04/PDF/CSV/XLSX)
 # are written here by LocalFileArchive; without this the non-root user cannot create /app/data.
-RUN groupadd --system app && useradd --system --gid app app \
+# The uid/gid are pinned and USER is numeric because kubelet refuses to start a pod with
+# `runAsNonRoot: true` when the image's USER is a name it cannot resolve to a uid
+# (syncroot/base/forsystem/deployment.yaml sets runAsUser/fsGroup to the same 10001).
+RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app app \
     && mkdir -p /app/data/arkiv && chown -R app:app /app/data
-USER app
+USER 10001
 
 COPY --from=build --chown=app:app /workspace/target/forsystem-*.jar app.jar
 

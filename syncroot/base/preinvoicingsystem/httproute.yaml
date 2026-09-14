@@ -1,0 +1,25 @@
+# Ingress through the cluster's Traefik gateway. Hostnames are set per overlay.
+#
+# The infrastructure issue also describes an APIM route in front of this. That is deliberately
+# not modelled here yet: the dis-apim-operator's `Api` resource requires `content` (an OpenAPI /
+# swagger document) and this is a server-rendered Thymeleaf UI with no OpenAPI definition — the
+# `/api` REST surface is future work (docs/02, docs/06). Add `Backend` + `Api` once there is
+# a document to import and the external hostname and APIM product are assigned (TODO(OQ-17)).
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: preinvoicingsystem
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: traefik-gateway
+      namespace: traefik
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: preinvoicingsystem
+          port: 80

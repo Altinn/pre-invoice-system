@@ -1,0 +1,18 @@
+# Export archive (LG04, PDF, CSV, XLSX) written through the `FileArchive` port.
+#
+# The MVP adapter is `LocalFileArchive`, so the archive is a disk, not a blob container — the
+# `AzureBlobArchive` adapter named in docs/02 and the storage account the platform team will
+# provision with Terraform are a later swap. Nothing is ever deleted from here (OQ-9), so this
+# claim only grows; ReadWriteOnce is fine because the Deployment is a single replica with a
+# `Recreate` strategy.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: preinvoicingsystem-arkiv
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: managed-csi-premium
+  resources:
+    requests:
+      storage: 10Gi

@@ -1,0 +1,29 @@
+# Workload identity for the application (dis-identity-operator, RFC 0004).
+#
+# The operator provisions a user-assigned managed identity + federated credential in Entra and
+# then creates a ServiceAccount with the *same name* as this resource, annotated with the client
+# id and tenant id. We therefore never author a ServiceAccount by hand and never substitute a
+# client id into git — the Deployment just references `serviceAccountName: preinvoicingsystem`.
+#
+# This identity is what the app uses for Key Vault (via external-secrets) and, once the DB auth
+# question lands (TODO(OQ-16)), for its Entra token against PostgreSQL.
+apiVersion: application.dis.altinn.cloud/v1alpha1
+kind: ApplicationIdentity
+metadata:
+  name: preinvoicingsystem
+spec:
+  tags:
+    app: preinvoicingsystem
+    # `env` is added per overlay.
+---
+# Separate admin identity for the PostgreSQL server. dis-pgsql-operator runs its access
+# provisioning Jobs as this identity's ServiceAccount (AdminIdentitySpec.serviceAccountName
+# defaults to identityRef.name), so it must be distinct from the application identity.
+apiVersion: application.dis.altinn.cloud/v1alpha1
+kind: ApplicationIdentity
+metadata:
+  name: preinvoicingsystem-db-admin
+spec:
+  tags:
+    app: preinvoicingsystem
+    role: db-admin

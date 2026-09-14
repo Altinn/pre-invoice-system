@@ -5,9 +5,10 @@ model, effective 2027-01-01. The system assembles the invoice basis (fakturagrun
 usage data, prices and customer registries; a human verifies and approves; export files are
 produced for Unit4 (LG04 via DFØ), plus PDF detail views and CSV/XLSX.
 
-**Status**: MVP feature-complete (Phases 0–4); Phase 5 demo readiness done, Azure deployment
-deferred. The full monthly cycle runs locally end-to-end — see the demo below and
-[docs/runbook.md](docs/runbook.md).
+**Status**: MVP feature-complete (Phases 0–4); Phase 5 demo readiness done. The full monthly cycle
+runs locally end-to-end — see the demo below and [docs/runbook.md](docs/runbook.md). GitOps
+deployment to Altinn's `dis-core` cluster is configured in [syncroot/](syncroot/) but not yet
+live: it is blocked on the Entra and PostgreSQL-auth decisions in docs/07 (OQ-16, OQ-17).
 
 ## Build & run
 
@@ -65,6 +66,7 @@ Vendored front-end assets (served locally, no CDN): Digdir
 | [docs/funksjonsoversikt.md](docs/funksjonsoversikt.md) | **Feature inventory** — every function with a stable ID, for cross-referencing requirements |
 | [docs/runbook.md](docs/runbook.md) | Ops runbook — monthly procedure, re-run, DFØ errors, local demo |
 | [docs/csv-format.md](docs/csv-format.md) | Usage-import CSV contract |
+| [syncroot/README.md](syncroot/README.md) | GitOps deployment to dis-core — Flux, the dis-* operators, what is still missing |
 
 ## Relationship to the old system
 
