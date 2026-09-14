@@ -22,8 +22,9 @@ WORKDIR /app
 # are written here by LocalFileArchive; without this the non-root user cannot create /app/data.
 # The uid/gid are pinned and USER is numeric because kubelet refuses to start a pod with
 # `runAsNonRoot: true` when the image's USER is a name it cannot resolve to a uid
-# (syncroot/base/forsystem/deployment.yaml sets runAsUser/fsGroup to the same 10001).
-RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app app \
+# (syncroot/base/preinvoicingsystem/deployment.yaml sets runAsUser/fsGroup to the same 10001).
+RUN groupadd --gid 10001 app \
+    && useradd --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app \
     && mkdir -p /app/data/arkiv && chown -R app:app /app/data
 USER 10001
 
