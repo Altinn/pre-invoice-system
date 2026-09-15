@@ -61,6 +61,19 @@
             <artifactId>postgresql</artifactId>
             <!-- compile scope: the jsonb converter (common.Jsonb) references org.postgresql.util.PGobject -->
         </dependency>
+        <!-- Passwordless PostgreSQL in Azure (OQ-16). pgjdbc loads this reflectively via the
+             `authenticationPluginClassName` URL property (set only in the dis-core manifests,
+             syncroot/) and it supplies an Entra token as the password. Runtime scope on purpose:
+             it stays off the compile classpath, so the "no Azure SDK imports outside adapter
+             packages" rule (docs/02) is enforced by the compiler. Without the URL property the
+             plugin is never loaded — docker compose and Testcontainers are untouched.
+             Not managed by the Spring Boot BOM, hence the explicit version (Renovate tracks it). -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-identity-extensions</artifactId>
+            <version>1.2.2</version>
+            <scope>runtime</scope>
+        </dependency>
 
         <!-- Operability -->
         <dependency>
