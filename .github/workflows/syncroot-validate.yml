@@ -1,0 +1,68 @@
+# Validates the Flux syncroot on every change to it.
+#
+# Deployment is pull-based, so a broken manifest is not caught by a failing deploy step — Flux
+# would simply stop reconciling in the cluster, quietly, after the merge. This job is the only
+# place a bad overlay gets rejected while someone is still looking at it.
+name: Validate syncroot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "syncroot/**"
+      - ".github/workflows/syncroot-validate.yml"
+  pull_request:
+    paths:
+      - "syncroot/**"
+      - ".github/workflows/syncroot-validate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Build every overlay
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same check the platform's publish pipeline relies on: every environment the artifact is
+      # tagged for must have an overlay to build.
+      - name: Verify folder structure
+        uses: Altinn/altinn-platform/actions/flux/verify-syncroot@cc2d766fe7dd2e9d96737a30e965399832728598 # main
+        with:
+          workdir: ./syncroot
+          environments: "tt02 prod"
+
+      # kustomize is not on the hosted runner image, and `kubectl kustomize` embeds whatever
+      # kustomize version that kubectl was cut with. Pin it so CI renders overlays with the same
+      # version Flux does in-cluster.
+      - name: Install kustomize
+        env:
+          # renovate: datasource=github-releases depName=kustomize packageName=kubernetes-sigs/kustomize versioning=semver
+          KUSTOMIZE_VERSION: "5.8.0"
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin kustomize
+          kustomize version
+
+      - name: Build overlays
+        run: |
+          set -euo pipefail
+          for env in tt02 prod; do
+            echo "::group::kustomize build syncroot/${env}"
+            kustomize build "syncroot/${env}"
+            echo "::endgroup::"
+          done
+
+      # The overlays ship a placeholder tag that publish-syncroot.yml rewrites at deploy time.
+      # If a real tag is ever committed, the next deploy silently redeploys that old image when
+      # someone forgets to pass image-tag — so keep the placeholder in git.
+      - name: Image tag is a placeholder in git
+        run: |
+          set -euo pipefail
+          for env in tt02 prod; do
+            grep -q 'newTag: will-be-replaced' "syncroot/${env}/kustomization.yaml" \
+              || { echo "::error file=syncroot/${env}/kustomization.yaml::newTag must stay 'will-be-replaced' in git"; exit 1; }
+          done

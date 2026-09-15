@@ -1,0 +1,39 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: product-preinvoicingsystem
+resources:
+  - ../base
+
+images:
+  - name: preinvoicingsystem
+    # Images are built to GHCR by CI and pulled through the cluster's ACR cache.
+    newName: altinncr.azurecr.io/ghcr.io/altinn/pre-invoice-system
+    # Rewritten by .github/workflows/publish-syncroot.yml before the artifact is pushed.
+    newTag: will-be-replaced
+
+patches:
+  - target:
+      kind: ApplicationIdentity
+    patch: |-
+      - op: add
+        path: /spec/tags/env
+        value: tt02
+  - target:
+      kind: Vault
+      name: preinvoicingsystem
+    patch: |-
+      - op: add
+        path: /spec/tags/env
+        value: tt02
+  - target:
+      kind: HTTPRoute
+      name: preinvoicingsystem
+      group: gateway.networking.k8s.io
+    patch: |-
+      - op: add
+        path: /spec/hostnames
+        value:
+          # TODO(OQ-17): no externally advertised name is assigned yet — the issue sketched
+          # `<product>.test.<domain>`, but both the product name and the domain have moved on.
+          # This is the internal dis-core name.
+          - preinvoicingsystem.tt02.dis-core.altinn.cloud

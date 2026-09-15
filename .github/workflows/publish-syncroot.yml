@@ -1,0 +1,71 @@
+# Publishes the Flux syncroot for one environment as an OCI artifact to altinncr.
+#
+# Deployment is pull-based: Flux in the dis-core cluster watches
+# oci://altinncr.azurecr.io/preinvoicingsystem/syncroot and reconciles the tag belonging to its
+# environment. This workflow therefore *is* the deploy — it stamps the image tag into the
+# overlay and pushes the artifact; nothing here talks to the cluster.
+#
+# The image must already exist in GHCR (built by ci.yml on push to main). The cluster pulls it
+# through the ACR cache, so the tag passed here is a GHCR tag, e.g. a commit sha from ci.yml.
+name: Publish syncroot
+
+run-name: Deploy ${{ inputs.image-tag }} to ${{ inputs.environment }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        required: true
+        options:
+          - tt02
+          - prod
+      image-tag:
+        description: "Image tag to deploy (a tag that exists in ghcr.io/altinn/pre-invoice-system)"
+        type: string
+        required: true
+
+env:
+  SYNCROOT_ARTIFACT_NAME: preinvoicingsystem/syncroot
+
+permissions:
+  contents: read
+  # Required: setup-flux-acr exchanges the job's OIDC token for Azure federated credentials.
+  id-token: write
+
+# Never let two deploys race for the same tag.
+concurrency:
+  group: publish-syncroot-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  publish-syncroot:
+    name: Publish syncroot artifact
+    # Deploy only what is on main. A syncroot built from a feature branch would put unreviewed
+    # manifests in front of Flux.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Stamp image tag into the overlay
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
+          IMAGE_TAG: ${{ inputs.image-tag }}
+        run: |
+          yq -i '(.images[] | select(.name == "preinvoicingsystem")).newTag = strenv(IMAGE_TAG)' \
+            "./syncroot/${ENVIRONMENT}/kustomization.yaml"
+          # Fail loudly rather than shipping the `will-be-replaced` placeholder.
+          grep -q "newTag: ${IMAGE_TAG}" "./syncroot/${ENVIRONMENT}/kustomization.yaml"
+
+      - name: Build and push syncroot artifact
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@cc2d766fe7dd2e9d96737a30e965399832728598 # main
+        with:
+          image_name: ${{ env.SYNCROOT_ARTIFACT_NAME }}
+          tag: ${{ inputs.environment }}
+          workdir: ./syncroot
+          azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
+          azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
+          azure_tenant_id: ${{ secrets.DIS_SYNCROOT_AZURE_TENANT_ID }}

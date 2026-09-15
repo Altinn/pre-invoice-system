@@ -1,0 +1,38 @@
+# PostgreSQL Flexible Server + database (dis-pgsql-operator, RFC 0006).
+#
+# Dedicated layout: one Database on its own DatabaseServer. `storage` is deliberately omitted so
+# the operator picks its own defaults — the alternative is guessing a size/performance tier pair
+# that Azure may reject, and the volume here is thousands of rows a month.
+apiVersion: storage.dis.altinn.cloud/v1alpha1
+kind: DatabaseServer
+metadata:
+  name: preinvoicingsystem
+spec:
+  # PostgreSQL 16 is what the Flyway migrations and the Testcontainers suite run against
+  # (docker-compose.yaml, docs/05). The operator also supports 17; upgrade deliberately.
+  version: 16
+  # Size/profile of the server. `dev` -> Standard_B1ms burstable; `prod` -> Standard_D4s_v3 with
+  # high availability and 30-day backups. Overridden to `prod` in the prod overlay.
+  serverType: dev
+  auth:
+    admin:
+      identity:
+        identityRef:
+          name: preinvoicingsystem-db-admin
+---
+apiVersion: storage.dis.altinn.cloud/v1alpha1
+kind: Database
+metadata:
+  name: preinvoicingsystem
+spec:
+  name: preinvoicingsystem
+  server:
+    name: preinvoicingsystem
+  access:
+    principals:
+      # Owner, not Writer: Flyway runs on application startup and issues DDL (docs/02), so the
+      # app's own identity needs schema ownership.
+      - role: Owner
+        identityRef:
+          name: preinvoicingsystem
+  deletionPolicy: Retain
