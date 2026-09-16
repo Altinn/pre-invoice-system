@@ -46,8 +46,16 @@ to match on both sides. If a different cluster is assigned, rename the folder an
 ## Deploying
 
 1. Merge to `main`. `ci.yml` builds and pushes `ghcr.io/altinn/pre-invoice-system:<sha>`.
-2. Run the **Publish syncroot** workflow, choosing the environment and that image tag.
+2. Run the **Publish syncroot** workflow and choose the environment. Leave **Image tag** empty to
+   deploy the head of `main`; fill it in to pin an older sha, for a rollback.
 3. Flux reconciles within its sync interval.
+
+The empty field resolves to the commit sha of `main`, not the `latest` tag CI also pushes: the
+syncroot is reconciled by content, so an artifact that always reads `newTag: latest` is
+byte-identical on every deploy and Flux never rolls the Deployment. Since the workflow only runs
+on `main`, that sha is also the commit the overlays themselves are built from. Let `ci.yml` finish
+on that commit first — nothing here checks that the image exists, and a missing one shows up as
+`ImagePullBackOff` in the cluster rather than as a failed workflow.
 
 The overlays keep `newTag: will-be-replaced` in git on purpose; the publish workflow stamps the
 real tag in at deploy time, and `syncroot-validate.yml` fails if a real tag is ever committed.

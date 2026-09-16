@@ -7,9 +7,10 @@
 #
 # The image must already exist in GHCR (built by ci.yml on push to main). The cluster pulls it
 # through the ACR cache, so the tag passed here is a GHCR tag, e.g. a commit sha from ci.yml.
+# Leaving image-tag empty deploys the current head of main — see "Resolve image tag" below.
 name: Publish syncroot
 
-run-name: Deploy ${{ inputs.image-tag }} to ${{ inputs.environment }}
+run-name: Deploy ${{ inputs.image-tag || github.sha }} to ${{ inputs.environment }}
 
 on:
   workflow_dispatch:
@@ -22,9 +23,9 @@ on:
           - tt02
           - prod
       image-tag:
-        description: "Image tag to deploy (a tag that exists in ghcr.io/altinn/pre-invoice-system)"
+        description: "Image tag to deploy (a tag that exists in ghcr.io/altinn/pre-invoice-system). Leave empty to deploy the current head of main."
         type: string
-        required: true
+        required: false
 
 env:
   SYNCROOT_ARTIFACT_NAME: preinvoicingsystem/syncroot
@@ -50,10 +51,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # An empty image-tag means "deploy what is on main right now". The job is gated on main
+      # above, so github.sha is main's head — and it is the same commit these overlays were
+      # checked out from, so the manifests and the image ship from one revision.
+      #
+      # It resolves to a sha rather than the `latest` tag ci.yml also pushes, because the
+      # syncroot is reconciled by content: an artifact that always says `newTag: latest` is
+      # byte-identical on every deploy, so Flux sees no change and never rolls the Deployment.
+      - name: Resolve image tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.image-tag }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          IMAGE_TAG="${INPUT_TAG:-$GITHUB_SHA}"
+          echo "image-tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          if [ -z "${INPUT_TAG}" ]; then
+            echo "No image tag given — deploying the head of main, \`${IMAGE_TAG}\`, to \`${ENVIRONMENT}\`." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Deploying \`${IMAGE_TAG}\` to \`${ENVIRONMENT}\`." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Stamp image tag into the overlay
         env:
           ENVIRONMENT: ${{ inputs.environment }}
-          IMAGE_TAG: ${{ inputs.image-tag }}
+          IMAGE_TAG: ${{ steps.tag.outputs.image-tag }}
         run: |
           yq -i '(.images[] | select(.name == "preinvoicingsystem")).newTag = strenv(IMAGE_TAG)' \
             "./syncroot/${ENVIRONMENT}/kustomization.yaml"
