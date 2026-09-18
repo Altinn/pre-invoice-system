@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   validate:
-    name: Build every overlay
+    name: Build and validate every overlay
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,14 +47,54 @@ jobs:
             | tar -xz -C /usr/local/bin kustomize
           kustomize version
 
+      - name: Install kubeconform
+        env:
+          # renovate: datasource=github-releases depName=kubeconform packageName=yannh/kubeconform versioning=semver
+          KUBECONFORM_VERSION: "0.8.0"
+        run: |
+          set -euo pipefail
+          curl -sSfL "https://github.com/yannh/kubeconform/releases/download/v${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" \
+            | tar -xz -C /usr/local/bin kubeconform
+          kubeconform -v
+
       - name: Build overlays
         run: |
           set -euo pipefail
+          mkdir -p "${RUNNER_TEMP}/rendered"
           for env in tt02 prod; do
+            kustomize build "syncroot/${env}" -o "${RUNNER_TEMP}/rendered/${env}.yaml"
             echo "::group::kustomize build syncroot/${env}"
-            kustomize build "syncroot/${env}"
+            cat "${RUNNER_TEMP}/rendered/${env}.yaml"
             echo "::endgroup::"
           done
+
+      # `kustomize build` succeeding only means the overlay is well-formed YAML — it renders a
+      # Deployment with a misspelled field just fine, and Flux then stops reconciling in-cluster
+      # without failing anything visible. kubeconform schema-checks the rendered output; -strict
+      # is what turns unknown fields and duplicate keys into errors.
+      #
+      # No -kubernetes-version: dis-core's version is not recorded anywhere this repo can read, so
+      # this validates against the current upstream schema set rather than a guessed one. Pin it
+      # here once the platform team names a version.
+      #
+      # `default` is the upstream Kubernetes schema set; the catalog covers the third-party CRDs
+      # (Gateway API, external-secrets, Linkerd policy). The dis-* platform CRDs publish no JSON
+      # schemas and are skipped by full GVK, not by bare kind — `Database` and `Vault` are names
+      # other groups use too, so a bare-kind skip would quietly widen later. Consequence: a typo
+      # in vault.yaml, database.yaml or applicationidentity.yaml is *not* caught here, only by the
+      # operators at reconcile time. Those CRDs are public
+      # (Altinn/altinn-platform, services/dis-*-operator/config/crd/bases/) if someone wants to
+      # generate schemas and close the gap.
+      - name: Validate rendered manifests
+        run: |
+          set -euo pipefail
+          kubeconform \
+            -strict \
+            -summary \
+            -schema-location default \
+            -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+            -skip 'application.dis.altinn.cloud/v1alpha1/ApplicationIdentity,storage.dis.altinn.cloud/v1alpha1/Database,storage.dis.altinn.cloud/v1alpha1/DatabaseServer,vault.dis.altinn.cloud/v1alpha1/Vault' \
+            "${RUNNER_TEMP}/rendered/tt02.yaml" "${RUNNER_TEMP}/rendered/prod.yaml"
 
       # The overlays ship a placeholder tag that publish-syncroot.yml rewrites at deploy time.
       # If a real tag is ever committed, the next deploy silently redeploys that old image when

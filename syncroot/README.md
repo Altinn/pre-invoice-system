@@ -122,6 +122,20 @@ appearing to work. See docs/07 OQ-16.
 ```bash
 kustomize build syncroot/tt02    # render an overlay
 kustomize build syncroot/prod
+
+# schema-check a rendered overlay exactly the way CI does
+kustomize build syncroot/tt02 | kubeconform -strict -summary \
+  -schema-location default \
+  -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+  -skip 'application.dis.altinn.cloud/v1alpha1/ApplicationIdentity,storage.dis.altinn.cloud/v1alpha1/Database,storage.dis.altinn.cloud/v1alpha1/DatabaseServer,vault.dis.altinn.cloud/v1alpha1/Vault' \
+  -
 ```
 
-Both run in CI on every PR touching `syncroot/`.
+All of it runs in CI on every PR touching `syncroot/`, via `syncroot-validate.yml`.
+
+`kustomize build` only proves the overlay is well-formed YAML, so the rendered output is also
+schema-checked. `-strict` makes unknown fields and duplicate keys errors — the failure mode that
+otherwise leaves Flux silently stuck in-cluster. There are **no published JSON schemas for the
+four `dis-*` CRDs**, so `applicationidentity.yaml`, `vault.yaml` and `database.yaml` are skipped
+and reach validation only when the operators reconcile them; everything else (Deployment,
+Service, PVC, `HTTPRoute`, `ExternalSecret`, Linkerd policy) is validated here.
