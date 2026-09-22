@@ -70,7 +70,8 @@ written so that a missing one fails loudly rather than deploying something subtl
 | GitHub secrets `DIS_SYNCROOT_AZURE_{CLIENT_ID,TENANT_ID,SUBSCRIPTION_ID}` | platform | needed by `publish-syncroot.yml` |
 | Flux `OCIRepository` + `Kustomization` in dis-core pointing at `preinvoicingsystem/syncroot` | platform | onboarding step |
 | ACR cache rule for `ghcr.io/altinn/pre-invoice-system` | platform | onboarding step |
-| `groupObjectId` in `vault.yaml` — the Entra group that may write secrets | platform | **TODO(OQ-17)**, placeholder is all-zero |
+| `groupObjectId` in `vault.yaml` — the Entra group that may write secrets | platform | **done**, `forsystem-vault-admin` |
+| Database admin group — the humans with `Owner` on the database | Digdir IT | **done**, `forsystem-db-admin` in `database.yaml` |
 | Entra app registration + the three vault secrets below | platform / Digdir IT | **TODO(OQ-17)** |
 | Role-mapping groups (reader / maintainer / approver) | Digdir IT | **TODO(OQ-17)** |
 | PostgreSQL authentication mode | both | **TODO(OQ-16)**, blocks startup |

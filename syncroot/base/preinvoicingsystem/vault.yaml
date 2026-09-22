@@ -16,11 +16,11 @@ spec:
   identityRef:
     name: preinvoicingsystem
   externalSecrets: true
-  # TODO(OQ-17): Entra group that gets data-plane access to the vault, i.e. the humans who put
-  # the OIDC values in. The all-zero GUID is a deliberate placeholder — it is syntactically valid
-  # for the operator's pattern check but grants nobody anything, so a forgotten value fails loudly
-  # (no one can write secrets) instead of silently granting the wrong group.
-  groupObjectId: 00000000-0000-0000-0000-000000000000
+  # Entra group `forsystem-vault-admin` — data-plane access to the vault, i.e. the humans who
+  # put the OIDC values in (docs/07 OQ-17). The operator's pattern is
+  # `^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$`: lowercase only, so an upper-case GUID pasted
+  # out of the Entra portal is rejected at admission rather than silently normalised.
+  groupObjectId: c27e25eb-51e0-484b-aaac-58929ec6bfa0
   tags:
     app: preinvoicingsystem
     # `env` is added per overlay.

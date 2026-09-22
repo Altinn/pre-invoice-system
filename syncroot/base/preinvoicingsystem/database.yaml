@@ -35,4 +35,12 @@ spec:
       - role: Owner
         identityRef:
           name: preinvoicingsystem
+      # Entra group `forsystem-db-admin` — the humans who administer the database (docs/07
+      # OQ-17). Referenced by object id and not by `identityRef`, because the group is created in
+      # Entra by Digdir IT rather than provisioned by dis-identity-operator from this namespace.
+      # The display name doubles as the PostgreSQL role name, so it has to match Entra exactly.
+      - role: Owner
+        group:
+          name: forsystem-db-admin
+          principalId: f72e2197-058e-4f95-8137-cdb6161ddcaa
   deletionPolicy: Retain
