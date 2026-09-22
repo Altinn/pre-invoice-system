@@ -13,3 +13,13 @@ spring:
         provider:
           entra:
             issuer-uri: ${OIDC_ISSUER_URI}
+
+forsystem:
+  security:
+    # Entra group object ids -> application roles (docs/02). The ids are the forsystem-* security
+    # groups created 2026-09 (servicedesk); group ids are identifiers, not secrets. The same
+    # groups are used in tt02 and prod — override per environment only if that ever changes.
+    grupper:
+      leser: ${OIDC_GRUPPE_LESER:ebdd557f-d292-44b1-b6b6-87e19b21e7a1}
+      forvalter: ${OIDC_GRUPPE_FORVALTER:de79c0e2-6f98-46f0-8078-96628de0d19d}
+      godkjenner: ${OIDC_GRUPPE_GODKJENNER:8f205415-c25e-498f-bbaf-ae56b21302ec}
