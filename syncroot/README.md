@@ -71,8 +71,8 @@ written so that a missing one fails loudly rather than deploying something subtl
 | Flux `OCIRepository` + `Kustomization` in dis-core pointing at `preinvoicingsystem/syncroot` | platform | onboarding step |
 | ACR cache rule for `ghcr.io/altinn/pre-invoice-system` | platform | onboarding step |
 | `groupObjectId` in `vault.yaml` — the Entra group that may write secrets | platform | **done**, `forsystem-vault-admin` |
-| Database admin group — the humans with `Owner` on the database | Digdir IT | **done**, `forsystem-db-admin` in `database.yaml` |
-| Entra app registration + the three vault secrets below | platform / Digdir IT | **TODO(OQ-17)** |
+| Database debug access — the humans who need the server in the Azure portal | Digdir IT | **done**, `forsystem-db-admin` in `database.yaml` |
+| Entra app registration + the three vault secrets below | platform / Digdir IT | **TODO(OQ-17)**, written into the vault once it is up |
 | Role-mapping groups (reader / maintainer / approver) | Digdir IT | **TODO(OQ-17)** |
 | PostgreSQL authentication mode | both | **TODO(OQ-16)**, blocks startup |
 | Externally advertised hostname | platform | **TODO(OQ-17)**, internal dis-core name used meanwhile |
@@ -81,7 +81,10 @@ written so that a missing one fails loudly rather than deploying something subtl
 
 `external-secrets.yaml` syncs these out of the Key Vault the `Vault` resource creates. They are
 kept in the vault rather than in git so that no plausible-but-wrong tenant or client id can be
-committed — see docs/07 OQ-17.
+committed — see docs/07 OQ-17. They go in **after** the first deploy, once the `Vault` resource
+has reconciled and the Key Vault exists; until then the `ExternalSecret` has nothing to sync and
+the pod stays in `CreateContainerConfigError`, since `deployment.yaml` references the Secret
+without `optional: true`.
 
 | Key in Key Vault | Becomes |
 |---|---|
