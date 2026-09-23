@@ -19,6 +19,20 @@ spec:
       identity:
         identityRef:
           name: preinvoicingsystem-db-admin
+  # Entra group `forsystem-db-admin` — the humans who need to see this server in the Azure
+  # portal (docs/07 OQ-17). Referenced by object id and not by `identityRef`, because the group
+  # is created in Entra by Digdir IT rather than provisioned by dis-identity-operator from this
+  # namespace. Only supported on dedicated servers, which is the layout here — `mode` is left
+  # at its `Dedicated` default.
+  #
+  # This is Azure Reader on the Flexible Server and nothing inside the database; the CRD notes a
+  # later operator slice will add the PostgreSQL `pg_monitor` role and read-only SELECT. Database
+  # access proper is `Database.spec.access` below, which stays limited to the application.
+  debugAccess:
+    principals:
+      - group:
+          name: forsystem-db-admin
+          principalId: f72e2197-058e-4f95-8137-cdb6161ddcaa
 ---
 apiVersion: storage.dis.altinn.cloud/v1alpha1
 kind: Database
