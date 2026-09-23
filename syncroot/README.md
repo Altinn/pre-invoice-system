@@ -72,9 +72,9 @@ written so that a missing one fails loudly rather than deploying something subtl
 | ACR cache rule for `ghcr.io/altinn/pre-invoice-system` | platform | onboarding step |
 | `groupObjectId` in `vault.yaml` — the Entra group that may write secrets | platform | **done**, `forsystem-vault-admin` |
 | Database debug access — the humans who need the server in the Azure portal | Digdir IT | **done**, `forsystem-db-admin` in `database.yaml` |
-| Entra app registration + the three vault secrets below | platform / Digdir IT | **TODO(OQ-17)**, written into the vault once it is up |
-| Role-mapping groups (reader / maintainer / approver) | Digdir IT | **TODO(OQ-17)** |
-| PostgreSQL authentication mode | both | **TODO(OQ-16)**, blocks startup |
+| Entra app registration + the three vault secrets below | platform / Digdir IT | **done** (docs/07 OQ-17) — secrets written into the vault by `forsystem-vault-admin` once it is up |
+| Role-mapping groups (reader / maintainer / approver) | Digdir IT | **done** — object ids default in `application-prod.yaml` |
+| PostgreSQL authentication mode | both | **done** — Entra token auth (docs/07 OQ-16); smoke test on first deploy |
 | Externally advertised hostname | platform | **TODO(OQ-17)**, internal dis-core name used meanwhile |
 
 ### Vault secrets the app expects
@@ -92,17 +92,17 @@ without `optional: true`.
 | `oidc-client-secret` | `OIDC_CLIENT_SECRET` |
 | `oidc-issuer-uri` | `OIDC_ISSUER_URI` (e.g. `https://login.microsoftonline.com/<tenant>/v2.0`) |
 
-### PostgreSQL authentication (TODO(OQ-16))
+### PostgreSQL authentication (Entra token — OQ-16, closed)
 
 `dis-pgsql-operator` publishes a **non-secret** ConfigMap named `<Database>-<identityRef>-dis-pgsql`
 — here `preinvoicingsystem-preinvoicingsystem-dis-pgsql` — with `host` / `port` / `dbname` /
 `user` / `sslmode` / `uri`. The deployment reads it and composes `DB_URL`. There is no password
-key: the golden path is passwordless, the app presenting an Entra access token as the password.
-
-`application.yaml` reads a static `${DB_PASSWORD}` today, so **the app cannot authenticate until
-that is implemented** (or the platform team's `Vault`-supplied-credential fallback is chosen). The
-deployment deliberately sets no `DB_PASSWORD`: startup fails at authentication, loudly, instead of
-appearing to work. See docs/07 OQ-16.
+key: auth is passwordless. `DB_URL` carries `authenticationPluginClassName`, which makes pgjdbc
+load the Entra token plugin (`azure-identity-extensions`, a runtime dependency in `pom.xml`) and
+present a workload-identity token as the password; Hikari `max-lifetime` is 15 min so connections
+recycle inside the token window. `DB_PASSWORD` stays absent — with the plugin set, pgjdbc never
+reads it, and local development (`docker compose up`, Testcontainers) keeps ordinary password auth
+because nothing outside these manifests sets the URL property. See docs/07 OQ-16.
 
 ## Known gaps
 
