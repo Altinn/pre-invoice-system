@@ -115,8 +115,10 @@ appearing to work. See docs/07 OQ-16.
   today (docs/02), so the archive is a `managed-csi-premium` PVC. Swapping in the `AzureBlobArchive`
   adapter is an application change, and it is what makes the deployment horizontally scalable —
   the PVC is why `replicas: 1` and `strategy: Recreate`.
-- **Role mapping.** `SecurityConfig` does not yet map Entra group claims to `LESER` / `FORVALTER` /
-  `GODKJENNER`. Everyone who can log in authenticates as an unprivileged user until it does.
+- **Role mapping.** `SecurityConfig` maps the ID token's `groups` claim to `LESER` / `FORVALTER` /
+  `GODKJENNER`; the three `forsystem-*` group object ids default in `application-prod.yaml`
+  (overridable via `OIDC_GRUPPE_*` env vars). Requires the Entra app registration to emit the
+  groups claim. A user in none of the groups authenticates with read access only.
 - **Telemetry.** Logs go to stdout as ECS JSON and are picked up by the platform. There is no
   OpenTelemetry dependency in `pom.xml`, so no `OTEL_*` wiring here — adding it is an application
   change, not a manifest one.
