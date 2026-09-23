@@ -6,7 +6,7 @@
 # client id into git — the Deployment just references `serviceAccountName: preinvoicingsystem`.
 #
 # This identity is what the app uses for Key Vault (via external-secrets) and, once the DB auth
-# question lands (TODO(OQ-16)), for its Entra token against PostgreSQL.
+# question landed (OQ-16, closed), for its Entra token against PostgreSQL.
 apiVersion: application.dis.altinn.cloud/v1alpha1
 kind: ApplicationIdentity
 metadata:

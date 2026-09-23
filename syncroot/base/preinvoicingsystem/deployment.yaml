@@ -53,7 +53,7 @@ spec:
             # dis-pgsql-operator publishes this ConfigMap once the Database is ready. The name is
             # derivable at authoring time: <Database.metadata.name>-<identityRef.name>-dis-pgsql.
             # Keys: host, port, dbname, user, sslmode, uri. There is deliberately no password key
-            # — the golden path is Entra token auth (see TODO(OQ-16) below).
+            # — auth is an Entra token via the plugin on DB_URL below (OQ-16, closed).
             - name: DB_HOST
               valueFrom:
                 configMapKeyRef:
