@@ -80,14 +80,21 @@ spec:
                   name: preinvoicingsystem-preinvoicingsystem-dis-pgsql
                   key: sslmode
             # $(VAR) resolves against entries defined earlier in this list.
+            #
+            # Passwordless (OQ-16, closed): the authenticationPluginClassName property makes
+            # pgjdbc load the Entra token plugin shipped as a runtime dependency in pom.xml —
+            # DefaultAzureCredential resolves the workload identity this pod already runs as.
+            # DB_PASSWORD stays absent on purpose; with the plugin set, pgjdbc never reads it.
+            # NOTE: DB_USERNAME must stay the bare principal name from the operator's ConfigMap —
+            # no @servername suffix; that is the Single Server format, not Flexible Server's.
             - name: DB_URL
-              value: jdbc:postgresql://$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)
-            # TODO(OQ-16): DB_PASSWORD is intentionally absent. The platform's golden path is
-            # passwordless — the app fetches an Entra access token and presents it as the
-            # password — which application.yaml cannot do today (it reads a static
-            # ${DB_PASSWORD}). Until that is decided and implemented, startup fails at
-            # authentication, which is the intended loud failure: do not paper over it by
-            # putting a password here.
+              value: >-
+                jdbc:postgresql://$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)&authenticationPluginClassName=com.azure.identity.extensions.jdbc.postgresql.AzurePostgresqlAuthenticationPlugin
+            # Entra tokens live 5–60 min and Flexible Server errors on a connection holding an
+            # expired one, so recycle well inside the window; each new physical connection makes
+            # the plugin fetch a fresh token. Connection churn is negligible at our load.
+            - name: SPRING_DATASOURCE_HIKARI_MAX_LIFETIME
+              value: "900000" # 15 min
 
             # --- OIDC login (values live in Key Vault, see external-secrets.yaml) --------
             - name: OIDC_CLIENT_ID
