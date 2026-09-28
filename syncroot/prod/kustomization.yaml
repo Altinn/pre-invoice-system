@@ -25,6 +25,20 @@ patches:
       - op: add
         path: /spec/tags/env
         value: prod
+      - op: add
+        path: /spec/groupObjectId
+        value: 82906e56-15f4-49bd-b215-ac9c1c3d01d9 # DIS AKS Admin Prod PIS
+  - target:
+      kind: Database
+      name: preinvoicingsystem
+    patch: |-
+      - op: add
+        path: /spec/access/principals/-
+        value:
+          role: Owner
+          group:
+            name: DIS AKS Admin Prod PIS
+            principalId: 82906e56-15f4-49bd-b215-ac9c1c3d01d9
   - target:
       kind: HTTPRoute
       name: preinvoicingsystem
@@ -46,3 +60,10 @@ patches:
       - op: replace
         path: /spec/serverType
         value: prod
+      - op: add
+        path: /spec/debugAccess
+        value:
+          principals:
+            - group:
+                name: DIS AKS Admin Prod PIS
+                principalId: 82906e56-15f4-49bd-b215-ac9c1c3d01d9

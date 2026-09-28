@@ -16,11 +16,9 @@ spec:
   identityRef:
     name: preinvoicingsystem
   externalSecrets: true
-  # Entra group `forsystem-vault-admin` — data-plane access to the vault, i.e. the humans who
-  # put the OIDC values in (docs/07 OQ-17). The operator's pattern is
-  # `^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$`: lowercase only, so an upper-case GUID pasted
-  # out of the Entra portal is rejected at admission rather than silently normalised.
-  groupObjectId: c27e25eb-51e0-484b-aaac-58929ec6bfa0
+  # Each environment overlay sets groupObjectId to its PIS AKS Admin group, granting
+  # Key Vault Secrets Officer access to manage the OIDC secrets (docs/07 OQ-17).
+  # The operator requires a lowercase Entra group object ID.
   tags:
     app: preinvoicingsystem
     # `env` is added per overlay.

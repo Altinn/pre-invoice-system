@@ -25,6 +25,31 @@ patches:
       - op: add
         path: /spec/tags/env
         value: tt02
+      - op: add
+        path: /spec/groupObjectId
+        value: f291ec97-a602-486a-bc44-ed39495b4b6f # DIS AKS Admin Dev PIS
+  - target:
+      kind: Database
+      name: preinvoicingsystem
+    patch: |-
+      - op: add
+        path: /spec/access/principals/-
+        value:
+          role: Owner
+          group:
+            name: DIS AKS Admin Dev PIS
+            principalId: f291ec97-a602-486a-bc44-ed39495b4b6f
+  - target:
+      kind: DatabaseServer
+      name: preinvoicingsystem
+    patch: |-
+      - op: add
+        path: /spec/debugAccess
+        value:
+          principals:
+            - group:
+                name: DIS AKS Admin Dev PIS
+                principalId: f291ec97-a602-486a-bc44-ed39495b4b6f
   - target:
       kind: HTTPRoute
       name: preinvoicingsystem
