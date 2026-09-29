@@ -1,6 +1,6 @@
-# Linkerd authorization: only the Traefik gateway may reach the application port. Without the
-# AuthorizationPolicy below, declaring a Server makes the port deny-by-default; with it, the only
-# accepted client identity is Traefik's service account.
+# Linkerd authorization: only the Traefik gateway may reach the application port, plus an
+# explicit carve-out for kubelet health probes. Without the AuthorizationPolicies below,
+# declaring a Server makes the port deny-by-default.
 apiVersion: policy.linkerd.io/v1beta3
 kind: Server
 metadata:
@@ -12,7 +12,10 @@ spec:
     matchLabels:
       app.kubernetes.io/name: preinvoicingsystem
   port: http
-  proxyProtocol: HTTP/2
+  # Tomcat serves HTTP/1.1 on this port. Declaring HTTP/2 here makes the inbound proxy answer
+  # the kubelet's plaintext HTTP/1.1 probes with HTTP/2 frames, which the kubelet reports as
+  # "malformed HTTP response" — the startup probe then kills a healthy container forever.
+  proxyProtocol: HTTP/1
 ---
 apiVersion: policy.linkerd.io/v1beta2
 kind: HTTPRoute
@@ -43,10 +46,52 @@ spec:
       kind: MeshTLSAuthentication
       group: policy.linkerd.io
 ---
-apiVersion: policy.linkerd.io/v1alpha1
-kind: MeshTLSAuthentication
+# Kubelet probes are unauthenticated plain HTTP. Linkerd authorizes probe paths automatically
+# only while a Server has no HTTPRoutes of its own; the Traefik route above replaces the default
+# routes, so the probe paths must be re-authorized explicitly or the kubelet gets 403 and kills
+# the pod. The route is limited to GET on the two health endpoints, which SecurityConfig already
+# serves unauthenticated (docs/02) — nothing else is opened.
+apiVersion: policy.linkerd.io/v1beta2
+kind: HTTPRoute
 metadata:
-  name: traefik
+  name: preinvoicingsystem-probe-route
 spec:
-  identities:
-    - "altinn-traefik.traefik.serviceaccount.identity.linkerd.cluster.local"
+  parentRefs:
+    - name: preinvoicingsystem-http-server
+      kind: Server
+      group: policy.linkerd.io
+  rules:
+    - matches:
+        - path:
+            type: Exact
+            value: /actuator/health/liveness
+          method: GET
+        - path:
+            type: Exact
+            value: /actuator/health/readiness
+          method: GET
+---
+apiVersion: policy.linkerd.io/v1alpha1
+kind: AuthorizationPolicy
+metadata:
+  name: preinvoicingsystem-probe-auth
+spec:
+  targetRef:
+    group: policy.linkerd.io
+    kind: HTTPRoute
+    name: preinvoicingsystem-probe-route
+  requiredAuthenticationRefs:
+    - name: preinvoicingsystem-kubelet
+      kind: NetworkAuthentication
+      group: policy.linkerd.io
+---
+# The kubelet's node IP is not fixed, so probe traffic is authorized by network rather than by
+# identity — the standard Linkerd pattern for health checks.
+apiVersion: policy.linkerd.io/v1alpha1
+kind: NetworkAuthentication
+metadata:
+  name: preinvoicingsystem-kubelet
+spec:
+  networks:
+    - cidr: 0.0.0.0/0
+    - cidr: ::/0
