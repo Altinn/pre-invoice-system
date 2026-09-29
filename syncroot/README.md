@@ -70,12 +70,31 @@ written so that a missing one fails loudly rather than deploying something subtl
 | GitHub secrets `DIS_SYNCROOT_AZURE_{CLIENT_ID,TENANT_ID,SUBSCRIPTION_ID}` | platform | needed by `publish-syncroot.yml` |
 | Flux `OCIRepository` + `Kustomization` in dis-core pointing at `preinvoicingsystem/syncroot` | platform | onboarding step |
 | ACR cache rule for `ghcr.io/altinn/pre-invoice-system` | platform | onboarding step |
-| `groupObjectId` in `vault.yaml` — the Entra group that may write secrets | platform | **done**, `forsystem-vault-admin` |
-| Database debug access — the humans who need the server in the Azure portal | Digdir IT | **done**, `forsystem-db-admin` in `database.yaml` |
-| Entra app registration + the three vault secrets below | platform / Digdir IT | **done** (docs/07 OQ-17) — secrets written into the vault by `forsystem-vault-admin` once it is up |
+| Vault secret access — `groupObjectId` is set by each overlay | platform | **configured**, the PIS AKS Admin group for the environment; see below |
+| PostgreSQL Owner access and server visibility in the Azure portal | platform | **configured**, the same PIS AKS Admin group in `Database.spec.access` and `DatabaseServer.spec.debugAccess` |
+| Entra app registration + the three vault secrets below | platform / Digdir IT | **done** (docs/07 OQ-17) — secrets written into the vault by the environment's PIS AKS Admin group once it is up |
 | Role-mapping groups (reader / maintainer / approver) | Digdir IT | **done** — object ids default in `application-prod.yaml` |
 | PostgreSQL authentication mode | both | **done** — Entra token auth (docs/07 OQ-16); smoke test on first deploy |
 | Externally advertised hostname | platform | **TODO(OQ-17)**, internal dis-core name used meanwhile |
+
+### Human access to the vault and database
+
+The overlays select the existing Entra group for each environment:
+
+| Environment | Group | Object ID |
+|---|---|---|
+| `tt02` | `DIS AKS Admin Dev PIS` | `f291ec97-a602-486a-bc44-ed39495b4b6f` |
+| `prod` | `DIS AKS Admin Prod PIS` | `82906e56-15f4-49bd-b215-ac9c1c3d01d9` |
+
+Each group receives **Key Vault Secrets Officer** on the application vault through
+`Vault.spec.groupObjectId`, **Owner** access to the PostgreSQL database through
+`Database.spec.access.principals`, and server visibility through `DatabaseServer.spec.debugAccess`.
+Database Owner permits reading, writing and schema changes. The application's identity also
+retains Owner access for Flyway.
+
+These groups replace `forsystem-vault-admin` and `forsystem-db-admin` in the published overlays.
+Publish the syncroot separately for `tt02` and `prod` after merge to reconcile the changes.
+Group membership is managed separately in `altinn-access-management/Terraform/DIS/{Dev,Prod}`.
 
 ### Vault secrets the app expects
 
