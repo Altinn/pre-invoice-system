@@ -21,7 +21,7 @@ spec:
           name: preinvoicingsystem-db-admin
   # Each environment overlay sets debugAccess to its PIS AKS Admin group for Azure portal
   # visibility. Debug access is supported on this dedicated server (the default mode).
-  # The same group gets database Owner access through Database.spec.access below.
+  # Database access is granted separately through Database.spec.access below.
 ---
 apiVersion: storage.dis.altinn.cloud/v1alpha1
 kind: Database
@@ -32,7 +32,7 @@ spec:
   server:
     name: preinvoicingsystem
   access:
-    # Environment overlays add the PIS AKS Admin group as another Owner principal.
+    # Environment overlays grant the PIS AKS Admin group Owner in tt02 and Reader in prod.
     principals:
       # Owner, not Writer: Flyway runs on application startup and issues DDL (docs/02), so the
       # app's own identity needs schema ownership.

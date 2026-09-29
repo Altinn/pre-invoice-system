@@ -35,7 +35,7 @@ patches:
       - op: add
         path: /spec/access/principals/-
         value:
-          role: Owner
+          role: Reader
           group:
             name: DIS AKS Admin Prod PIS
             principalId: 82906e56-15f4-49bd-b215-ac9c1c3d01d9
