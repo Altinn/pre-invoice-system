@@ -11,6 +11,11 @@
     <title th:text="|${tittel} — forsystem|">forsystem</title>
     <link rel="stylesheet" th:href="@{/css/digdir-theme.css}">
     <link rel="stylesheet" th:href="@{/css/designsystemet.css}">
+    <!-- htmx 2 drops 4xx/5xx responses by default, so a failed boosted form looked like "nothing
+         happened". Swap error responses in too: Regelbrudd (400) renders feil.html, anything else
+         renders error.html — the user always sees why. -->
+    <meta name="htmx-config"
+          content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true},{"code":"...","swap":false}]}'>
     <script th:src="@{/js/htmx.min.js}" defer></script>
     <style>
         body { margin: 0; }

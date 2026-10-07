@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<!-- Spring Boot's error view for unexpected failures (business-rule errors use feil.html). -->
+<head th:replace="~{layout :: head('Feil')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <h1 class="ds-heading" data-size="lg">Noe gikk galt</h1>
+    <p class="ds-alert" data-color="danger">
+        Handlingen kunne ikke fullføres på grunn av en teknisk feil
+        (<span th:text="${status} ?: 500">500</span>).
+        Prøv igjen, og kontakt forvaltningen hvis feilen vedvarer.
+    </p>
+    <p class="ds-paragraph" data-size="sm">Tidspunkt:
+        <span th:text="${timestamp != null} ? ${#dates.format(timestamp, 'yyyy-MM-dd HH:mm:ss')} : ''"></span></p>
+    <p><a class="ds-link" href="javascript:history.back()">← Tilbake</a></p>
+</main>
+</body>
+</html>

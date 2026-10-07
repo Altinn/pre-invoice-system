@@ -2,6 +2,7 @@ package no.digdir.forsystem.web.security;
 
 import java.util.Optional;
 
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -36,6 +37,9 @@ class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/css/**", "/js/**", "/favicon.ico", "/webjars/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        // Let the container's error forward render error.html. Otherwise a failed POST
+                        // is re-authorized as "POST /error", refused, and the user gets an empty 403.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         // Approval and export are the GODKJENNER's job; other writes are FORVALTER's.
                         .requestMatchers(HttpMethod.POST, "/kjoringer/*/godkjenn").hasRole(Rolle.GODKJENNER)
                         .requestMatchers(HttpMethod.POST, "/kjoringer/*/eksporter").hasRole(Rolle.GODKJENNER)
