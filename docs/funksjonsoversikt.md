@@ -78,6 +78,12 @@ covered by automated tests (61 tests; byte-exact LG04 golden) unless the row say
 | F-USG-13 | Block import on active run | Import blocked if a non-FORKASTET kjøring exists for the period. | `KjoringStatusPort` (billing adapter) | — | docs/04 P2 |
 | F-USG-14 | Import detail view | View an import's rows. | GET `/bruksdata/{id}` | LESER | docs/04 P2 |
 | F-USG-15 | Pass-through cost rows | AZURE_KOSTNAD and SMS_KOSTNAD carried as belop. | `Bruksdatatype` | — | OQ-3 |
+| F-USG-16 | Fetch from datavarehus | Fetch a period from the DWH API; daily rows summed to monthly per orgnr/product/type; same preview and commit as CSV. | POST `/bruksdata/hent-dwh` · `DwhImportService`, `DabUsageClient` | FORVALTER | specs/001, OQ-4 |
+| F-USG-17 | DWH completeness guard | Response with `nextLink`, non-2xx, malformed JSON or missing fields fails the fetch; empty month reported as not ready. | `DwhRespons`, `DabUsageClient` | — | OQ-19 |
+| F-USG-18 | Product-name mapping | DWH `product_name` → produkt + type, maintained in the UI; unmapped names reject. | GET/POST `/produkter/kildenavn` · `ProduktKildenavnService` | FORVALTER (LESER reads) | OQ-18 |
+| F-USG-19 | Raw-payload archive | Every DWH import archives the exact response with SHA-256 and fetch time; downloadable. | GET `/bruksdata/{id}/raadata` | LESER | K-09 |
+| F-USG-20 | Preview warnings | Non-blocking: DWH kundenummer/fakturareferanse ≠ registry; product total ±50 % vs previous period or missing. | `Forhaandsvisning.advarsler` | — | OQ-12 |
+| F-USG-21 | Scheduled staging | Optional: stage previous month at 06:00 on the 7th as `MOTTATT`; FORVALTER confirms after re-validation. Never auto-commits. | `DwhImportScheduler`, POST `/bruksdata/{id}/bekreft` | FORVALTER | docs/06 §4 |
 
 ## Generation engine — fakturagrunnlag
 

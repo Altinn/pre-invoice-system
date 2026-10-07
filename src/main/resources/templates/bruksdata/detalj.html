@@ -13,8 +13,20 @@
         <span th:text="${import.antallRader()}">42</span> rader ·
         lastet av <span th:text="${import.lastetAv()}">dev</span>
     </p>
+    <p class="ds-paragraph" data-size="sm" th:if="${import.harRaadata()}">
+        Hentet fra datavarehus
+        <strong th:text="${#temporals.format(import.hentetAt(), 'yyyy-MM-dd HH:mm')}">2027-02-07 06:00</strong> ·
+        SHA-256 <code th:text="${import.raadataSha256()}">abc…</code> ·
+        <a class="ds-link" th:href="@{/bruksdata/{id}/raadata(id=${import.id()})}" hx-boost="false">Last ned rådata</a>
+    </p>
 
-    <table class="ds-table" data-size="sm">
+    <!-- Staged datavarehus import: show the preview (rebuilt from the archive) and let FORVALTER confirm. -->
+    <div th:if="${fv != null}">
+        <p class="ds-alert" data-color="info">Hentet automatisk og venter på bekreftelse. Ingen bruksdata er lagret ennå.</p>
+        <section th:replace="~{bruksdata/forhandsvis :: rapport(${fv})}"></section>
+    </div>
+
+    <table class="ds-table" data-size="sm" th:if="${fv == null}">
         <thead>
         <tr><th>Orgnr</th><th>Produkt-id</th><th>Type</th><th class="hoyre">Antall</th><th class="hoyre">Beløp</th></tr>
         </thead>

@@ -1,0 +1,76 @@
+{
+ "value": [
+  {
+   "quantity": 100,
+   "amount_nok": null,
+   "kundenummer": "1234",
+   "product_name": "Formidling",
+   "source_table": "test_table",
+   "fakturareferanse": "TESTREF1",
+   "transaction_date": "2027-01-01",
+   "bestillingsnummer": null,
+   "organisation_name": "testetat",
+   "organisation_number": "123456789"
+  },
+  {
+   "quantity": 50,
+   "amount_nok": null,
+   "kundenummer": "1234",
+   "product_name": "Formidling",
+   "source_table": "test_table",
+   "fakturareferanse": "TESTREF1",
+   "transaction_date": "2027-01-02",
+   "bestillingsnummer": null,
+   "organisation_name": "testetat",
+   "organisation_number": "123456789"
+  },
+  {
+   "quantity": 7,
+   "amount_nok": null,
+   "kundenummer": "1234",
+   "product_name": "Varsling e-post",
+   "source_table": "test_table",
+   "fakturareferanse": "TESTREF1",
+   "transaction_date": "2027-01-03",
+   "bestillingsnummer": null,
+   "organisation_name": "testetat",
+   "organisation_number": "123456789"
+  },
+  {
+   "quantity": 3,
+   "amount_nok": null,
+   "kundenummer": "1234",
+   "product_name": "Varsling e-post",
+   "source_table": "test_table",
+   "fakturareferanse": "TESTREF1",
+   "transaction_date": "2027-01-31",
+   "bestillingsnummer": null,
+   "organisation_name": "testetat",
+   "organisation_number": "123456789"
+  },
+  {
+   "quantity": 1,
+   "amount_nok": null,
+   "kundenummer": "5678",
+   "product_name": "Formidling",
+   "source_table": "test_table",
+   "fakturareferanse": "TESTREF2",
+   "transaction_date": "2027-01-15",
+   "bestillingsnummer": null,
+   "organisation_name": "testetat",
+   "organisation_number": "987654321"
+  },
+  {
+   "quantity": 4000,
+   "amount_nok": null,
+   "kundenummer": "5678",
+   "product_name": "Autorisasjon",
+   "source_table": "test_table",
+   "fakturareferanse": "TESTREF2",
+   "transaction_date": "2027-01-20",
+   "bestillingsnummer": null,
+   "organisation_name": "testetat",
+   "organisation_number": "987654321"
+  }
+ ]
+}

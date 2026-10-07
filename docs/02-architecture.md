@@ -56,7 +56,7 @@ SPA now (doubles the moving parts for a CRUD UI; revisit post-MVP if the UI grow
 ```
 no.digdir.forsystem
 ├── registry/        products, price versions/prices, customers, references, kundenummer rules
-├── usage/           bruksdata import: CSV parsing, validation, storage
+├── usage/           bruksdata import: CSV + datavarehus (usage.adapter), validation, storage
 ├── billing/         fakturakjøring: generation engine, controls, statuses, approval
 ├── export/          LG04 writer (ported), PDF renderer, CSV/XLSX; writes via FileArchive
 ├── archive/         FileArchive port + adapters (local, azure-blob)

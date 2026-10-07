@@ -20,9 +20,11 @@ derived from today's date.
    - every product that will be billed has kontering (konto + dimensjoner + artikkel-id) — until
      Økonomi delivers these (OQ-2), generation will block with `MANGLER_KONTERING`;
    - customers, references and kundenummer-rules reflect current agreements.
-2. **Import usage** (FORVALTER) under *Bruksdata*: pick the period, upload the CSV
-   (format in [csv-format.md](csv-format.md)), review the staging report (per-product sums and any
-   rejects with line numbers), then **Bekreft import**. A file with any reject imports nothing —
+2. **Import usage** (FORVALTER) under *Bruksdata*, from the 7th (the DWH basis is complete on the
+   6th): pick the period and **Hent fra datavarehus** — or, if the scheduler is on, open the `MOTTATT`
+   import it staged. Fallback: upload the CSV (format in [csv-format.md](csv-format.md)). Review the
+   staging report (per-product sums, warnings, any rejects), then **Bekreft import**. An unknown DWH
+   product name must be mapped under *Produkter → Kildenavn* first. A file with any reject imports nothing —
    fix it and re-upload. Re-importing a period replaces it and marks the previous import `AVVIST`.
 3. **Generate** (FORVALTER) under *Kjøringer*: choose the period and **Generer**. Review the run:
    the invoice table and the control findings.
@@ -103,6 +105,14 @@ built to be Azure-ready but not Azure-locked (docs/02):
 - **Secrets** are plain environment variables; in Azure they are supplied by Key Vault references /
   managed identity at the platform level — the application never calls Key Vault.
 - **Database** is vanilla PostgreSQL 16 (no Azure-specific extensions).
+- **Datavarehus** (usage source, off by default): `FORSYSTEM_DWH_ENABLED=true`, `DWH_BASE_URL`
+  (the Data API Builder host, without `/api`), `DWH_AUTH=none|entra` and, for `entra`, `DWH_SCOPE`
+  — the token comes from the pod's workload identity (`AZURE_*` variables injected by AKS), no
+  secret. `FORSYSTEM_DWH_PLANLEGGING=true` stages the previous month at 06:00 on the 7th. The pod
+  needs egress to `*.azurecontainerapps.io`. **Enabled in tt02 and prod since 2026-10-07** (base
+  deployment) for testing by the forvaltere. Until OQ-18 is closed, only confirm (Bekreft) a DWH
+  import in prod once the Kildenavn mapping in that environment matches what the product owners
+  have confirmed.
 
 When an environment is available: build the image (CI already publishes it), deploy to Container
 Apps or AKS with the `prod` profile, point `DB_*` at the managed PostgreSQL, set the OIDC issuer,

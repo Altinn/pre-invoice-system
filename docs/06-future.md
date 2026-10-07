@@ -4,20 +4,19 @@ Each item lists *what will come*, *when it becomes relevant*, and *how the MVP a
 prepares for it*. Build the seams now, the features later.
 
 ## 1. Datavarehus direct integration
-- **What**: read the billable data basis (fakturerbart datagrunnlag) directly instead of
-  CSV upload. The warehouse is the authoritative source for bruksvolum, fakturaperiode and
-  Azure costs from 2027-01-01.
-- **How (known since 2026-07-08, the DWH contact)**: the DWH (**finopsdevsa**, PostgreSQL) exposes
-  materialized views behind a Data API Builder endpoint —
-  `https://finops-dab-api.…azurecontainerapps.io/api/mv_altinn_usage_monthly`. The adapter
-  is therefore a REST client mapping that view's rows into the existing staging pipeline.
-  Blocked on: the API security layer (FEL↔platform, paused for vacation) and the view's
-  column contract, which must be aligned with our produkt codes and `docs/csv-format.md`.
-- **When**: realistic before the December dry-run if the security discussion resumes in
-  August. CSV upload stays as fallback either way. Data timing: the previous month is
-  complete on the **6th** (Azure costs final 5 days in) — any scheduler must respect this.
-- **Prepared by**: `UsageDataSource` port; `bruksdata.kilde` = 'DWH'; identical staging
-  and validation pipeline regardless of source.
+- **Status (2026-10)**: **built** — specs/001-dwh-usage-import. A FORVALTER can "Hent fra
+  datavarehus" for a period; the DAB view `mv_altinn_usage_monthly` (daily rows) is aggregated to
+  monthly `bruksdata` via the `produkt_kildenavn` mapping and runs through the same preview/commit as
+  CSV. The raw response is archived with SHA-256. An optional scheduler (`forsystem.dwh.planlegging`)
+  stages the previous month at 06:00 on the 7th for a FORVALTER to confirm. Off by default in code
+  (`forsystem.dwh.enabled`); switched on in tt02 and prod on 2026-10-07 for testing (scheduler off).
+- **Remaining before production use**: the product-name mapping must be confirmed (OQ-18); the DWH
+  team must close the API with Entra auth and fix the entity key that makes paging lossy (OQ-19 —
+  until then forsystem fetches a month in one request and refuses any `nextLink`); view retention
+  and refresh semantics (OQ-20); quantity units (OQ-21). The issues are written up for the DWH team
+  in Norwegian in specs/001-dwh-usage-import/sak-til-dwh-teamet.md.
+- **Data timing**: the previous month is complete on the **6th** (Azure costs final 5 days in).
+- CSV upload stays as the fallback.
 
 ## 2. Dynamics 365 CRM as customer source
 - **What**: customer/agreement data read from CRM instead of the local registry.
