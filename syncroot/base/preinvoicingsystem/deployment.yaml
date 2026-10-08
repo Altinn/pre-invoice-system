@@ -116,6 +116,19 @@ spec:
             # --- Export archive ---------------------------------------------------------
             - name: FORSYSTEM_ARKIV_KATALOG
               value: /app/data/arkiv
+
+            # --- Datavarehus usage source (specs/001-dwh-usage-import) --------------------
+            # On in tt02 and prod (2026-10-07) so the forvaltere can test "Hent fra datavarehus".
+            # Fetching only builds a preview; usage is stored when a FORVALTER confirms.
+            # The Data API Builder endpoint is anonymous today; switch DWH_AUTH to "entra" and set
+            # DWH_SCOPE once the DWH team adds Entra auth (OQ-19a) — the token then comes from this
+            # pod's workload identity, no secret. Scheduled staging stays off for now.
+            - name: FORSYSTEM_DWH_ENABLED
+              value: "true"
+            - name: DWH_BASE_URL
+              value: https://finops-dab-api.wonderfulriver-01d57917.norwayeast.azurecontainerapps.io
+            - name: DWH_AUTH
+              value: none
           resources:
             # "0.5 vCPU / 1 GB is plenty" per the infrastructure issue. No CPU limit on purpose:
             # CFS throttling hurts JVM startup (Flyway) far more than a burst costs the node.

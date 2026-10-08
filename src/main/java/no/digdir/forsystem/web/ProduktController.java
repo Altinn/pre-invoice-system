@@ -1,5 +1,6 @@
 package no.digdir.forsystem.web;
 
+import no.digdir.forsystem.registry.ProduktKildenavnService;
 import no.digdir.forsystem.registry.ProduktService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,9 +15,32 @@ import org.springframework.web.bind.annotation.RequestParam;
 class ProduktController {
 
     private final ProduktService produkter;
+    private final ProduktKildenavnService kildenavn;
 
-    ProduktController(ProduktService produkter) {
+    ProduktController(ProduktService produkter, ProduktKildenavnService kildenavn) {
         this.produkter = produkter;
+        this.kildenavn = kildenavn;
+    }
+
+    /** Mapping of datavarehus product names to forsystem products (OQ-18). */
+    @GetMapping("/kildenavn")
+    String kildenavn(Model model) {
+        model.addAttribute("koblinger", kildenavn.alle());
+        model.addAttribute("produkter", produkter.alle());
+        return "produkt/kildenavn";
+    }
+
+    @PostMapping("/kildenavn")
+    String opprettKildenavn(@RequestParam String kildenavn, @RequestParam Long produktId,
+                            @RequestParam String type) {
+        this.kildenavn.opprett(kildenavn, produktId, type);
+        return "redirect:/produkter/kildenavn";
+    }
+
+    @PostMapping("/kildenavn/{id}/slett")
+    String slettKildenavn(@PathVariable Long id) {
+        kildenavn.slett(id);
+        return "redirect:/produkter/kildenavn";
     }
 
     @GetMapping

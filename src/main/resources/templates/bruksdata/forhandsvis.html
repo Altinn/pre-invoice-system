@@ -6,8 +6,13 @@
 <main class="side">
     <a class="ds-link" th:href="@{/bruksdata}">← Bruksdata</a>
     <h1 class="ds-heading" data-size="lg">Forhåndsvisning</h1>
+
+    <!-- The staging report; also rendered on a staged (MOTTATT) import's detail page. -->
+    <section th:fragment="rapport(fv)">
     <p class="ds-paragraph" data-size="sm">
-        Fil <strong th:text="${fv.filnavn()}">bruk.csv</strong> ·
+        <th:block th:if="${fv.kilde().name() == 'CSV'}">Fil <strong th:text="${fv.filnavn()}">bruk.csv</strong> ·</th:block>
+        <th:block th:if="${fv.kilde().name() == 'DWH'}">Datavarehus, hentet
+            <strong th:text="${#temporals.format(fv.raadata().hentetAt(), 'yyyy-MM-dd HH:mm')}">2027-02-07 06:00</strong> ·</th:block>
         periode <strong th:text="${fv.periode()}">2027-01</strong> ·
         <span th:text="${fv.antallGyldige()}">0</span> gyldige,
         <span th:text="${fv.antallAvviste()}">0</span> avviste rader.
@@ -16,6 +21,15 @@
     <!-- Blocking reasons (e.g. an existing run) prevent import entirely. -->
     <div th:if="${!fv.blokkeringer().isEmpty()}">
         <p class="ds-alert" data-color="danger" th:each="b : ${fv.blokkeringer()}" th:text="${b}">Blokkert.</p>
+    </div>
+
+    <!-- Warnings never block; they ask for a second look before confirming. -->
+    <div th:if="${!fv.advarsler().isEmpty()}">
+        <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Advarsler</h2>
+        <p class="ds-alert" data-color="warning">Sjekk disse før du bekrefter. De hindrer ikke import.</p>
+        <ul class="ds-list">
+            <li class="ds-paragraph" data-size="sm" th:each="a : ${fv.advarsler()}" th:text="${a}">Avvik.</li>
+        </ul>
     </div>
 
     <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Summer per produkt</h2>
@@ -38,13 +52,13 @@
 
     <div th:if="${!fv.avviste().isEmpty()}">
         <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Avviste rader</h2>
-        <p class="ds-alert" data-color="warning">Filen har avvik og kan ikke importeres. Rett opp og last opp på nytt
-            — ingen rader lagres før alt er gyldig.</p>
+        <p class="ds-alert" data-color="warning">Grunnlaget har avvik og kan ikke importeres. Rett opp og prøv
+            på nytt — ingen rader lagres før alt er gyldig.</p>
         <table class="ds-table" data-size="sm">
-            <thead><tr><th>Linje</th><th>Årsak</th></tr></thead>
+            <thead><tr><th th:text="${fv.kilde().name() == 'CSV'} ? 'Linje' : 'Rad'">Linje</th><th>Årsak</th></tr></thead>
             <tbody>
             <tr th:each="a : ${fv.avviste()}">
-                <td th:text="${a.linjenr()}">7</td>
+                <td th:text="${a.referanse()}">7</td>
                 <td th:text="${a.aarsak()}">ukjent produktkode</td>
             </tr>
             </tbody>
@@ -52,15 +66,19 @@
     </div>
 
     <div class="rad" style="margin-top:1.5rem;">
-        <form th:if="${fv.kanImporteres()}" th:action="@{/bruksdata/bekreft}" method="post">
+        <form th:if="${fv.kanImporteres()}"
+              th:action="${fv.stagetImportId() == null} ? @{/bruksdata/bekreft} : @{/bruksdata/{id}/bekreft(id=${fv.stagetImportId()})}"
+              method="post" class="rad" hx-disabled-elt="find button">
             <th:block th:replace="~{layout :: csrf}"></th:block>
             <button class="ds-button" data-color="accent" type="submit">Bekreft import</button>
+            <span class="htmx-indicator ds-paragraph" data-size="sm">Importerer …</span>
         </form>
         <span th:unless="${fv.kanImporteres()}" class="ds-paragraph" data-size="sm">
             Import er ikke mulig før alle avvik og blokkeringer er løst.
         </span>
         <a class="ds-button" data-variant="tertiary" th:href="@{/bruksdata}">Avbryt</a>
     </div>
+    </section>
 </main>
 </body>
 </html>

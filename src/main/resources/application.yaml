@@ -41,3 +41,16 @@ info:
   app:
     name: forsystem
     description: Digdir invoicing pre-system for Altinn products (FinMod)
+
+# Datavarehus usage source (specs/001-dwh-usage-import, docs/06 §1). Off by default: local runs and
+# tests never need the DWH, and CSV upload works regardless. See DwhEgenskaper for every key.
+forsystem:
+  dwh:
+    enabled: ${FORSYSTEM_DWH_ENABLED:false}
+    base-url: ${DWH_BASE_URL:}
+    # none | entra (workload-identity token; required once the DWH closes the API, OQ-19)
+    auth: ${DWH_AUTH:none}
+    scope: ${DWH_SCOPE:}
+    planlegging:
+      # Stage the previous month at 06:00 on the 7th (Europe/Oslo). Never commits.
+      enabled: ${FORSYSTEM_DWH_PLANLEGGING:false}

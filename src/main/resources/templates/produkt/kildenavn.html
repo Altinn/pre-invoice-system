@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Kildenavn')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side">
+    <a class="ds-link" th:href="@{/produkter}">← Produkter</a>
+    <h1 class="ds-heading" data-size="lg">Kildenavn fra datavarehus</h1>
+    <p class="ds-paragraph" data-size="sm">Datavarehuset bruker egne produktnavn (f.eks. «Varsling e-post»).
+        Her kobles hvert navn til et produkt og en type. Flere navn kan kobles til samme produkt og type — da
+        summeres de. Et navn uten kobling avviser importen. Koblingene må bekreftes av produkteierne (OQ-18).</p>
+
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Kildenavn</th><th>Produkt</th><th>Type</th><th></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="k : ${koblinger}">
+            <td th:text="${k.kildenavn()}">Varsling e-post</td>
+            <td>
+                <th:block th:each="p : ${produkter}" th:if="${p.id() == k.produktId()}" th:text="${p.kode()}">varsling</th:block>
+            </td>
+            <td th:text="${k.type()}">BRUKSVOLUM</td>
+            <td class="hoyre">
+                <form th:action="@{/produkter/kildenavn/{id}/slett(id=${k.id()})}" method="post">
+                    <th:block th:replace="~{layout :: csrf}"></th:block>
+                    <button class="ds-button" data-variant="tertiary" data-size="sm" type="submit">Fjern</button>
+                </form>
+            </td>
+        </tr>
+        <tr th:if="${koblinger.isEmpty()}">
+            <td colspan="4" class="ds-paragraph" data-size="sm">Ingen koblinger ennå.</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Ny kobling</h2>
+    <form th:action="@{/produkter/kildenavn}" method="post" class="rad">
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <div class="ds-field">
+            <label class="ds-label" for="kildenavn">Kildenavn (nøyaktig som i datavarehuset)</label>
+            <input class="ds-input" id="kildenavn" name="kildenavn" required>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="produktId">Produkt</label>
+            <select class="ds-input" id="produktId" name="produktId" required>
+                <option th:each="p : ${produkter}" th:value="${p.id()}" th:text="${p.kode() + ' – ' + p.navn()}">melding</option>
+            </select>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="type">Type</label>
+            <select class="ds-input" id="type" name="type">
+                <option value="BRUKSVOLUM">BRUKSVOLUM</option>
+                <option value="SMS_KOSTNAD">SMS_KOSTNAD</option>
+                <option value="AZURE_KOSTNAD">AZURE_KOSTNAD</option>
+            </select>
+        </div>
+        <button class="ds-button" data-color="accent" type="submit">Legg til</button>
+    </form>
+</main>
+</body>
+</html>

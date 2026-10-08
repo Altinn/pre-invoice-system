@@ -1,8 +1,8 @@
 # CSV format — usage import (bruksdata)
 
-The MVP usage source is a CSV upload behind the `UsageDataSource` port (docs/02, docs/06 §1).
-When the datavarehus contract lands (OQ-4), a DWH adapter feeds the same validation pipeline and
-this format stays as the permanent fallback.
+CSV upload is one of two usage sources. The other is the datavarehus API ("Hent fra datavarehus",
+specs/001-dwh-usage-import), which feeds the same validation pipeline. CSV stays as the permanent
+fallback for when the DWH is unavailable or a period needs a manual correction.
 
 ## File
 

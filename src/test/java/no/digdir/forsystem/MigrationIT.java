@@ -29,8 +29,8 @@ class MigrationIT {
     void allMigrationsApplySuccessfully() {
         Integer applied = jdbc.queryForObject(
                 "select count(*) from flyway_schema_history where success = true", Integer.class);
-        // V1..V6 from docs/03.
-        assertThat(applied).isEqualTo(6);
+        // V1..V6 from docs/03, V7 for the datavarehus source (specs/001-dwh-usage-import).
+        assertThat(applied).isEqualTo(7);
     }
 
     @Test

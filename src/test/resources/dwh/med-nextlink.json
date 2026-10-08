@@ -1,0 +1,29 @@
+{
+ "value": [
+  {
+   "quantity": 100,
+   "amount_nok": null,
+   "kundenummer": "1234",
+   "product_name": "Formidling",
+   "source_table": "test_table",
+   "fakturareferanse": "TESTREF1",
+   "transaction_date": "2027-01-01",
+   "bestillingsnummer": null,
+   "organisation_name": "testetat",
+   "organisation_number": "123456789"
+  },
+  {
+   "quantity": 50,
+   "amount_nok": null,
+   "kundenummer": "1234",
+   "product_name": "Formidling",
+   "source_table": "test_table",
+   "fakturareferanse": "TESTREF1",
+   "transaction_date": "2027-01-02",
+   "bestillingsnummer": null,
+   "organisation_name": "testetat",
+   "organisation_number": "123456789"
+  }
+ ],
+ "nextLink": "http://dwh.test/api/mv_altinn_usage_monthly?$first=2&$after=abc"
+}

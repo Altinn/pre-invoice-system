@@ -5,11 +5,32 @@
 <header th:replace="~{layout :: topbar}"></header>
 <main class="side">
     <h1 class="ds-heading" data-size="lg">Bruksdata</h1>
-    <p class="ds-paragraph" data-size="sm">Last opp en CSV-fil per periode. Du får en forhåndsvisning
+    <p class="ds-paragraph" data-size="sm">Hent bruk fra datavarehuset, eller last opp en CSV-fil per periode. Du får en forhåndsvisning
         med summer og eventuelle avvik før noe lagres. Formatet er beskrevet i
         <code>docs/csv-format.md</code>.</p>
 
-    <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Last opp</h2>
+    <p class="ds-alert" data-color="info" th:if="${venter > 0}">
+        <span th:text="${venter}">1</span> import(er) fra datavarehuset venter på bekreftelse — åpne den med
+        status MOTTATT nedenfor.
+    </p>
+
+    <th:block th:if="${dwhAktiv}">
+        <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Hent fra datavarehus</h2>
+        <p class="ds-paragraph" data-size="sm">Henter hele måneden fra datavarehuset, summerer per
+            organisasjon og produkt og viser samme forhåndsvisning som for CSV. Ukjente produktnavn må kobles
+            under <a class="ds-link" th:href="@{/produkter/kildenavn}">Produkter → Kildenavn</a>.</p>
+        <form th:action="@{/bruksdata/hent-dwh}" method="post" class="rad" hx-disabled-elt="find button">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <div class="ds-field">
+                <label class="ds-label" for="dwh-periode">Periode</label>
+                <input class="ds-input" id="dwh-periode" name="periode" type="month" required>
+            </div>
+            <button class="ds-button" data-color="accent" type="submit">Hent fra datavarehus</button>
+            <span class="htmx-indicator ds-paragraph" data-size="sm">Henter fra datavarehus …</span>
+        </form>
+    </th:block>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Last opp CSV</h2>
     <!--
       Native (non-boosted) multipart submit; the CSRF token rides in the query string because the
       multipart body is not parsed when the CSRF filter runs.

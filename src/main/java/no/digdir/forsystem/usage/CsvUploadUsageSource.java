@@ -51,7 +51,7 @@ class CsvUploadUsageSource implements UsageDataSource {
                     continue;
                 }
                 rader.add(new RaaBruksrad(
-                        linjenr,
+                        String.valueOf(linjenr),
                         hent(felt, kolonneIndeks, "periode"),
                         hent(felt, kolonneIndeks, "organisasjonsnummer"),
                         hent(felt, kolonneIndeks, "produktkode"),

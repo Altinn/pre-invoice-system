@@ -63,3 +63,9 @@ previous one meets its acceptance criteria.
 Prefer the decision recorded in docs/. If docs conflict with this file, docs/07 (open
 questions) wins over everything — it is the most recently maintained. If genuinely blocked,
 stop and ask; do not guess around a blocking unknown.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan:
+`specs/001-dwh-usage-import/plan.md`
+<!-- SPECKIT END -->

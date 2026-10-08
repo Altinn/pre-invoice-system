@@ -215,6 +215,30 @@ Seed the six product codes (melding, formidling, varsling, autorisasjon, studio,
 with names. `artikkel_id`, `konto`, `dim_*` stay NULL until Økonomi answers (OQ-2) — the
 generation controls must treat NULL kontering as a BLOKKERENDE finding.
 
+## V7__dwh_bruksdata.sql — usage from the datavarehus API
+
+```sql
+create table produkt_kildenavn (               -- DWH product_name -> produkt + type (OQ-18)
+    id         bigint generated always as identity primary key,
+    kilde      text not null default 'DWH' check (kilde in ('DWH')),
+    kildenavn  text not null,                  -- exact name in the DWH view, e.g. 'Varsling e-post'
+    produkt_id bigint not null references produkt,
+    type       text not null check (type in ('BRUKSVOLUM', 'AZURE_KOSTNAD', 'SMS_KOSTNAD')),
+    unique (kilde, kildenavn)                  -- several names may share one produkt/type (summed)
+);
+
+alter table bruksdata_import
+    add column raadata_url    text,            -- archived raw DWH response (FileArchive)
+    add column raadata_sha256 text,
+    add column hentet_at      timestamptz,
+    add constraint bruksdata_import_dwh_har_raadata
+        check (kilde <> 'DWH' or (raadata_url is not null and raadata_sha256 is not null and hentet_at is not null));
+```
+
+No seed rows for `produkt_kildenavn`: an unmapped name rejects the import. A scheduled fetch stores a
+`MOTTATT` import (payload archived, no `bruksdata` rows) that a FORVALTER confirms; confirming
+re-validates from the archive and moves it to `VALIDERT`.
+
 ## Design decisions (preserve these)
 
 1. **Traceability is structural**: `fakturalinje → bruksdata` (which usage),

@@ -197,13 +197,23 @@ navn, gyldig fra, evt. gyldig til).
 
 ## 7. Bruksdata
 
-**Hva:** her laster du opp bruken (volum og pass-gjennom-kostnader) for en periode, som CSV. På sikt
-kan et datavarehus mate de samme dataene automatisk — CSV-opplasting forblir en reserveløsning.
+**Hva:** her henter eller laster du opp bruken (volum og pass-gjennom-kostnader) for en periode.
+Normalt hentes den fra datavarehuset; CSV-opplasting er reserveløsningen.
 
 **Liste-siden (Bruksdata):**
 
-- **Last opp**-skjema: velg **Periode** (måned) og **CSV-fil**, trykk **Forhåndsvis**.
-- Tabell over tidligere importer med status.
+- **Hent fra datavarehus** (vises når integrasjonen er slått på): velg **Periode** og trykk knappen.
+  Datavarehuset leverer bruk per dag; forsystemet summerer til én rad per organisasjon, produkt og type
+  og viser samme forhåndsvisning som for CSV. Produktnavn fra datavarehuset må være koblet til et
+  produkt under **Produkter → Kildenavn** — et ukjent navn avviser importen.
+- **Last opp CSV**: velg **Periode** (måned) og **CSV-fil**, trykk **Forhåndsvis**.
+- Tabell over tidligere importer med status. En import med status **MOTTATT** er hentet automatisk og
+  venter på at du åpner den og trykker **Bekreft import**.
+
+**Datavarehus-importer** viser når dataene ble hentet, sjekksum (SHA-256) og en lenke for å laste ned
+nøyaktig det datavarehuset leverte. **Advarsler** i forhåndsvisningen (f.eks. at datavarehuset har et
+annet kundenummer enn kunderegisteret, eller at et produkt har endret seg mye fra forrige måned)
+hindrer ikke import, men bør sjekkes.
 
 **CSV-formatet** (detaljer i [csv-format.md](csv-format.md)): kolonner `periode, organisasjonsnummer,
 produktkode, type, antall, belop`. `type` er `BRUKSVOLUM` (bruk `antall`), `AZURE_KOSTNAD` eller

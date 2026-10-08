@@ -16,5 +16,6 @@ public enum Handling {
     GENERERTE,
     GODKJENTE,
     FORKASTET,
+    HENTET,
     EKSPORTERTE
 }

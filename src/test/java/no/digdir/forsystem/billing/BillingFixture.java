@@ -79,7 +79,7 @@ abstract class BillingFixture extends IntegrationTest {
     }
 
     Long nyImport(Periode periode) {
-        return importer.save(new BruksdataImport(null, "test.csv", periode.førsteDag(), "CSV", "VALIDERT",
+        return importer.save(BruksdataImport.csv("test.csv", periode.førsteDag(), "VALIDERT",
                 0, "test", OffsetDateTime.now())).id();
     }
 
