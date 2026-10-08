@@ -15,7 +15,7 @@ jobs:
     name: Build & test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -37,7 +37,7 @@ jobs:
       # Registry is configurable via a repository variable; defaults to GHCR.
       REGISTRY: ${{ vars.IMAGE_REGISTRY || 'ghcr.io' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Compute image name (lowercased)
         id: img
