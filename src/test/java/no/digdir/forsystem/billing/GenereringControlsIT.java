@@ -35,6 +35,23 @@ class GenereringControlsIT extends BillingFixture {
     }
 
     @Test
+    void invoiceTotalAboveColumnLimitFailsWithReasonInsteadOfOverflow() {
+        settKontoAlle();
+        Long v = aktivVersjon(LocalDate.of(2027, 1, 1), null).id();
+        pris(v, "melding", "200.0000");
+        Long k = kunde("100000002", "Stor bruker", "AKTIV", null).id();
+        regel(k, "K002", null, null, null);
+        Long imp = nyImport(JAN);
+        // 60M units × 200 kr = 12 billion kr > numeric(12,2).
+        bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "60000000", null);
+
+        assertThatThrownBy(() -> tjeneste.generer(JAN))
+                .isInstanceOf(Regelbrudd.class)
+                .hasMessageContaining("Stor bruker")
+                .hasMessageContaining("maksgrensen");
+    }
+
+    @Test
     void manglerKundenummerFires() {
         settKontoAlle();
         standardVersjon();

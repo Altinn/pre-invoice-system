@@ -45,6 +45,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class FakturakjoringService {
 
+    /** Largest amount {@code faktura.sum_belop numeric(12,2)} can hold. */
+    static final BigDecimal MAKS_FAKTURABELOP = new BigDecimal("9999999999.99");
+
     private static final BigDecimal AVVIK_GRENSE = new BigDecimal("0.30");
 
     private final FakturakjoringRepository kjoringer;
@@ -220,6 +223,13 @@ public class FakturakjoringService {
             Gruppedata data = grupper.get(g);
             data.linjer.sort(Comparator.comparing((LinjeUtkast l) -> l.produktKode).thenComparing(l -> l.type));
             BigDecimal sum = data.linjer.stream().map(l -> l.belop).reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (sum.compareTo(MAKS_FAKTURABELOP) > 0) {
+                // faktura.sum_belop is numeric(12,2); fail with a reason instead of a DB overflow (500).
+                throw new Regelbrudd("Fakturaen til " + data.kunde.virksomhetsnavn() + " ("
+                        + data.kunde.organisasjonsnummer() + ", kundenummer " + g.kundenummer + ") blir "
+                        + sum.toPlainString() + " kr, over maksgrensen på " + MAKS_FAKTURABELOP.toPlainString()
+                        + " kr. Sjekk enhetsprisene i prisversjonen og enheten på bruksdata (OQ-21).");
+            }
             String mottaker = data.kunde.fakturamottakerOrgnr() != null
                     ? data.kunde.fakturamottakerOrgnr() : data.kunde.organisasjonsnummer();
 
