@@ -4,6 +4,7 @@ import java.time.format.DateTimeParseException;
 import java.util.stream.Collectors;
 
 import no.digdir.forsystem.archive.FileArchive;
+import no.digdir.forsystem.billing.BruksdataavstemmingService;
 import no.digdir.forsystem.billing.Eksportfil;
 import no.digdir.forsystem.billing.FakturakjoringService;
 import no.digdir.forsystem.common.Periode;
@@ -31,13 +32,15 @@ class FakturakjoringController {
     private final ProduktService produkter;
     private final EksportService eksport;
     private final FileArchive arkiv;
+    private final BruksdataavstemmingService avstemming;
 
     FakturakjoringController(FakturakjoringService kjoringer, ProduktService produkter,
-                             EksportService eksport, FileArchive arkiv) {
+                             EksportService eksport, FileArchive arkiv, BruksdataavstemmingService avstemming) {
         this.kjoringer = kjoringer;
         this.produkter = produkter;
         this.eksport = eksport;
         this.arkiv = arkiv;
+        this.avstemming = avstemming;
     }
 
     @GetMapping
@@ -88,6 +91,13 @@ class FakturakjoringController {
             redirect.addFlashAttribute("eksportStoppet", avvik.getMessage());
         }
         return "redirect:/kjoringer/" + id;
+    }
+
+    @GetMapping("/{id}/avstemming")
+    String avstemming(@PathVariable Long id, Model model) {
+        model.addAttribute("kjoring", kjoringer.hent(id));
+        model.addAttribute("avstemming", avstemming.forKjoring(id));
+        return "kjoring/avstemming";
     }
 
     @GetMapping("/{id}/lg04-kontroll")

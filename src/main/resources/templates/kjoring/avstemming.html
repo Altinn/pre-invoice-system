@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Avstemming bruksdata')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side" th:with="a=${avstemming}">
+    <a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}">← Kjøring</a>
+    <h1 class="ds-heading" data-size="lg" th:text="|Avstemming bruksdata — ${a.periode()}|">Avstemming bruksdata</h1>
+
+    <p class="ds-paragraph" data-size="sm" th:if="${a.kilde() != null}"
+       th:text="|Bruksdata fra import ${a.kilde().id()} (${a.kilde().kilde()}, ${a.kilde().filnavn()}), lastet ${#temporals.format(a.kilde().lastetAt(), 'dd.MM.yyyy HH:mm')} av ${a.kilde().lastetAv()}.|">
+        Bruksdata fra import …</p>
+    <p class="ds-paragraph" data-size="sm" th:if="${a.kilde() == null}">
+        Ukjent import (kjøring generert før avstemming fantes).</p>
+
+    <p class="ds-alert" data-color="info">
+        Viser bare bruk som kom inn i forsystemet. Bruk som datavarehuset filtrerer bort (f.eks. inaktive avtaler)
+        er ikke med.</p>
+
+    <p class="ds-alert" data-color="danger" th:if="${a.invariantBrudd()}">
+        Avstemmingen går ikke opp: noen bruksdata er verken fakturert eller forklart, eller fakturalinjer peker
+        utenfor importen. Dette er en feil i forsystemet — kontakt forsystem-teamet.</p>
+    <p class="ds-alert" data-color="success" th:if="${a.allFakturert()}">All bruksdata er med i fakturagrunnlaget.</p>
+
+    <h2 class="ds-heading" data-size="xs" style="margin-top:1rem;">Per produkt og type</h2>
+    <table class="ds-table" data-size="sm">
+        <thead>
+        <tr><th>Produkt</th><th>Type</th>
+            <th class="hoyre">Importert rader</th><th class="hoyre">Importert sum</th>
+            <th class="hoyre">Fakturert linjer</th><th class="hoyre">Fakturert sum</th>
+            <th class="hoyre">Ikke fakturert</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="r : ${a.rader()}" th:style="${r.harDifferanse()} ? 'background: var(--ds-color-warning-surface-tinted);' : ''">
+            <td th:text="${r.produktNavn()}">Melding</td>
+            <td th:text="${r.type()} ?: 'ingen bruk'">BRUKSVOLUM</td>
+            <td class="hoyre" th:text="${r.importertRader()}">0</td>
+            <td class="hoyre" th:text="${#numbers.formatDecimal(r.importertSum(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+            <td class="hoyre" th:text="${r.fakturertLinjer()}">0</td>
+            <td class="hoyre" th:text="${#numbers.formatDecimal(r.fakturertSum(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+            <td class="hoyre" th:text="${r.ikkeFakturertRader()}">0</td>
+        </tr>
+        </tbody>
+    </table>
+    <p class="ds-paragraph" data-size="xs">Volumtyper summeres på antall, kostnadstyper (Azure, SMS) på beløp.</p>
+
+    <div th:if="${!a.ikkeFakturert().isEmpty()}">
+        <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Ikke fakturert</h2>
+        <table class="ds-table" data-size="sm">
+            <thead>
+            <tr><th>Organisasjonsnummer</th><th>Produkt</th><th>Type</th>
+                <th class="hoyre">Antall</th><th class="hoyre">Beløp</th><th>Årsak</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="u : ${a.ikkeFakturert()}">
+                <td th:text="${u.organisasjonsnummer()}">999999999</td>
+                <td th:text="${u.produktKode()}">melding</td>
+                <td th:text="${u.type()}">BRUKSVOLUM</td>
+                <td class="hoyre" th:text="${u.antall()} ?: '—'">—</td>
+                <td class="hoyre" th:text="${u.belop()} ?: '—'">—</td>
+                <td><strong th:if="${u.kode() != null}" th:text="|${u.kode()}: |">KODE: </strong><span th:text="${u.melding()}">melding</span></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+</body>
+</html>

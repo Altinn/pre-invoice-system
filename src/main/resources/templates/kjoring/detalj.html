@@ -85,6 +85,12 @@ Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 
         </p>
     </div>
 
+    <!-- Controls before approval (specs/002). -->
+    <div class="rad" style="margin-top:1rem;">
+        <a class="ds-button" data-variant="secondary" data-size="sm"
+           th:href="@{/kjoringer/{id}/avstemming(id=${kjoring.id()})}">Avstemming bruksdata</a>
+    </div>
+
     <!-- Invoices -->
     <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Fakturaer</h2>
     <table class="ds-table" data-size="sm">

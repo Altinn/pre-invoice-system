@@ -161,7 +161,7 @@ MANGLER_PRIS / MANGLER_KUNDENUMMER, and the invariant holds.
 
 ### Tests for User Story 2
 
-- [ ] T025 [P] [US2] Write `T/billing/BruksdataavstemmingIT.java`:
+- [x] T025 [P] [US2] Write `T/billing/BruksdataavstemmingIT.java`:
   - (a) a clean run: every product/type row balances, `allFakturert()` is true, and the skipped list is empty
   - (b) an unknown orgnr, a missing price and a missing kundenummer rule: each skipped row is linked to the right `kontrollfunn` code
   - (c) a cost row (SMS_KOSTNAD) is compared on `belop` and a volume row on `antall`
@@ -169,24 +169,24 @@ MANGLER_PRIS / MANGLER_KUNDENUMMER, and the invariant holds.
   - (e) INAKTIV_AVTALE rows count as invoiced
   - (f) a FORKASTET run, after re-import, still reconciles against its own import
   - (g) the invariant `importert = fakturert + ikkeFakturert` holds per row
-- [ ] T026 [P] [US2] Extend `T/billing/WebKjoringRoleIT.java`: LESER GET `/kjoringer/{id}/avstemming` is 200 and contains "Avstemming bruksdata" and the FR-013 notice text.
+- [x] T026 [P] [US2] (Done inside `T/billing/BruksdataavstemmingIT.java`.) LESER GET `/kjoringer/{id}/avstemming` is 200 and contains "Avstemming bruksdata" and the FR-013 notice text.
 
 ### Implementation for User Story 2
 
-- [ ] T027 [US2] Create `R/db/migration/V10__kontrollfunn_bruksdata.sql` with the link table and index per data-model.md.
-- [ ] T028 [P] [US2] Create `M/billing/KontrollfunnBruksdata.java` (a record with a composite key; use a plain `JdbcTemplate`/`NamedParameterJdbcTemplate` repository class `KontrollfunnBruksdataRepository` with `lagre(List<…>)` and `findByKjoringId` via a join, because Spring Data JDBC does not do composite ids well).
-- [ ] T029 [US2] In `M/billing/FakturakjoringService.java` `bygg()` (D2):
+- [x] T027 [US2] Create `R/db/migration/V10__kontrollfunn_bruksdata.sql` with the link table and index per data-model.md.
+- [x] T028 [P] [US2] Create `M/billing/KontrollfunnBruksdata.java` (a record with a composite key; use a plain `JdbcTemplate`/`NamedParameterJdbcTemplate` repository class `KontrollfunnBruksdataRepository` with `lagre(List<…>)` and `findByKjoringId` via a join, because Spring Data JDBC does not do composite ids well).
+- [x] T029 [US2] In `M/billing/FakturakjoringService.java` `bygg()` (D2):
   - keep `Map<String, List<Long>>` of skipped bruksdata ids per finding key at each of the three `continue`s: orgnr → MANGLER_KUNDE, orgnr/kode → MANGLER_KUNDENUMMER, kode → MANGLER_PRIS
   - after `funn.saveAll`, match the saved findings back to their keys (keep a key alongside each `blokk(...)` you create, e.g. a parallel `Map<Kontrollfunn, String>` built before saving, or save those findings individually) and insert the links
-- [ ] T030 [P] [US2] Create `M/billing/Bruksdataavstemming.java`, view records for `Rad(produktKode, produktNavn, type, importertRader, importertSum, fakturertLinjer, fakturertSum)` with `differanse()` and `balanserer(ikkeFakturertRader)`, plus `IkkeFakturert(bruksdataId, orgnr, produktKode, type, antall, belop, kode, melding)`, plus the top-level record with the import info, rows, the skipped list, `allFakturert()` and `invariantBrudd()`.
-- [ ] T031 [US2] Create `M/billing/BruksdataavstemmingService.java` with `public Bruksdataavstemming for(Long kjoringId)`:
+- [x] T030 [P] [US2] Create `M/billing/Bruksdataavstemming.java`, view records for `Rad(produktKode, produktNavn, type, importertRader, importertSum, fakturertLinjer, fakturertSum)` with `differanse()` and `balanserer(ikkeFakturertRader)`, plus `IkkeFakturert(bruksdataId, orgnr, produktKode, type, antall, belop, kode, melding)`, plus the top-level record with the import info, rows, the skipped list, `allFakturert()` and `invariantBrudd()`.
+- [x] T031 [US2] Create `M/billing/BruksdataavstemmingService.java` with `public Bruksdataavstemming for(Long kjoringId)`:
   - load the run's `bruksdataImportId`, then its rows via `usage.rader(importId)`, then the run's lines (by faktura), then the links
   - aggregate per product × type, including every active product, using `antall` for `erVolum()` types and `belop` for others
   - for runs with a null import id or no links, set reason "årsak ikke registrert (kjøring generert før avstemming fantes)"
   - read-only `@Transactional`
-- [ ] T032 [US2] Add `GET /{id}/avstemming` to `M/web/FakturakjoringController.java`, rendering `kjoring/avstemming`.
-- [ ] T033 [US2] Create `R/templates/kjoring/avstemming.html` per contracts/ui.md: the header with the import, the FR-013 info alert, the per-row table with differences highlighted, the success alert when everything is invoiced, the *Ikke fakturert* table, and a danger alert on invariant breach. Add the "Avstemming bruksdata" link in `R/templates/kjoring/detalj.html`.
-- [ ] T034 [US2] Run `./mvnw verify` green. Commit.
+- [x] T032 [US2] Add `GET /{id}/avstemming` to `M/web/FakturakjoringController.java`, rendering `kjoring/avstemming`.
+- [x] T033 [US2] Create `R/templates/kjoring/avstemming.html` per contracts/ui.md: the header with the import, the FR-013 info alert, the per-row table with differences highlighted, the success alert when everything is invoiced, the *Ikke fakturert* table, and a danger alert on invariant breach. Add the "Avstemming bruksdata" link in `R/templates/kjoring/detalj.html`.
+- [x] T034 [US2] Run `./mvnw verify` green. Commit.
 
 **Checkpoint**: The software half of BF1 T06/T10 is in the app.
 

@@ -56,6 +56,7 @@ public class FakturakjoringService {
     private final FakturalinjeRepository linjer;
     private final KontrollfunnRepository funn;
     private final EksportfilRepository eksportfiler;
+    private final KontrollfunnBruksdataRepository funnBruksdata;
     private final ProduktRepository produkter;
     private final PrisRepository priser;
     private final PrisversjonRepository prisversjoner;
@@ -68,7 +69,7 @@ public class FakturakjoringService {
 
     FakturakjoringService(FakturakjoringRepository kjoringer, FakturaRepository fakturaer,
                           FakturalinjeRepository linjer, KontrollfunnRepository funn,
-                          EksportfilRepository eksportfiler,
+                          EksportfilRepository eksportfiler, KontrollfunnBruksdataRepository funnBruksdata,
                           ProduktRepository produkter, PrisRepository priser,
                           PrisversjonRepository prisversjoner, KundeRepository kunder,
                           KundeReferanseRepository referanser, KundenummerRegelRepository regler,
@@ -78,6 +79,7 @@ public class FakturakjoringService {
         this.linjer = linjer;
         this.funn = funn;
         this.eksportfiler = eksportfiler;
+        this.funnBruksdata = funnBruksdata;
         this.produkter = produkter;
         this.priser = priser;
         this.prisversjoner = prisversjoner;
@@ -132,9 +134,11 @@ public class FakturakjoringService {
 
         List<Kontrollfunn> funnListe = new ArrayList<>();
         Map<Gruppe, Gruppedata> grupper = new LinkedHashMap<>();
-        var orgnrUtenKunde = new java.util.LinkedHashSet<String>();
-        var manglerKundenummer = new java.util.LinkedHashSet<String>();
-        var manglerPris = new java.util.LinkedHashSet<String>();
+        // Skipped usage rows per finding key, so each can be linked to the finding that kept it off the
+        // invoice (specs/002 D2): orgnr → MANGLER_KUNDE, orgnr/kode → MANGLER_KUNDENUMMER, kode → MANGLER_PRIS.
+        var orgnrUtenKunde = new LinkedHashMap<String, List<Long>>();
+        var manglerKundenummer = new LinkedHashMap<String, List<Long>>();
+        var manglerPris = new LinkedHashMap<String, List<Long>>();
         var manglerKontering = new java.util.LinkedHashSet<String>();
         var kunderMedBruk = new LinkedHashMap<Long, Kunde>();
 
@@ -150,7 +154,7 @@ public class FakturakjoringService {
             Produkt p = produktById.get(b.produktId());
             Kunde k = kundeByOrgnr.get(b.organisasjonsnummer());
             if (k == null) {
-                orgnrUtenKunde.add(b.organisasjonsnummer());
+                orgnrUtenKunde.computeIfAbsent(b.organisasjonsnummer(), x -> new ArrayList<>()).add(b.id());
                 continue;
             }
             kunderMedBruk.putIfAbsent(k.id(), k);
@@ -160,7 +164,8 @@ public class FakturakjoringService {
             KundenummerRegel regel = velgRegel(
                     reglerByKunde.getOrDefault(k.id(), List.of()), p.id());
             if (regel == null) {
-                manglerKundenummer.add(k.organisasjonsnummer() + "/" + p.kode());
+                manglerKundenummer.computeIfAbsent(k.organisasjonsnummer() + "/" + p.kode(), x -> new ArrayList<>())
+                        .add(b.id());
                 continue;
             }
 
@@ -172,7 +177,7 @@ public class FakturakjoringService {
             if (Bruksdatatype.valueOf(b.type()).erVolum()) {
                 Pris pris = prisByProdukt.get(p.id());
                 if (pris == null) {
-                    manglerPris.add(p.kode());
+                    manglerPris.computeIfAbsent(p.kode(), x -> new ArrayList<>()).add(b.id());
                     continue;
                 }
                 antall = b.antall() == null ? BigDecimal.ZERO : b.antall();
@@ -197,12 +202,23 @@ public class FakturakjoringService {
         }
 
         // BLOKKERENDE findings.
-        orgnrUtenKunde.forEach(orgnr -> funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KUNDE,
-                "Bruk for organisasjonsnummer " + orgnr + " har ingen registrert kunde")));
-        manglerKundenummer.forEach(kp -> funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KUNDENUMMER,
-                "Mangler kundenummerregel for " + kp)));
-        manglerPris.forEach(kode -> funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_PRIS,
-                "Produkt " + kode + " mangler pris i aktiv prisversjon")));
+        // Each finding that skipped rows remembers them by its index in funnListe until it is saved.
+        Map<Integer, List<Long>> utelattePerFunn = new LinkedHashMap<>();
+        orgnrUtenKunde.forEach((orgnr, ider) -> {
+            utelattePerFunn.put(funnListe.size(), ider);
+            funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KUNDE,
+                    "Bruk for organisasjonsnummer " + orgnr + " har ingen registrert kunde"));
+        });
+        manglerKundenummer.forEach((kp, ider) -> {
+            utelattePerFunn.put(funnListe.size(), ider);
+            funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KUNDENUMMER,
+                    "Mangler kundenummerregel for " + kp));
+        });
+        manglerPris.forEach((kode, ider) -> {
+            utelattePerFunn.put(funnListe.size(), ider);
+            funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_PRIS,
+                    "Produkt " + kode + " mangler pris i aktiv prisversjon"));
+        });
         manglerKontering.forEach(kode -> funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KONTERING,
                 "Produkt " + kode + " mangler kontering (OQ-2)")));
         kunderMedBruk.values().forEach(k -> {
@@ -252,7 +268,11 @@ public class FakturakjoringService {
         }
 
         leggTilForrigePeriodeAdvarsler(ctx, sumPerKunde, forsteFakturaPerKunde, funnListe);
-        funn.saveAll(funnListe);
+        List<Kontrollfunn> lagret = funn.saveAll(funnListe);
+        List<KontrollfunnBruksdata> lenker = new ArrayList<>();
+        utelattePerFunn.forEach((indeks, ider) ->
+                ider.forEach(id -> lenker.add(new KontrollfunnBruksdata(lagret.get(indeks).id(), id))));
+        funnBruksdata.lagre(lenker);
     }
 
     private void leggTilForrigePeriodeAdvarsler(Byggekontekst ctx, Map<Long, BigDecimal> sumPerKunde,
