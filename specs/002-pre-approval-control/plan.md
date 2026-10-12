@@ -151,7 +151,7 @@ the writer it checks.
    D8, D9 and US3.
 5. `docs`:
    - funksjonsoversikt (new F-IDs)
-   - docs/11 (mark C-01/C-06/C-14 done; T08 unblocked)
+   - the local BF1 checklist, which is not in the repo (mark C-01/C-06/C-14 done; T08 unblocked)
    - brukerveiledning (the new sections)
    - docs/03 (V8–V11)
    - runbook (stopped-export procedure)

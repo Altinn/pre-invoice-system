@@ -7,13 +7,13 @@
 **Status**: Implemented (2026-10-12)
 
 **Input**: User description: "Kontrollgrunnlag før godkjenning — the three Must items from
-docs/11-testplan-bf1.md that let Økonomi control a fakturakjøring before approving it and reconcile
+BF1 test plan that let Økonomi control a fakturakjøring before approving it and reconcile
 it after export: C-14 run summary + LG04 reconciliation, C-06 usage reconciliation view, C-01
 pre-approval CSV/XLSX."
 
 ## Context
 
-The business side's BF1 test plan ([docs/11-testplan-bf1.md](../../docs/11-testplan-bf1.md))
+The business side's BF1 test plan (an internal Confluence page; our checklist of it is kept outside the repo)
 describes how Økonomi will control each monthly fakturakjøring: sample the lines in a spreadsheet
 (T01), confirm that no usage was left out by mistake (T06, T10), and check that the count and total
 amount in the LG04 file match the approved fakturagrunnlag (T15). It also covers the covering email
@@ -215,7 +215,7 @@ and the run's status did not change.
   finding code and its message.
 - **FR-012**: When every imported row has an invoice line, the view MUST say so explicitly.
 - **FR-013**: The view MUST only cover usage that reached forsystem. It MUST state that usage
-  filtered out in the datavarehus is not shown (see proposed open question P-1 in docs/11).
+  filtered out in the datavarehus is not shown (proposed open question P-1: can the datavarehus expose the usage it filters out?).
 
 **Pre-approval spreadsheet (C-01)**
 
@@ -295,7 +295,7 @@ and the run's status did not change.
   current registry name is shown, marked as such.
 - Usage that the datavarehus filters out before it reaches forsystem (for example, usage under
   inactive agreements) is outside forsystem's control. Økonomi's T06 routine needs that part from the
-  datavarehus team (proposed open question P-1 in docs/11).
+  datavarehus team (proposed open question P-1: can the datavarehus expose the usage it filters out?).
 - The reconciliation view compares against the usage import the run was generated from. Usage
   imports are blocked while a non-discarded run exists for the period, so that import is the
   period's current one.

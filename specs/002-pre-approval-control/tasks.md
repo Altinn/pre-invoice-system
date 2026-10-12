@@ -242,7 +242,7 @@ the name is unchanged.
   - new rows F-EXP-14 (LG04 read-back reconciliation), F-EXP-15 (pre-approval spreadsheet), F-GEN-15 (run summary + email block), F-GEN-16 (usage reconciliation view) and F-GEN-17 (customer name snapshot)
   - amend F-USG-12 (re-import keeps superseded rows), F-EXP-09/10 (typed columns) and F-AUD-01 (new handlings)
   - bump the test count
-- [x] T046 [P] Update `docs/11-testplan-bf1.md`:
+- [x] T046 [P] Update the local BF1 checklist (kept outside the repo):
   - mark C-01, C-06 and C-14 done with feature IDs
   - change T01 → ✅, T06 → 🟡 (software part done, DWH part P-1), T10 → 🟡 (C-09 still open) and T15 → ✅
   - T08: the defect is fixed
