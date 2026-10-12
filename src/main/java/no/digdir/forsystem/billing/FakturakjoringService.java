@@ -91,6 +91,9 @@ public class FakturakjoringService {
         this.brukerContext = brukerContext;
     }
 
+    /** Suffix for a customer name read from the registry because the invoice predates the frozen name. */
+    public static final String NAAVAERENDE_NAVN = " (nåværende navn)";
+
     // ---- Generation -------------------------------------------------------------------------
 
     @Transactional
@@ -252,7 +255,7 @@ public class FakturakjoringService {
                     ? data.kunde.fakturamottakerOrgnr() : data.kunde.organisasjonsnummer();
 
             Faktura faktura = fakturaer.save(new Faktura(null, ctx.kjoringId, data.kunde.id(), UuidV7.naa(),
-                    ordre++, g.kundenummer, data.tilleggstekst, mottaker, sum));
+                    ordre++, g.kundenummer, data.kunde.virksomhetsnavn(), data.tilleggstekst, mottaker, sum));
             ctx.antallFakturaer++;
             for (LinjeUtkast l : data.linjer) {
                 linjer.save(new Fakturalinje(null, faktura.id(), l.produktId, l.beskrivelse, l.antall,
@@ -381,6 +384,56 @@ public class FakturakjoringService {
             }
         }
         return new Kjoringssammendrag(new Periode(kj.periode()), fs.size(), antallLinjer, sumLinjer, sumFakturaer);
+    }
+
+    /**
+     * The customer name to show per invoice (D9): the name frozen at generation, or — for invoices
+     * generated before it was frozen — the current registry name marked as such.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, String> kundenavn(List<Faktura> fs) {
+        Map<Long, String> navn = new LinkedHashMap<>();
+        Map<Long, Kunde> kundeById = new LinkedHashMap<>();
+        for (Faktura f : fs) {
+            if (f.kundenavn() != null) {
+                navn.put(f.id(), f.kundenavn());
+            } else {
+                Kunde k = kundeById.computeIfAbsent(f.kundeId(), id -> kunder.findById(id).orElse(null));
+                navn.put(f.id(), k == null ? "" : k.virksomhetsnavn() + NAAVAERENDE_NAVN);
+            }
+        }
+        return navn;
+    }
+
+    /**
+     * Every invoice line of a run with what a spreadsheet of the fakturagrunnlag needs beside the line:
+     * its invoice, customer name and orgnr, and the usage type of the row it came from. Ordered like the
+     * LG04 (invoice order, then product and type).
+     */
+    @Transactional(readOnly = true)
+    public List<Grunnlagslinje> grunnlagslinjer(Long kjoringId) {
+        Fakturakjoring kj = hent(kjoringId);
+        Map<Long, String> typeByBruksdata = new LinkedHashMap<>();
+        if (kj.bruksdataImportId() != null) {
+            usage.rader(kj.bruksdataImportId()).forEach(b -> typeByBruksdata.put(b.id(), b.type()));
+        }
+        List<Faktura> fs = fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
+        Map<Long, String> navn = kundenavn(fs);
+        Map<Long, String> orgnrByKunde = new LinkedHashMap<>();
+        List<Grunnlagslinje> ut = new ArrayList<>();
+        for (Faktura f : fs) {
+            String orgnr = orgnrByKunde.computeIfAbsent(f.kundeId(),
+                    id -> kunder.findById(id).map(Kunde::organisasjonsnummer).orElse(""));
+            for (Fakturalinje l : linjer.findByFakturaIdOrderById(f.id())) {
+                ut.add(new Grunnlagslinje(f, l, navn.get(f.id()), orgnr, typeByBruksdata.get(l.bruksdataId())));
+            }
+        }
+        return ut;
+    }
+
+    /** One line of the fakturagrunnlag spreadsheet (see {@link #grunnlagslinjer}). */
+    public record Grunnlagslinje(Faktura faktura, Fakturalinje linje, String kundenavn, String organisasjonsnummer,
+                                 String type) {
     }
 
     @Transactional(readOnly = true)

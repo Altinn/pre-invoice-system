@@ -65,7 +65,9 @@ class FakturakjoringController {
     String detalj(@PathVariable Long id, Model model) {
         var funn = kjoringer.funn(id);
         model.addAttribute("kjoring", kjoringer.hent(id));
-        model.addAttribute("fakturaer", kjoringer.fakturaer(id));
+        var fakturaer = kjoringer.fakturaer(id);
+        model.addAttribute("fakturaer", fakturaer);
+        model.addAttribute("kundenavn", kjoringer.kundenavn(fakturaer));
         model.addAttribute("blokkerende", funn.stream()
                 .filter(f -> "BLOKKERENDE".equals(f.alvorlighet())).toList());
         model.addAttribute("advarsler", funn.stream()
@@ -91,6 +93,16 @@ class FakturakjoringController {
             redirect.addFlashAttribute("eksportStoppet", avvik.getMessage());
         }
         return "redirect:/kjoringer/" + id;
+    }
+
+    /** The fakturagrunnlag as a spreadsheet, also before approval (specs/002 US3). */
+    @GetMapping("/{id}/fakturagrunnlag.{format:csv|xlsx}")
+    ResponseEntity<byte[]> fakturagrunnlag(@PathVariable Long id, @PathVariable String format) {
+        EksportService.Nedlasting n = eksport.regneark(id, format);
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf(n.mediatype()))
+                .header("Content-Disposition", ContentDisposition.attachment().filename(n.filnavn()).build().toString())
+                .body(n.innhold());
     }
 
     @GetMapping("/{id}/avstemming")

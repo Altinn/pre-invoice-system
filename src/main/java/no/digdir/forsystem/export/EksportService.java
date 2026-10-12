@@ -60,12 +60,14 @@ public class EksportService {
     private final BrukerContext brukerContext;
     private final EksportKonfig konfig;
     private final Lg04AvstemmingRepository avstemminger;
+    private final FakturagrunnlagRegneark grunnlag;
     private final Lg04Leser leser = new Lg04Leser();
 
     EksportService(FakturakjoringService kjoringer, ProduktRepository produkter, Lg04Eksport lg04,
                    PdfEksport pdf, RegnearkEksport regneark, FileArchive arkiv,
                    EksportfilRepository eksportfiler, AuditService audit, BrukerContext brukerContext,
-                   EksportKonfig konfig, Lg04AvstemmingRepository avstemminger) {
+                   EksportKonfig konfig, Lg04AvstemmingRepository avstemminger,
+                   FakturagrunnlagRegneark grunnlag) {
         this.kjoringer = kjoringer;
         this.produkter = produkter;
         this.lg04 = lg04;
@@ -77,6 +79,7 @@ public class EksportService {
         this.brukerContext = brukerContext;
         this.konfig = konfig;
         this.avstemminger = avstemminger;
+        this.grunnlag = grunnlag;
     }
 
     /**
@@ -105,11 +108,9 @@ public class EksportService {
         String sha256 = sha256(lg04Bytes);
 
         byte[] pdfZip = pdf.byggZip(byggPdfer(kj, fakturaer, produktById));
-        List<String> hode = List.of("periode", "ordre", "kundenummer", "produkt", "beskrivelse",
-                "antall", "enhetspris", "belop");
-        List<List<String>> rader = byggRader(fakturaer, produktById, periode);
-        byte[] csvBytes = regneark.csv(hode, rader);
-        byte[] xlsxBytes = regneark.xlsx("fakturagrunnlag", hode, rader);
+        FakturagrunnlagRegneark.Tabell tabell = grunnlag.bygg(kj);
+        byte[] csvBytes = regneark.csv(tabell.kolonner(), tabell.rader());
+        byte[] xlsxBytes = regneark.xlsx("fakturagrunnlag", tabell.kolonner(), tabell.rader());
 
         String mappe = "kjoring-" + kjoringId + "/";
         Eksportfil lg04Fil = arkiver(kjoringId, "LG04", mappe + "lg04-" + periode + ".txt", lg04Bytes);
@@ -129,6 +130,37 @@ public class EksportService {
         audit.logg(Handling.EKSPORTERTE, "FAKTURAKJORING", kjoringId,
                 Map.of("periode", periode, "antallFakturaer", fakturaer.size(), "antallOrdrer", ordrer.size(),
                         "sumOre", sumOreKjoring, "lg04Sha256", sha256));
+    }
+
+    /** A spreadsheet download: file name, media type and content. */
+    public record Nedlasting(String filnavn, String mediatype, byte[] innhold) {
+    }
+
+    /**
+     * The fakturagrunnlag as CSV or XLSX for any run that is not discarded — also before approval, so
+     * Økonomi can sample it in a spreadsheet (specs/002 US3). Changes nothing, records no export file, and
+     * logs the download. The file name carries the run's status so a draft is never taken for the
+     * approved basis.
+     */
+    @Transactional   // not read-only: it writes the LASTET_NED audit row
+    public Nedlasting regneark(Long kjoringId, String format) {
+        Fakturakjoring kj = kjoringer.hent(kjoringId);
+        if ("FORKASTET".equals(kj.status())) {
+            throw new Regelbrudd("Forkastede kjøringer kan ikke lastes ned som fakturagrunnlag");
+        }
+        FakturagrunnlagRegneark.Tabell tabell = grunnlag.bygg(kj);
+        String navn = "fakturagrunnlag-" + kj.periode().toString().substring(0, 7) + "-" + kj.status();
+        Nedlasting n = switch (format) {
+            case "csv" -> new Nedlasting(navn + ".csv", "text/csv",
+                    regneark.csv(tabell.kolonner(), tabell.rader()));
+            case "xlsx" -> new Nedlasting(navn + ".xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    regneark.xlsx("fakturagrunnlag", tabell.kolonner(), tabell.rader()));
+            default -> throw new Regelbrudd("Ukjent format: " + format + " (csv eller xlsx)");
+        };
+        audit.logg(Handling.LASTET_NED, "FAKTURAKJORING", kjoringId,
+                Map.of("periode", kj.periode().toString(), "format", format.toUpperCase(), "status", kj.status()));
+        return n;
     }
 
     /**
@@ -247,24 +279,13 @@ public class EksportService {
     }
 
     private List<FakturaPdf> byggPdfer(Fakturakjoring kj, List<Faktura> fakturaer, Map<Long, Produkt> produktById) {
+        Map<Long, String> kundenavn = kjoringer.kundenavn(fakturaer);
         List<FakturaPdf> pdfer = new ArrayList<>();
         for (Faktura f : fakturaer) {
             String filnavn = f.kundenummer() + "-" + f.fakturaUuid() + ".pdf";
-            pdfer.add(new FakturaPdf(filnavn, pdfHtml(kj, f, produktById)));
+            pdfer.add(new FakturaPdf(filnavn, pdfHtml(kj, f, kundenavn.get(f.id()), produktById)));
         }
         return pdfer;
-    }
-
-    private List<List<String>> byggRader(List<Faktura> fakturaer, Map<Long, Produkt> produktById, String periode) {
-        List<List<String>> rader = new ArrayList<>();
-        for (Faktura f : fakturaer) {
-            for (Fakturalinje l : kjoringer.linjer(f.id())) {
-                Produkt p = produktById.get(l.produktId());
-                rader.add(List.of(periode, String.valueOf(f.ordreNr()), f.kundenummer(), p.kode(),
-                        l.beskrivelse(), tekst(l.antall()), tekst(l.enhetspris()), l.belop().toPlainString()));
-            }
-        }
-        return rader;
     }
 
     private Eksportfil arkiver(Long kjoringId, String type, String sti, byte[] innhold) {
@@ -278,7 +299,7 @@ public class EksportService {
         return konfig.fakturaUrlBase() + "/" + f.kundenummer() + "-" + f.fakturaUuid() + ".pdf";
     }
 
-    private String pdfHtml(Fakturakjoring kj, Faktura f, Map<Long, Produkt> produktById) {
+    private String pdfHtml(Fakturakjoring kj, Faktura f, String kundenavn, Map<Long, Produkt> produktById) {
         StringBuilder rader = new StringBuilder();
         for (Fakturalinje l : kjoringer.linjer(f.id())) {
             Produkt p = produktById.get(l.produktId());
@@ -296,13 +317,13 @@ public class EksportService {
                 .h { text-align: right; }
                 </style></head><body>
                 <h1>Fakturagrunnlag</h1>
-                <p>Periode: %s<br/>Kundenummer: %s<br/>Fakturamottaker (orgnr): %s<br/>Ordre: %d</p>
+                <p>Kunde: %s<br/>Periode: %s<br/>Kundenummer: %s<br/>Fakturamottaker (orgnr): %s<br/>Ordre: %d</p>
                 <table><thead><tr><th>Produkt</th><th>Beskrivelse</th><th class='h'>Antall</th>
                 <th class='h'>Enhetspris</th><th class='h'>Beløp</th></tr></thead>
                 <tbody>%s</tbody></table>
                 <p><strong>Sum: %s</strong></p>
                 </body></html>
-                """.formatted(esc(kj.periode().toString()), esc(f.kundenummer()),
+                """.formatted(esc(kundenavn), esc(kj.periode().toString()), esc(f.kundenummer()),
                 esc(f.fakturamottakerOrgnr()), f.ordreNr(), rader, f.sumBelop().toPlainString());
     }
 

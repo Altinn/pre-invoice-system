@@ -206,7 +206,7 @@ the name is unchanged.
 
 ### Tests for User Story 3
 
-- [ ] T035 [P] [US3] Write `T/billing/FakturagrunnlagRegnearkIT.java`:
+- [x] T035 [P] [US3] Write `T/billing/FakturagrunnlagRegnearkIT.java`:
   - (a) GET `/kjoringer/{id}/fakturagrunnlag.xlsx` on a GENERERT run gives the file name `fakturagrunnlag-2027-01-GENERERT.xlsx`; the headers are in data-model.md order; there is one row per line; columns antall/enhetspris/belop are `CellType.NUMERIC`; Σ belop = `sammendrag.sumBelop`
   - (b) the CSV has the same header
   - (c) no `eksportfil` row is created, the status is unchanged, and `LASTET_NED` is logged with format and status
@@ -214,21 +214,21 @@ the name is unchanged.
   - (e) after renaming the customer in the registry, the downloaded name is still the original
   - (f) the archived CSV after export has the same header as the download (FR-019)
   - (g) a faktura with NULL `kundenavn` (simulated with an `update faktura set kundenavn = null`) shows the registry name + " (nåværende navn)"
-- [ ] T036 [P] [US3] Extend `T/billing/WebKjoringRoleIT.java`: LESER can GET both downloads.
+- [x] T036 [P] [US3] (Done inside `T/billing/FakturagrunnlagRegnearkIT.java`, which runs as LESER.)
 
 ### Implementation for User Story 3
 
-- [ ] T037 [US3] Create `R/db/migration/V11__faktura_kundenavn.sql`: `alter table faktura add column kundenavn text;` with a D9 comment.
-- [ ] T038 [US3] Add the `kundenavn` component to `M/billing/Faktura.java` after `kundenummer`. Set it from `data.kunde.virksomhetsnavn()` in `M/billing/FakturakjoringService.java` `bygg()`. Fix all other `new Faktura(` call sites (`grep -rn "new Faktura(" src`).
-- [ ] T039 [P] [US3] Change `M/export/RegnearkEksport.java` to typed cells: `csv(List<String>, List<List<Object>>)` and `xlsx(String, List<String>, List<List<Object>>)`. A `BigDecimal`/`Number` becomes a numeric cell (`setCellValue(double)` from `BigDecimal.doubleValue()`, with a numeric format that has 2 decimals for amounts and 4 for enhetspris), `null` becomes blank, and everything else is a string. CSV renders `BigDecimal` with `toPlainString()`.
-- [ ] T040 [US3] Create `M/export/FakturagrunnlagRegneark.java`, the single column definition (data-model.md table, D8). Method `Tabell bygg(Fakturakjoring, List<Faktura>)` returns the header and typed rows ordered by (ordre, produkt, type). The type comes from the line's `bruksdata_id`, loaded in one query. The name follows the D9 display rule (snapshot, else registry name + " (nåværende navn)").
-- [ ] T041 [US3] In `M/export/EksportService.java`:
+- [x] T037 [US3] Create `R/db/migration/V11__faktura_kundenavn.sql`: `alter table faktura add column kundenavn text;` with a D9 comment.
+- [x] T038 [US3] Add the `kundenavn` component to `M/billing/Faktura.java` after `kundenummer`. Set it from `data.kunde.virksomhetsnavn()` in `M/billing/FakturakjoringService.java` `bygg()`. Fix all other `new Faktura(` call sites (`grep -rn "new Faktura(" src`).
+- [x] T039 [P] [US3] Change `M/export/RegnearkEksport.java` to typed cells: `csv(List<String>, List<List<Object>>)` and `xlsx(String, List<String>, List<List<Object>>)`. A `BigDecimal`/`Number` becomes a numeric cell (`setCellValue(double)` from `BigDecimal.doubleValue()`, with a numeric format that has 2 decimals for amounts and 4 for enhetspris), `null` becomes blank, and everything else is a string. CSV renders `BigDecimal` with `toPlainString()`.
+- [x] T040 [US3] Create `M/export/FakturagrunnlagRegneark.java`, the single column definition (data-model.md table, D8). Method `Tabell bygg(Fakturakjoring, List<Faktura>)` returns the header and typed rows ordered by (ordre, produkt, type). The type comes from the line's `bruksdata_id`, loaded in one query. The name follows the D9 display rule (snapshot, else registry name + " (nåværende navn)").
+- [x] T041 [US3] In `M/export/EksportService.java`:
   - replace `byggRader`/`hode` with `FakturagrunnlagRegneark` for the archived CSV/XLSX
   - add `public Nedlasting regneark(Long kjoringId, String format)`, which refuses FORKASTET with `Regelbrudd("Forkastede kjøringer kan ikke lastes ned som fakturagrunnlag")`, builds the bytes, logs `LASTET_NED` (periode, format, status) and returns the file name `fakturagrunnlag-<periode>-<STATUS>.<ext>` + content type + bytes
   - in the PDF HTML, add a `Kunde: <name>` line using the D9 rule
-- [ ] T042 [US3] Add `GET /{id}/fakturagrunnlag.xlsx` and `GET /{id}/fakturagrunnlag.csv` to `M/web/FakturakjoringController.java`, which return `eksport.regneark(...)` as an attachment.
-- [ ] T043 [US3] In `R/templates/kjoring/detalj.html`, add the download links ("Last ned fakturagrunnlag (XLSX, for Excel)" / "(CSV)") for non-FORKASTET runs, and a **Kunde** column in the faktura table (D9 rule; expose a helper or precomputed name map from the controller).
-- [ ] T044 [US3] Run `./mvnw verify` green. Commit.
+- [x] T042 [US3] Add `GET /{id}/fakturagrunnlag.xlsx` and `GET /{id}/fakturagrunnlag.csv` to `M/web/FakturakjoringController.java`, which return `eksport.regneark(...)` as an attachment.
+- [x] T043 [US3] In `R/templates/kjoring/detalj.html`, add the download links ("Last ned fakturagrunnlag (XLSX, for Excel)" / "(CSV)") for non-FORKASTET runs, and a **Kunde** column in the faktura table (D9 rule; expose a helper or precomputed name map from the controller).
+- [x] T044 [US3] Run `./mvnw verify` green. Commit.
 
 **Checkpoint**: BF1 T01 can be sampled in Excel before approval.
 

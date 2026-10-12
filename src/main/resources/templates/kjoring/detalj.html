@@ -89,28 +89,36 @@ Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 
     <div class="rad" style="margin-top:1rem;">
         <a class="ds-button" data-variant="secondary" data-size="sm"
            th:href="@{/kjoringer/{id}/avstemming(id=${kjoring.id()})}">Avstemming bruksdata</a>
+        <th:block th:if="${kjoring.status() != 'FORKASTET'}">
+            <!-- hx-boost off + download: a real file download, not an htmx page swap. -->
+            <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false" download
+               th:href="@{/kjoringer/{id}/fakturagrunnlag.xlsx(id=${kjoring.id()})}">Last ned fakturagrunnlag (XLSX, for Excel)</a>
+            <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false" download
+               th:href="@{/kjoringer/{id}/fakturagrunnlag.csv(id=${kjoring.id()})}">(CSV)</a>
+        </th:block>
     </div>
 
     <!-- Invoices -->
     <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Fakturaer</h2>
     <table class="ds-table" data-size="sm">
         <thead>
-        <tr><th>Ordre</th><th>Kundenummer</th><th>Tilleggstekst</th><th>Mottaker (orgnr)</th><th class="hoyre">Sum</th><th></th></tr>
+        <tr><th>Ordre</th><th>Kunde</th><th>Kundenummer</th><th>Tilleggstekst</th><th>Mottaker (orgnr)</th><th class="hoyre">Sum</th><th></th></tr>
         </thead>
         <tbody>
         <tr th:each="f : ${fakturaer}">
             <td th:text="${f.ordreNr()}">1</td>
+            <td th:text="${kundenavn.get(f.id())}">Kunde</td>
             <td th:text="${f.kundenummer()}">100200</td>
             <td th:text="${f.tilleggstekst()} ?: '—'">—</td>
             <td th:text="${f.fakturamottakerOrgnr()}">123456789</td>
-            <td class="hoyre" th:text="${f.sumBelop()}">0.00</td>
+            <td class="hoyre" th:text="${#numbers.formatDecimal(f.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
             <td class="hoyre">
                 <a class="ds-button" data-variant="tertiary" data-size="sm"
                    th:href="@{/kjoringer/{id}/faktura/{fid}(id=${kjoring.id()},fid=${f.id()})}">Linjer</a>
             </td>
         </tr>
         <tr th:if="${fakturaer.isEmpty()}">
-            <td colspan="6" class="ds-paragraph" data-size="sm">Ingen fakturaer.</td>
+            <td colspan="7" class="ds-paragraph" data-size="sm">Ingen fakturaer.</td>
         </tr>
         </tbody>
     </table>
