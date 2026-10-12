@@ -31,6 +31,7 @@ import no.digdir.forsystem.registry.PrisversjonStatus;
 import no.digdir.forsystem.registry.Produkt;
 import no.digdir.forsystem.registry.ProduktRepository;
 import no.digdir.forsystem.usage.Bruksdata;
+import no.digdir.forsystem.usage.BruksdataImport;
 import no.digdir.forsystem.usage.Bruksdatatype;
 import no.digdir.forsystem.usage.UsageImportService;
 import org.springframework.stereotype.Service;
@@ -97,13 +98,14 @@ public class FakturakjoringService {
             throw new Regelbrudd("Det finnes allerede en aktiv kjøring for " + periode
                     + ". Forkast den før du genererer på nytt.");
         }
+        Long importId = usage.gjeldendeImport(periode).map(BruksdataImport::id).orElse(null);
         List<Bruksdata> bruk = usage.bruksdataFor(periode);
-        if (bruk.isEmpty()) {
+        if (importId == null || bruk.isEmpty()) {
             throw new Regelbrudd("Ingen bruksdata for " + periode + " — importer bruk først.");
         }
 
         Fakturakjoring kjoring = kjoringer.save(new Fakturakjoring(null, periode.førsteDag(),
-                Kjoringstatus.GENERERT.name(), versjon.id(), brukerContext.naavaerendeBruker(),
+                Kjoringstatus.GENERERT.name(), versjon.id(), importId, brukerContext.naavaerendeBruker(),
                 OffsetDateTime.now(), null, null, null));
 
         var ctx = new Byggekontekst(periode, versjon, kjoring.id());
@@ -295,7 +297,7 @@ public class FakturakjoringService {
         }
         String bruker = brukerContext.naavaerendeBruker();
         kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.GODKJENT.name(),
-                kj.prisversjonId(), kj.generertAv(), kj.generertAt(), bruker, OffsetDateTime.now(), kj.kommentar()));
+                kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), bruker, OffsetDateTime.now(), kj.kommentar()));
         audit.logg(Handling.GODKJENTE, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString()));
     }
 
@@ -307,7 +309,7 @@ public class FakturakjoringService {
             throw new Regelbrudd("Bare en godkjent kjøring kan eksporteres (status er " + kj.status() + ")");
         }
         kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.EKSPORTERT.name(),
-                kj.prisversjonId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
+                kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
                 kj.kommentar()));
     }
 
@@ -321,7 +323,7 @@ public class FakturakjoringService {
             return;
         }
         kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.FORKASTET.name(),
-                kj.prisversjonId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
+                kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
                 kj.kommentar()));
         audit.logg(Handling.FORKASTET, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString()));
     }

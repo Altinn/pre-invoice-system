@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import no.digdir.forsystem.archive.FileArchive;
@@ -154,9 +155,10 @@ public class UsageImportService {
         LocalDate periode = fv.periode().førsteDag();
         String bruker = brukerContext.naavaerendeBruker();
 
-        // Re-import replacement (docs/03 §4): drop the period's existing rows and mark old imports AVVIST.
-        // A staged import being confirmed is the new import, not an old one.
-        bruksdata.deleteByPeriode(periode);
+        // Re-import replacement (docs/03 §4): mark old imports AVVIST. Their rows are kept, read-only —
+        // a discarded run's lines still reference them (specs/002 D1, constitution III); only the
+        // VALIDERT import's rows are "the period's usage" (see gjeldendeImport). A staged import being
+        // confirmed is the new import, not an old one.
         for (BruksdataImport gammel : importer.findByPeriodeAndStatusNot(periode, Importstatus.AVVIST.name())) {
             if (Objects.equals(gammel.id(), fv.stagetImportId())) {
                 continue;
@@ -232,10 +234,19 @@ public class UsageImportService {
         return bruksdata.findByImportId(importId);
     }
 
-    /** All usage for a period, for the generation engine (billing depends on this public API). */
+    /**
+     * The period's current import: the latest VALIDERT one. Superseded imports are AVVIST and a staged
+     * DWH import is MOTTATT, so neither counts (specs/002 D1).
+     */
+    @Transactional(readOnly = true)
+    public Optional<BruksdataImport> gjeldendeImport(Periode periode) {
+        return importer.findFirstByPeriodeAndStatusOrderByIdDesc(periode.førsteDag(), Importstatus.VALIDERT.name());
+    }
+
+    /** The period's usage — the current import's rows — for the generation engine (billing depends on this). */
     @Transactional(readOnly = true)
     public List<Bruksdata> bruksdataFor(Periode periode) {
-        return bruksdata.findByPeriode(periode.førsteDag());
+        return gjeldendeImport(periode).map(i -> bruksdata.findByImportId(i.id())).orElse(List.of());
     }
 
     /**
@@ -243,7 +254,7 @@ public class UsageImportService {
      * share from the previous period's committed usage, or disappears. Never blocks.
      */
     private List<String> avvikMotForrigeMaaned(Periode periode, List<ProduktSum> naa, Map<String, Long> kodeTilId) {
-        List<Bruksdata> forrige = bruksdata.findByPeriode(periode.forrige().førsteDag());
+        List<Bruksdata> forrige = bruksdataFor(periode.forrige());
         if (forrige.isEmpty()) {
             return List.of();
         }

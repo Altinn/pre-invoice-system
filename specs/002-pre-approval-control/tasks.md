@@ -32,7 +32,7 @@ TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock JAVA_HOME=/opt/homebr
 
 **Purpose**: Shared vocabulary that later phases use.
 
-- [ ] T001 Add `EKSPORT_STOPPET` and `LASTET_NED` to the `Handling` enum, with a one-line Javadoc each, in `M/common/Handling.java`
+- [x] T001 Add `EKSPORT_STOPPET` and `LASTET_NED` to the `Handling` enum, with a one-line Javadoc each, in `M/common/Handling.java`
 
 ---
 
@@ -45,22 +45,22 @@ TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock JAVA_HOME=/opt/homebr
 
 **Commit**: `fix(usage): keep superseded bruksdata so a discarded run's lines stay valid`
 
-- [ ] T002 Write the failing regression test in `T/usage/ReimportEtterForkastIT.java`, extending `billing.BillingFixture` or a copy of its helpers. Steps: import a CSV for JAN via `UsageImportService.forhaandsvis`+`importer`, then `generer`, `forkast`, re-import a changed CSV, and `generer` again. Assert:
+- [x] T002 Write the failing regression test in `T/billing/ReimportEtterForkastIT.java` (billing package, to reuse the package-private `BillingFixture`). Steps: import a CSV for JAN via `UsageImportService.forhaandsvis`+`importer`, then `generer`, `forkast`, re-import a changed CSV, and `generer` again. Assert:
   - the second run is GENERERT and uses the new rows
   - the first run's lines still resolve to their original `bruksdata` rows
   - the old import is AVVIST
   - `fakturakjoring.bruksdata_import_id` is set on both runs
-- [ ] T003 Create `R/db/migration/V8__bruksdata_per_import.sql` per data-model.md:
+- [x] T003 Create `R/db/migration/V8__bruksdata_per_import.sql` per data-model.md:
   - Drop `bruksdata_periode_organisasjonsnummer_produkt_id_type_key`. Verify the real name first, for example with `\d bruksdata` in a Testcontainers psql or a query on `pg_constraint`, and use `drop constraint if exists` only if the name is confirmed.
   - Add `bruksdata_unik_per_import unique (import_id, organisasjonsnummer, produkt_id, type)`.
   - Add `fakturakjoring.bruksdata_import_id bigint references bruksdata_import`, with the backfill `update` from lines.
   - Comment each block with its D-number.
-- [ ] T004 In `M/usage/UsageImportService.java` `importer()`: remove `bruksdata.deleteByPeriode(periode)` and keep the AVVIST marking. Update the comment to say rows of superseded imports are kept for traceability (constitution III).
-- [ ] T005 In `M/usage/UsageImportService.java`, add `public Optional<BruksdataImport> gjeldendeImport(Periode)`, which returns the latest (highest id) VALIDERT import for the period. Change `bruksdataFor(Periode)` to return that import's rows (`findByImportId`), or an empty list. Change the previous-period lookup in `avvikMotForrigeMaaned` the same way.
-- [ ] T006 Remove the now-unused `deleteByPeriode` from `M/usage/BruksdataRepository.java`. Check that nothing else calls it, including `findByPeriode` callers (`grep -rn findByPeriode src`).
-- [ ] T007 Add the `bruksdataImportId` component (after `prisversjonId`) to `M/billing/Fakturakjoring.java`. Update every `new Fakturakjoring(...)` call in `M/billing/FakturakjoringService.java` (generer, godkjenn, settEksportert, forkast) to carry it through. In `generer`, take it from `usage.gjeldendeImport(periode)`, and throw the existing "Ingen bruksdata" `Regelbrudd` when it is absent.
-- [ ] T008 Fix other constructors of `Fakturakjoring` in tests and demo (`grep -rn "new Fakturakjoring" src`), e.g. `M/demo/Demodata.java` and `T/billing/*`.
-- [ ] T009 Run `./mvnw verify`. T002 must now pass along with the whole suite, and `MigrationIT` must pass on V8. Commit.
+- [x] T004 In `M/usage/UsageImportService.java` `importer()`: remove `bruksdata.deleteByPeriode(periode)` and keep the AVVIST marking. Update the comment to say rows of superseded imports are kept for traceability (constitution III).
+- [x] T005 In `M/usage/UsageImportService.java`, add `public Optional<BruksdataImport> gjeldendeImport(Periode)`, which returns the latest (highest id) VALIDERT import for the period. Change `bruksdataFor(Periode)` to return that import's rows (`findByImportId`), or an empty list. Change the previous-period lookup in `avvikMotForrigeMaaned` the same way.
+- [x] T006 Remove the now-unused `deleteByPeriode` from `M/usage/BruksdataRepository.java`. Check that nothing else calls it, including `findByPeriode` callers (`grep -rn findByPeriode src`).
+- [x] T007 Add the `bruksdataImportId` component (after `prisversjonId`) to `M/billing/Fakturakjoring.java`. Update every `new Fakturakjoring(...)` call in `M/billing/FakturakjoringService.java` (generer, godkjenn, settEksportert, forkast) to carry it through. In `generer`, take it from `usage.gjeldendeImport(periode)`, and throw the existing "Ingen bruksdata" `Regelbrudd` when it is absent.
+- [x] T008 Fix other constructors of `Fakturakjoring` in tests and demo (`grep -rn "new Fakturakjoring" src`), e.g. `M/demo/Demodata.java` and `T/billing/*`.
+- [x] T009 Run `./mvnw verify`. T002 must now pass along with the whole suite, and `MigrationIT` must pass on V8. Commit.
 
 **Checkpoint**: The T08 correction flow works end to end. This can ship alone.
 

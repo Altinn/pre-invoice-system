@@ -112,7 +112,7 @@ class UsageImportServiceIT extends IntegrationTest {
     }
 
     @Test
-    void reimportReplacesRowsAndMarksOldImportAvvist() throws IOException {
+    void reimportSupersedesOldImportAndKeepsItsRows() throws IOException {
         BruksdataImport first = service.importer(
                 service.forhaandsvis(JAN, "a.csv", inn(HEADER
                         + "2027-01-01,123456789,melding,BRUKSVOLUM,10,\n"
@@ -123,14 +123,16 @@ class UsageImportServiceIT extends IntegrationTest {
                         + "2027-01-01,999999999,formidling,BRUKSVOLUM,7,\n")));
 
         assertThat(importer.findById(first.id()).orElseThrow().status()).isEqualTo("AVVIST");
-        assertThat(bruksdata.countByImportId(first.id())).isZero();
+        // Superseded rows are kept for traceability (specs/002 D1); only the current import counts.
+        assertThat(bruksdata.countByImportId(first.id())).isEqualTo(2);
         assertThat(bruksdata.countByImportId(second.id())).isEqualTo(1);
+        assertThat(service.bruksdataFor(JAN)).extracting(Bruksdata::importId).containsOnly(second.id());
     }
 
     @Test
     void importBlockedWhenNonForkastetRunExistsForPeriod() throws IOException {
         Prisversjon v = prisversjoner.save(new Prisversjon(null, "v", LocalDate.of(2027, 1, 1), null, "UTKAST"));
-        kjoringer.save(new Fakturakjoring(null, JAN.førsteDag(), "GENERERT", v.id(), "test",
+        kjoringer.save(new Fakturakjoring(null, JAN.førsteDag(), "GENERERT", v.id(), null, "test",
                 OffsetDateTime.now(), null, null, null));
 
         Forhaandsvisning fv = service.forhaandsvis(JAN, "f.csv",

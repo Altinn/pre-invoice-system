@@ -61,7 +61,7 @@ class KjoringStatemaskinIT extends BillingFixture {
         tjeneste.godkjenn(kj.id());
         // Simulate export (Phase 4) by moving the run to EKSPORTERT directly.
         var g = tjeneste.hent(kj.id());
-        kjoringer.save(new Fakturakjoring(g.id(), g.periode(), "EKSPORTERT", g.prisversjonId(),
+        kjoringer.save(new Fakturakjoring(g.id(), g.periode(), "EKSPORTERT", g.prisversjonId(), g.bruksdataImportId(),
                 g.generertAv(), g.generertAt(), g.godkjentAv(), g.godkjentAt(), g.kommentar()));
         assertThatThrownBy(() -> tjeneste.forkast(kj.id()))
                 .isInstanceOf(Regelbrudd.class).hasMessageContaining("eksportert");

@@ -134,7 +134,7 @@ class DwhImportServiceIT extends IntegrationTest {
     void existingRunBlocksLikeCsv() throws IOException {
         svar("januar-ok.json");
         Prisversjon v = prisversjoner.save(new Prisversjon(null, "v", LocalDate.of(2027, 1, 1), null, "UTKAST"));
-        kjoringer.save(new Fakturakjoring(null, JAN.førsteDag(), "GENERERT", v.id(), "test",
+        kjoringer.save(new Fakturakjoring(null, JAN.førsteDag(), "GENERERT", v.id(), null, "test",
                 OffsetDateTime.now(), null, null, null));
         assertThat(dwh.forhaandsvis(JAN).blokkeringer()).isNotEmpty();
     }
