@@ -161,6 +161,9 @@ and the run's status did not change.
   exactly. Any difference, however small, is a mismatch.
 - **Export mode changes** (OQ-1, several lines per order): the "number of LG04 orders" figure
   follows the active mode. The summary never assumes orders = lines.
+- **Correction after a discarded run** (BF1 T08): discard the run, re-import the period, and
+  generate again. The new run reconciles against the new import, and the discarded run still
+  reconciles against its own import.
 - **A FORKASTET run** keeps its summary and reconciliation view for history (read-only), but offers
   no spreadsheet download.
 
@@ -239,6 +242,10 @@ and the run's status did not change.
   current date.
 - **FR-022**: The LG04 output itself MUST NOT change. The existing golden-file tests MUST stay
   byte-identical.
+- **FR-023**: Re-importing a period's usage after a run for that period was discarded MUST succeed.
+  The discarded run's usage MUST be kept and remain reachable from that run. Today this fails with a
+  database error (found during planning, research R1). It blocks the BF1 T08 correction flow and
+  the reconciliation of discarded runs.
 
 ### Key Entities
 
