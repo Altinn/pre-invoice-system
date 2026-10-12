@@ -33,6 +33,7 @@
 
 - LG04, CSV, XLSX and hendelseslogg are domain artifacts the business side names in the BF1 test
   plan. They are not implementation choices, so they stay in the spec.
-- One judgement call was made instead of asking: **a reconciliation mismatch blocks the export**
-  (see Assumptions). Revisit in `/speckit-clarify` if Økonomi prefers a warning.
+- Decisions confirmed by the product side on 2026-10-12: a reconciliation mismatch **blocks** the
+  export, with an explanatory error (FR-005a); the customer name is **frozen at generation**
+  (FR-015a); usage filtered in the datavarehus stays out of scope (P-1).
 - Iteration 1: FR-004 reworded to remove "from its bytes" (implementation leak). All items pass.

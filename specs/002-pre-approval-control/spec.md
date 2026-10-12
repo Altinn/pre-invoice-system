@@ -62,8 +62,10 @@ the difference.
    run, and the result ("LG04 stemmer med fakturagrunnlaget": orders and amount, file vs run) is
    stored and shown on the run page.
 3. **Given** an export where the LG04 file read back does not match the run (count or amount),
-   **When** the export runs, **Then** the export fails. The run stays GODKJENT, no export files are
-   kept, the user sees an error naming both figures, and the failed attempt is logged.
+   **When** the export runs, **Then** the export fails. The run stays GODKJENT and no export files
+   are kept. The user sees an error with both sets of figures, which says the run is still approved
+   and that the forsystem team must be contacted. The failed attempt is logged. Once the defect is
+   fixed, the same run can be exported again with no other step.
 4. **Given** a run that was exported before this feature existed, **When** a user opens it,
    **Then** the reconciliation is computed from the archived LG04 file and shown the same way.
 5. **Given** an EKSPORTERT run, **When** the user looks at the summary, **Then** the figures for the
@@ -135,7 +137,9 @@ and the run's status did not change.
 3. **Given** any pre-approval download, **When** it completes, **Then** the run's status is
    unchanged, no export file is recorded, and the download is logged (who, which run, which format).
 4. **Given** a FORKASTET run, **When** the user looks for the download, **Then** it is not offered.
-5. **Given** an EKSPORTERT run, **When** the user compares the pre-approval-style download with the
+5. **Given** a customer renamed in the register after the run was generated, **When** the user
+   downloads the spreadsheet, **Then** it shows the name as it was at generation.
+6. **Given** an EKSPORTERT run, **When** the user compares the pre-approval-style download with the
    CSV/XLSX archived at export, **Then** they have the same columns and the same rows.
 
 ---
@@ -176,8 +180,18 @@ and the run's status did not change.
 - **FR-004**: On export, the system MUST read back the LG04 file it has just produced, exactly as it
   will be delivered. It MUST count the orders and sum the amounts in the file, and compare both with the run.
 - **FR-005**: If the count or the amount differs, the export MUST fail as a whole. The run stays
-  GODKJENT, no export files are kept or recorded, and the user sees an error naming the file figures
-  and the run figures. The failure MUST be written to the hendelseslogg.
+  GODKJENT, and no export files are kept or recorded, so nothing wrong can be downloaded or sent. The
+  failure MUST be written to the hendelseslogg with user, time and both sets of figures.
+- **FR-005a**: The user MUST see an error on the run page that states:
+  - that the export was stopped and no files were produced
+  - the file figures and the run figures side by side
+  - that the run is still approved and nothing needs to be redone
+  - that the cause is an error in forsystem, so the user should contact the forsystem team and
+    export again once it is fixed
+
+  Example: *"Eksport stoppet: LG04-filen har 8 ordrer / 12 300,00, fakturagrunnlaget har
+  9 ordrer / 12 345,67. Ingen filer er laget, og kjøringen er fortsatt godkjent. Dette er en feil
+  i forsystemet — kontakt forsystem-teamet og eksporter på nytt når feilen er rettet."*
 - **FR-006**: A successful reconciliation MUST be shown on the run page for every EKSPORTERT run,
   with file figures, run figures and the outcome. For runs exported before this feature, it MUST be
   computed from the archived LG04 file.
@@ -207,6 +221,9 @@ and the run's status did not change.
 - **FR-015**: The spreadsheet MUST contain one row per invoice line with at least: periode, ordre,
   kundenummer, customer name, orgnr, fakturamottaker, product, usage type, description, quantity,
   unit price, amount, fakturareferanse and bestillingsnummer.
+- **FR-015a**: The customer name MUST be stored with each faktura when the run is generated, so
+  later changes in the customer register do not change a run's spreadsheet, run page or PDF. For
+  runs generated before this feature, the current registry name MUST be shown and marked as such.
 - **FR-016**: In the XLSX, quantity, unit price and amount MUST be numeric cells.
 - **FR-017**: The file name MUST contain the periode and the run status at the time of download.
 - **FR-018**: A pre-approval download MUST NOT change the run, MUST NOT be recorded as an export
@@ -255,15 +272,23 @@ and the run's status did not change.
 
 ## Assumptions
 
-- **A failed reconciliation blocks the export** rather than warning. The cost of sending a wrong
-  file to regnskap is much higher than re-running an export. Since the file is produced from the
-  same lines, a mismatch means a defect, and a defect must stop the export.
+- **A failed reconciliation blocks the export** rather than warning (decided 2026-10-12). The
+  file is produced from the same lines as the run, so a mismatch can only mean a defect in
+  forsystem. Økonomi cannot judge it away. A warning would leave the run EKSPORTERT, which is final
+  by design (it cannot be discarded or exported again). That would leave Økonomi holding a wrong
+  file with no way to produce a correct one. Blocking rolls everything back, so after a fix the
+  same run can simply be exported again.
 - The "number of LG04 orders" follows the export mode that is active when the page is viewed (today
   one order per invoice line, OQ-1). After export, the reconciliation's file figure is
   authoritative.
-- The customer name in the spreadsheet is the current registry name. Unlike kundenummer and
-  fakturamottaker, the name is not snapshotted at generation, and it is for reading only (it does
-  not go to LG04). If the name changed since generation, the spreadsheet shows the new one.
+- **The customer name is frozen at generation** (decided 2026-10-12), like kundenummer and
+  fakturamottaker already are. It was left out of the original snapshot set only because it never
+  goes to LG04. A control document should show the run as it was generated, though, not a mix of
+  frozen and live values. Runs generated before this feature have no frozen name. For those, the
+  current registry name is shown, marked as such.
+- Usage that the datavarehus filters out before it reaches forsystem (for example, usage under
+  inactive agreements) is outside forsystem's control. Økonomi's T06 routine needs that part from the
+  datavarehus team (proposed open question P-1 in docs/11).
 - The reconciliation view compares against the usage import the run was generated from. Usage
   imports are blocked while a non-discarded run exists for the period, so that import is the
   period's current one.
