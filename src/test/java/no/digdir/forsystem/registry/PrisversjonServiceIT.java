@@ -20,6 +20,27 @@ class PrisversjonServiceIT extends IntegrationTest {
     @Autowired HendelsesloggRepository hendelser;
 
     @Test
+    void versionPageListsActiveProductsAndInactiveOnesItAlreadyPrices() {
+        Prisversjon v = service.opprettUtkast("f06", LocalDate.of(2032, 1, 1), null);
+        Produkt studio = produkter.findByKode("studio").orElseThrow();
+        Produkt varsling = produkter.findByKode("varsling").orElseThrow();
+        service.settPris(v.id(), varsling.id(), new BigDecimal("0.5000"));
+        deaktiver(studio);
+        deaktiver(varsling);   // inactive, but already priced in this version
+
+        var koder = service.produkterFor(v.id()).stream().map(Produkt::kode).toList();
+
+        assertThat(koder).doesNotContain("studio").contains("varsling");
+        assertThat(koder).containsAll(produkter.findByAktivTrue().stream().map(Produkt::kode).toList());
+        assertThat(koder).isSorted();
+    }
+
+    private void deaktiver(Produkt p) {
+        produkter.save(new Produkt(p.id(), p.kode(), p.navn(), p.artikkelId(), p.konto(), p.dim1(), p.dim2(),
+                p.dim4(), p.enhet(), false));
+    }
+
+    @Test
     void activateSucceedsWhenAllActiveProductsPricedAndSetsStatusAndAudit() {
         Prisversjon v = service.opprettUtkast("2027", LocalDate.of(2027, 1, 1), null);
         prisAlleAktive(v.id(), "1.2500");

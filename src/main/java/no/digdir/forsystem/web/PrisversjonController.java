@@ -7,7 +7,6 @@ import java.util.Map;
 
 import no.digdir.forsystem.registry.Pris;
 import no.digdir.forsystem.registry.PrisversjonService;
-import no.digdir.forsystem.registry.ProduktService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -22,11 +21,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 class PrisversjonController {
 
     private final PrisversjonService prisversjoner;
-    private final ProduktService produkter;
 
-    PrisversjonController(PrisversjonService prisversjoner, ProduktService produkter) {
+    PrisversjonController(PrisversjonService prisversjoner) {
         this.prisversjoner = prisversjoner;
-        this.produkter = produkter;
     }
 
     @GetMapping
@@ -43,8 +40,9 @@ class PrisversjonController {
             prisPerProdukt.put(p.produktId(), p.enhetspris());
         }
         model.addAttribute("versjon", versjon);
-        model.addAttribute("produkter", produkter.alle());
+        model.addAttribute("produkter", prisversjoner.produkterFor(id));
         model.addAttribute("prisPerProdukt", prisPerProdukt);
+        model.addAttribute("dekning", prisversjoner.dekning(versjon));
         return "prisversjon/detalj";
     }
 
