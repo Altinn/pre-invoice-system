@@ -31,6 +31,7 @@ import no.digdir.forsystem.registry.PrisversjonStatus;
 import no.digdir.forsystem.registry.Produkt;
 import no.digdir.forsystem.registry.ProduktRepository;
 import no.digdir.forsystem.usage.Bruksdata;
+import no.digdir.forsystem.usage.BruksdataImport;
 import no.digdir.forsystem.usage.Bruksdatatype;
 import no.digdir.forsystem.usage.UsageImportService;
 import org.springframework.stereotype.Service;
@@ -55,6 +56,7 @@ public class FakturakjoringService {
     private final FakturalinjeRepository linjer;
     private final KontrollfunnRepository funn;
     private final EksportfilRepository eksportfiler;
+    private final KontrollfunnBruksdataRepository funnBruksdata;
     private final ProduktRepository produkter;
     private final PrisRepository priser;
     private final PrisversjonRepository prisversjoner;
@@ -67,7 +69,7 @@ public class FakturakjoringService {
 
     FakturakjoringService(FakturakjoringRepository kjoringer, FakturaRepository fakturaer,
                           FakturalinjeRepository linjer, KontrollfunnRepository funn,
-                          EksportfilRepository eksportfiler,
+                          EksportfilRepository eksportfiler, KontrollfunnBruksdataRepository funnBruksdata,
                           ProduktRepository produkter, PrisRepository priser,
                           PrisversjonRepository prisversjoner, KundeRepository kunder,
                           KundeReferanseRepository referanser, KundenummerRegelRepository regler,
@@ -77,6 +79,7 @@ public class FakturakjoringService {
         this.linjer = linjer;
         this.funn = funn;
         this.eksportfiler = eksportfiler;
+        this.funnBruksdata = funnBruksdata;
         this.produkter = produkter;
         this.priser = priser;
         this.prisversjoner = prisversjoner;
@@ -88,6 +91,9 @@ public class FakturakjoringService {
         this.brukerContext = brukerContext;
     }
 
+    /** Suffix for a customer name read from the registry because the invoice predates the frozen name. */
+    public static final String NAAVAERENDE_NAVN = " (nåværende navn)";
+
     // ---- Generation -------------------------------------------------------------------------
 
     @Transactional
@@ -97,13 +103,14 @@ public class FakturakjoringService {
             throw new Regelbrudd("Det finnes allerede en aktiv kjøring for " + periode
                     + ". Forkast den før du genererer på nytt.");
         }
+        Long importId = usage.gjeldendeImport(periode).map(BruksdataImport::id).orElse(null);
         List<Bruksdata> bruk = usage.bruksdataFor(periode);
-        if (bruk.isEmpty()) {
+        if (importId == null || bruk.isEmpty()) {
             throw new Regelbrudd("Ingen bruksdata for " + periode + " — importer bruk først.");
         }
 
         Fakturakjoring kjoring = kjoringer.save(new Fakturakjoring(null, periode.førsteDag(),
-                Kjoringstatus.GENERERT.name(), versjon.id(), brukerContext.naavaerendeBruker(),
+                Kjoringstatus.GENERERT.name(), versjon.id(), importId, brukerContext.naavaerendeBruker(),
                 OffsetDateTime.now(), null, null, null));
 
         var ctx = new Byggekontekst(periode, versjon, kjoring.id());
@@ -130,9 +137,11 @@ public class FakturakjoringService {
 
         List<Kontrollfunn> funnListe = new ArrayList<>();
         Map<Gruppe, Gruppedata> grupper = new LinkedHashMap<>();
-        var orgnrUtenKunde = new java.util.LinkedHashSet<String>();
-        var manglerKundenummer = new java.util.LinkedHashSet<String>();
-        var manglerPris = new java.util.LinkedHashSet<String>();
+        // Skipped usage rows per finding key, so each can be linked to the finding that kept it off the
+        // invoice (specs/002 D2): orgnr → MANGLER_KUNDE, orgnr/kode → MANGLER_KUNDENUMMER, kode → MANGLER_PRIS.
+        var orgnrUtenKunde = new LinkedHashMap<String, List<Long>>();
+        var manglerKundenummer = new LinkedHashMap<String, List<Long>>();
+        var manglerPris = new LinkedHashMap<String, List<Long>>();
         var manglerKontering = new java.util.LinkedHashSet<String>();
         var kunderMedBruk = new LinkedHashMap<Long, Kunde>();
 
@@ -148,7 +157,7 @@ public class FakturakjoringService {
             Produkt p = produktById.get(b.produktId());
             Kunde k = kundeByOrgnr.get(b.organisasjonsnummer());
             if (k == null) {
-                orgnrUtenKunde.add(b.organisasjonsnummer());
+                orgnrUtenKunde.computeIfAbsent(b.organisasjonsnummer(), x -> new ArrayList<>()).add(b.id());
                 continue;
             }
             kunderMedBruk.putIfAbsent(k.id(), k);
@@ -158,7 +167,8 @@ public class FakturakjoringService {
             KundenummerRegel regel = velgRegel(
                     reglerByKunde.getOrDefault(k.id(), List.of()), p.id());
             if (regel == null) {
-                manglerKundenummer.add(k.organisasjonsnummer() + "/" + p.kode());
+                manglerKundenummer.computeIfAbsent(k.organisasjonsnummer() + "/" + p.kode(), x -> new ArrayList<>())
+                        .add(b.id());
                 continue;
             }
 
@@ -170,7 +180,7 @@ public class FakturakjoringService {
             if (Bruksdatatype.valueOf(b.type()).erVolum()) {
                 Pris pris = prisByProdukt.get(p.id());
                 if (pris == null) {
-                    manglerPris.add(p.kode());
+                    manglerPris.computeIfAbsent(p.kode(), x -> new ArrayList<>()).add(b.id());
                     continue;
                 }
                 antall = b.antall() == null ? BigDecimal.ZERO : b.antall();
@@ -195,12 +205,23 @@ public class FakturakjoringService {
         }
 
         // BLOKKERENDE findings.
-        orgnrUtenKunde.forEach(orgnr -> funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KUNDE,
-                "Bruk for organisasjonsnummer " + orgnr + " har ingen registrert kunde")));
-        manglerKundenummer.forEach(kp -> funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KUNDENUMMER,
-                "Mangler kundenummerregel for " + kp)));
-        manglerPris.forEach(kode -> funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_PRIS,
-                "Produkt " + kode + " mangler pris i aktiv prisversjon")));
+        // Each finding that skipped rows remembers them by its index in funnListe until it is saved.
+        Map<Integer, List<Long>> utelattePerFunn = new LinkedHashMap<>();
+        orgnrUtenKunde.forEach((orgnr, ider) -> {
+            utelattePerFunn.put(funnListe.size(), ider);
+            funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KUNDE,
+                    "Bruk for organisasjonsnummer " + orgnr + " har ingen registrert kunde"));
+        });
+        manglerKundenummer.forEach((kp, ider) -> {
+            utelattePerFunn.put(funnListe.size(), ider);
+            funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KUNDENUMMER,
+                    "Mangler kundenummerregel for " + kp));
+        });
+        manglerPris.forEach((kode, ider) -> {
+            utelattePerFunn.put(funnListe.size(), ider);
+            funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_PRIS,
+                    "Produkt " + kode + " mangler pris i aktiv prisversjon"));
+        });
         manglerKontering.forEach(kode -> funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KONTERING,
                 "Produkt " + kode + " mangler kontering (OQ-2)")));
         kunderMedBruk.values().forEach(k -> {
@@ -234,7 +255,7 @@ public class FakturakjoringService {
                     ? data.kunde.fakturamottakerOrgnr() : data.kunde.organisasjonsnummer();
 
             Faktura faktura = fakturaer.save(new Faktura(null, ctx.kjoringId, data.kunde.id(), UuidV7.naa(),
-                    ordre++, g.kundenummer, data.tilleggstekst, mottaker, sum));
+                    ordre++, g.kundenummer, data.kunde.virksomhetsnavn(), data.tilleggstekst, mottaker, sum));
             ctx.antallFakturaer++;
             for (LinjeUtkast l : data.linjer) {
                 linjer.save(new Fakturalinje(null, faktura.id(), l.produktId, l.beskrivelse, l.antall,
@@ -250,7 +271,11 @@ public class FakturakjoringService {
         }
 
         leggTilForrigePeriodeAdvarsler(ctx, sumPerKunde, forsteFakturaPerKunde, funnListe);
-        funn.saveAll(funnListe);
+        List<Kontrollfunn> lagret = funn.saveAll(funnListe);
+        List<KontrollfunnBruksdata> lenker = new ArrayList<>();
+        utelattePerFunn.forEach((indeks, ider) ->
+                ider.forEach(id -> lenker.add(new KontrollfunnBruksdata(lagret.get(indeks).id(), id))));
+        funnBruksdata.lagre(lenker);
     }
 
     private void leggTilForrigePeriodeAdvarsler(Byggekontekst ctx, Map<Long, BigDecimal> sumPerKunde,
@@ -295,7 +320,7 @@ public class FakturakjoringService {
         }
         String bruker = brukerContext.naavaerendeBruker();
         kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.GODKJENT.name(),
-                kj.prisversjonId(), kj.generertAv(), kj.generertAt(), bruker, OffsetDateTime.now(), kj.kommentar()));
+                kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), bruker, OffsetDateTime.now(), kj.kommentar()));
         audit.logg(Handling.GODKJENTE, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString()));
     }
 
@@ -307,7 +332,7 @@ public class FakturakjoringService {
             throw new Regelbrudd("Bare en godkjent kjøring kan eksporteres (status er " + kj.status() + ")");
         }
         kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.EKSPORTERT.name(),
-                kj.prisversjonId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
+                kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
                 kj.kommentar()));
     }
 
@@ -321,7 +346,7 @@ public class FakturakjoringService {
             return;
         }
         kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.FORKASTET.name(),
-                kj.prisversjonId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
+                kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
                 kj.kommentar()));
         audit.logg(Handling.FORKASTET, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString()));
     }
@@ -341,6 +366,74 @@ public class FakturakjoringService {
     @Transactional(readOnly = true)
     public List<Faktura> fakturaer(Long kjoringId) {
         return fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
+    }
+
+    /** Headline figures for the run page and the covering email (specs/002 FR-001..003). */
+    @Transactional(readOnly = true)
+    public Kjoringssammendrag sammendrag(Long kjoringId) {
+        Fakturakjoring kj = hent(kjoringId);
+        List<Faktura> fs = fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
+        int antallLinjer = 0;
+        BigDecimal sumLinjer = BigDecimal.ZERO;
+        BigDecimal sumFakturaer = BigDecimal.ZERO;
+        for (Faktura f : fs) {
+            sumFakturaer = sumFakturaer.add(f.sumBelop());
+            for (Fakturalinje l : linjer.findByFakturaIdOrderById(f.id())) {
+                antallLinjer++;
+                sumLinjer = sumLinjer.add(l.belop());
+            }
+        }
+        return new Kjoringssammendrag(new Periode(kj.periode()), fs.size(), antallLinjer, sumLinjer, sumFakturaer);
+    }
+
+    /**
+     * The customer name to show per invoice (D9): the name frozen at generation, or — for invoices
+     * generated before it was frozen — the current registry name marked as such.
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, String> kundenavn(List<Faktura> fs) {
+        Map<Long, String> navn = new LinkedHashMap<>();
+        Map<Long, Kunde> kundeById = new LinkedHashMap<>();
+        for (Faktura f : fs) {
+            if (f.kundenavn() != null) {
+                navn.put(f.id(), f.kundenavn());
+            } else {
+                Kunde k = kundeById.computeIfAbsent(f.kundeId(), id -> kunder.findById(id).orElse(null));
+                navn.put(f.id(), k == null ? "" : k.virksomhetsnavn() + NAAVAERENDE_NAVN);
+            }
+        }
+        return navn;
+    }
+
+    /**
+     * Every invoice line of a run with what a spreadsheet of the fakturagrunnlag needs beside the line:
+     * its invoice, customer name and orgnr, and the usage type of the row it came from. Ordered like the
+     * LG04 (invoice order, then product and type).
+     */
+    @Transactional(readOnly = true)
+    public List<Grunnlagslinje> grunnlagslinjer(Long kjoringId) {
+        Fakturakjoring kj = hent(kjoringId);
+        Map<Long, String> typeByBruksdata = new LinkedHashMap<>();
+        if (kj.bruksdataImportId() != null) {
+            usage.rader(kj.bruksdataImportId()).forEach(b -> typeByBruksdata.put(b.id(), b.type()));
+        }
+        List<Faktura> fs = fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
+        Map<Long, String> navn = kundenavn(fs);
+        Map<Long, String> orgnrByKunde = new LinkedHashMap<>();
+        List<Grunnlagslinje> ut = new ArrayList<>();
+        for (Faktura f : fs) {
+            String orgnr = orgnrByKunde.computeIfAbsent(f.kundeId(),
+                    id -> kunder.findById(id).map(Kunde::organisasjonsnummer).orElse(""));
+            for (Fakturalinje l : linjer.findByFakturaIdOrderById(f.id())) {
+                ut.add(new Grunnlagslinje(f, l, navn.get(f.id()), orgnr, typeByBruksdata.get(l.bruksdataId())));
+            }
+        }
+        return ut;
+    }
+
+    /** One line of the fakturagrunnlag spreadsheet (see {@link #grunnlagslinjer}). */
+    public record Grunnlagslinje(Faktura faktura, Fakturalinje linje, String kundenavn, String organisasjonsnummer,
+                                 String type) {
     }
 
     @Transactional(readOnly = true)

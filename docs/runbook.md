@@ -25,25 +25,47 @@ derived from today's date.
    import it staged. Fallback: upload the CSV (format in [csv-format.md](csv-format.md)). Review the
    staging report (per-product sums, warnings, any rejects), then **Bekreft import**. An unknown DWH
    product name must be mapped under *Produkter → Kildenavn* first. A file with any reject imports nothing —
-   fix it and re-upload. Re-importing a period replaces it and marks the previous import `AVVIST`.
+   fix it and re-upload. Re-importing a period supersedes it: the previous import becomes `AVVIST`
+   and its rows are kept for traceability.
 3. **Generate** (FORVALTER) under *Kjøringer*: choose the period and **Generer**. Review the run:
    the invoice table and the control findings.
    - **BLOKKERENDE** findings must be resolved before approval (fix the data, **Forkast** the run,
      regenerate).
    - **ADVARSEL** findings (±30 % deviation vs the previous period, zero-amount lines, new
      customers) are informational — check them, then proceed.
+   - Control before approval (BF1 T01/T06/T10): the *Sammendrag* on the run page, **Avstemming
+     bruksdata** (imported vs invoiced, and every row kept off the invoice with its reason), and
+     **Last ned fakturagrunnlag (XLSX)** to sample in Excel. None of these change the run.
 4. **Approve** (GODKJENNER): **Godkjenn** the run once there are no blocking findings.
-5. **Export** (GODKJENNER): **Eksporter**. Four files are produced and archived (with SHA-256):
-   `LG04` (the Unit4 import file), `PDF` (a zip of per-invoice detail views), and `CSV` + `XLSX`
-   of the lines. Download them from the run page.
+5. **Export** (GODKJENNER): **Eksporter**. The LG04 is read back and reconciled against the run
+   before anything is saved; the run page then shows **LG04 stemmer med fakturagrunnlaget** with the
+   file's and the run's orders and amount (BF1 T15). Four files are produced and archived (with
+   SHA-256): `LG04` (the Unit4 import file), `PDF` (a zip of per-invoice detail views), and `CSV` +
+   `XLSX` of the lines. Download them from the run page. If the export is stopped instead, see
+   [Eksport stoppet](#eksport-stoppet-lg04-does-not-match-the-run).
 6. **Send to DFØ** (manual): send the downloaded LG04 file to DFØ through the agreed channel for
-   import into Unit4. The file is already Windows-1252 encoded — **no `iconv` step**. Distribute the
+   import into Unit4. Copy the figures for the covering email (periode, antall fakturaer, samlet
+   beløp) from *Til e-post til regnskap* on the run page — VAT treatment is still open (OQ-11). The file is already Windows-1252 encoded — **no `iconv` step**. Distribute the
    PDF detail views to tjenesteeiere as agreed.
 
 ## Re-run a period
 
 A period may only have one active run. To redo one: open the run, **Forkast** it, fix the data
-(registries and/or re-import usage), then **Generer** again. Forkasting is blocked once a run is
+(registries and/or re-import usage), then **Generer** again. The discarded run keeps its own usage
+import and stays explainable (its *Avstemming bruksdata* still works).
+
+## Eksport stoppet (LG04 does not match the run)
+
+The export reads the LG04 file back before saving anything. If its order count or amount differs
+from the run, the export is **stopped**: no files are written, the run stays `GODKJENT`, an
+`EKSPORT_STOPPET` event with both sets of figures is logged, and the run page explains it. The file
+is built from the run's own lines, so this is always a **defect in forsystem**, never a data error
+the operator can fix. Nothing needs undoing: contact the forsystem team with the run id and the
+message, and once the defect is fixed, press **Eksporter** again on the same run.
+
+**Kontroller arkivert LG04 på nytt** (run page, any exported run) re-reads and re-hashes the
+archived file without changing anything — use it if anyone doubts that the delivered file is the
+reconciled one. Forkasting is blocked once a run is
 `EKSPORTERT` — a new period/correction mechanism (avregning) is future scope (OQ-6).
 
 ## On a DFØ / Unit4 import-error email

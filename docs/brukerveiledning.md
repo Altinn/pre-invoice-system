@@ -267,6 +267,19 @@ stateDiagram-v2
 **Detalj-siden:**
 
 - **Status** øverst (fargelagt merke).
+- **Sammendrag** — antall fakturaer, antall LG04-ordrer (i dag én ordre per fakturalinje, OQ-1),
+  antall linjer og sum beløp. Summen er merket **«eksl./inkl. mva uavklart»** fordi det ennå ikke er
+  avklart om beløpene er med eller uten mva (OQ-11).
+- **Til e-post til regnskap** (når kjøringen er GODKJENT eller EKSPORTERT) — periode, antall fakturaer
+  og samlet beløp, klare til å kopieres inn i følge-e-posten med **Kopier**.
+- **LG04-avstemming** (når kjøringen er EKSPORTERT) — viser at LG04-fila har nøyaktig like mange
+  ordrer og samme beløp som kjøringen («LG04 stemmer med fakturagrunnlaget»). **Kontroller arkivert
+  LG04 på nytt** leser den lagrede fila på nytt og sjekker at den ikke er endret.
+- **Avstemming bruksdata** — se under.
+- **Last ned fakturagrunnlag (XLSX, for Excel)** / **(CSV)** — alle fakturalinjene i et regneark, også
+  *før* godkjenning. Filnavnet inneholder status (f.eks. `fakturagrunnlag-2027-01-GENERERT.xlsx`), så et
+  utkast ikke forveksles med det godkjente grunnlaget. Nedlastingen endrer ingenting, men logges.
+  Beløp, antall og enhetspris er tall i Excel, så du kan summere dem.
 - **Blokkerende kontrollfunn** (rød) — må løses før godkjenning.
 - **Advarsler** (gul) — til info, stopper deg ikke.
 - **Fakturaer** — én rad per faktura:
@@ -274,6 +287,7 @@ stateDiagram-v2
   | Kolonne | Betydning |
   |---|---|
   | Ordre | Løpenummer i kjøringen (ordre-id i LG04). |
+  | Kunde | Kundens navn slik det var da kjøringen ble generert. «(nåværende navn)» betyr at fakturaen er eldre enn denne funksjonen, og navnet er hentet fra kunderegisteret i dag. |
   | Kundenummer | Unit4-kundenummer fakturaen gjelder. |
   | Tilleggstekst | Skiller delte kundenummer. |
   | Mottaker (orgnr) | Hvem som mottar (avvikende mottaker hvis satt, ellers kundens orgnr). |
@@ -285,6 +299,19 @@ stateDiagram-v2
   - Når **GODKJENT**: **Eksporter** og **Forkast**.
 - **Eksportfiler** (etter eksport): tabell med type, filnavn, SHA-256 og **Last ned**.
 
+**Avstemming bruksdata:** sammenligner bruksdataene kjøringen ble bygget fra med det som ble
+fakturert, per produkt og type (volum sammenlignes på antall, Azure/SMS-kostnader på beløp). Under
+tabellen står hver bruksdatarad som *ikke* ble fakturert, med årsaken — kontrollfunnet som stoppet
+den (f.eks. `MANGLER_KUNDE`). Står det «All bruksdata er med i fakturagrunnlaget», er ingenting
+utelatt. Aktive produkter uten bruk i perioden vises med 0, så et manglende produkt synes. Siden viser
+bare bruk som kom inn i forsystemet — bruk som datavarehuset filtrerer bort før det når oss, er ikke
+med.
+
+**Eksport stoppet:** Før noe lagres, leser forsystemet LG04-fila tilbake og sammenligner den med
+kjøringen. Stemmer den ikke, stoppes eksporten: ingen filer lages, kjøringen er fortsatt GODKJENT, og
+du får en rød melding med tallene. Dette er alltid en feil i forsystemet, ikke i dataene dine —
+kontakt forsystem-teamet, og trykk **Eksporter** på nytt når feilen er rettet. Ingenting må gjøres om.
+
 **Faktura-detalj (Linjer):** viser hver fakturalinje med produkt, beskrivelse (f.eks. «Bruk av melding
 januar 2027»), servicekode, referanse, antall, enhetspris, beløp, og **sporbarhet** tilbake til
 bruksdata-id og pris-id. Kontrollfunn knyttet til fakturaen vises øverst.
@@ -295,8 +322,8 @@ bruksdata-id og pris-id. Kontrollfunn knyttet til fakturaen vises øverst.
 |---|---|---|
 | **LG04** | Fast-bredde tekstfil (Windows-1252) | Importeres i Unit4 via DFØ. |
 | **PDF** (zip) | Én detaljvisning per faktura, `<kundenummer>-<uuid>.pdf` | Til tjenesteeierne. |
-| **CSV** | Alle linjer, kommaseparert | Analyse / kontroll. |
-| **XLSX** | Alle linjer, Excel | Analyse / kontroll. |
+| **CSV** | Alle linjer, kommaseparert | Maskinell kontroll. |
+| **XLSX** | Alle linjer, Excel (samme kolonner som nedlastingen før godkjenning) | Analyse / kontroll. |
 
 > **Nedlasting:** trykk **Last ned** på filen du vil ha. Fila lastes ned til maskinen din. LG04-fila
 > er allerede Windows-1252-kodet — **ingen `iconv`** trengs. Send den til DFØ via avtalt kanal.
@@ -322,11 +349,14 @@ Den komplette rutinen for å fakturere forrige måned (roller i parentes):
 2. **Importer bruk** (FORVALTER): *Bruksdata* → velg periode, last opp CSV, sjekk forhåndsvisningen,
    **Bekreft import**.
 3. **Generer** (FORVALTER): *Kjøringer* → velg periode → **Generer**. Åpne kjøringen og gå gjennom
-   fakturaer og funn.
+   sammendrag, fakturaer og funn. Kontroller med **Avstemming bruksdata** og **Last ned
+   fakturagrunnlag (XLSX)**.
 4. **Løs blokkerende funn** hvis noen: rett dataene, **Forkast** kjøringen, og **Generer** på nytt.
 5. **Godkjenn** (GODKJENNER): **Godkjenn** når det ikke er blokkerende funn.
-6. **Eksporter** (GODKJENNER): **Eksporter**, og **Last ned** LG04 + PDF-zip + CSV/XLSX.
-7. **Send til DFØ** (manuelt): send LG04-fila videre; distribuer PDF-ene til tjenesteeierne.
+6. **Eksporter** (GODKJENNER): **Eksporter**. Sjekk at **LG04-avstemming** sier at fila stemmer, og
+   **Last ned** LG04 + PDF-zip + CSV/XLSX.
+7. **Send til DFØ** (manuelt): send LG04-fila videre med tallene fra **Til e-post til regnskap**;
+   distribuer PDF-ene til tjenesteeierne.
 
 ```mermaid
 sequenceDiagram

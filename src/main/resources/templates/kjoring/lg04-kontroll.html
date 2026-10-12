@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('LG04-kontroll')}"></head>
+<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
+<header th:replace="~{layout :: topbar}"></header>
+<main class="side" th:with="a=${kontroll}">
+    <a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}">← Kjøring</a>
+    <h1 class="ds-heading" data-size="lg" th:text="|Kontroll av arkivert LG04 — ${kjoring.periode()}|">Kontroll av arkivert LG04</h1>
+    <p class="ds-paragraph">Den arkiverte LG04-filen er lest på nytt, sjekksummen er kontrollert mot eksporten, og
+        ordrer og beløp er sammenlignet med kjøringen. Ingenting er endret.</p>
+
+    <p class="ds-alert" data-color="danger" th:if="${a.kilde().name() == 'FEIL'}"
+       th:text="|LG04-filen kunne ikke avstemmes: ${a.feil()}|">Kunne ikke avstemmes</p>
+    <div th:unless="${a.kilde().name() == 'FEIL'}">
+        <p class="ds-alert" th:data-color="${a.stemmer()} ? 'success' : 'danger'"
+           th:text="${a.stemmer()} ? 'LG04 stemmer med fakturagrunnlaget' : 'LG04 stemmer IKKE med fakturagrunnlaget'">
+            LG04 stemmer med fakturagrunnlaget</p>
+        <table class="ds-table" data-size="sm" style="max-width:32rem;">
+            <thead><tr><th></th><th class="hoyre">LG04-fil</th><th class="hoyre">Kjøring</th></tr></thead>
+            <tbody>
+            <tr><th scope="row">Ordrer</th>
+                <td class="hoyre" th:text="${a.antallOrdrerFil()}">0</td>
+                <td class="hoyre" th:text="${a.antallOrdrerKjoring()}">0</td></tr>
+            <tr><th scope="row">Beløp</th>
+                <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopFil(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+                <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopKjoring(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
+            <tr><th scope="row">SHA-256</th><td colspan="2"><code th:text="${a.sha256()}">…</code></td></tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+</body>
+</html>

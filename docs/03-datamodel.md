@@ -239,6 +239,38 @@ No seed rows for `produkt_kildenavn`: an unmapped name rejects the import. A sch
 `MOTTATT` import (payload archived, no `bruksdata` rows) that a FORVALTER confirms; confirming
 re-validates from the archive and moves it to `VALIDERT`.
 
+## V8–V11 — pre-approval control basis (specs/002-pre-approval-control)
+
+```sql
+-- V8: keep superseded usage; uniqueness per import, not per period. A run records its import.
+alter table bruksdata
+    drop constraint bruksdata_periode_organisasjonsnummer_produkt_id_type_key,
+    add constraint bruksdata_unik_per_import unique (import_id, organisasjonsnummer, produkt_id, type);
+alter table fakturakjoring add column bruksdata_import_id bigint references bruksdata_import;  -- backfilled
+
+-- V9: the stored proof that an exported LG04 matched its run (a mismatch can never be stored).
+create table lg04_avstemming (
+    id bigint generated always as identity primary key,
+    kjoring_id bigint not null unique references fakturakjoring,
+    eksportfil_id bigint not null unique references eksportfil,
+    antall_ordrer_fil integer not null, sum_ore_fil bigint not null,
+    antall_ordrer_kjoring integer not null, sum_ore_kjoring bigint not null,
+    antall_fakturaer integer not null, sha256 text not null,
+    avstemt_av text not null, avstemt_at timestamptz not null default now(),
+    check (antall_ordrer_fil = antall_ordrer_kjoring and sum_ore_fil = sum_ore_kjoring)
+);
+
+-- V10: which usage rows a blocking finding kept off the invoice.
+create table kontrollfunn_bruksdata (
+    kontrollfunn_id bigint not null references kontrollfunn,
+    bruksdata_id    bigint not null references bruksdata,
+    primary key (kontrollfunn_id, bruksdata_id)
+);
+
+-- V11: customer name frozen at generation (NULL for older invoices).
+alter table faktura add column kundenavn text;
+```
+
 ## Design decisions (preserve these)
 
 1. **Traceability is structural**: `fakturalinje → bruksdata` (which usage),
@@ -250,9 +282,11 @@ re-validates from the archive and moves it to `VALIDERT`.
    header (one apar_id per invoice) stays consistent.
 3. **Run idempotency**: several runs per period allowed only if older ones are FORKASTET
    (partial unique index) — the clean version of the old system's delete-and-rerun.
-4. **Usage re-import**: new import for a period deletes the previous import's rows for that
-   period and marks it AVVIST (application logic), keeping the natural-key unique constraint
-   satisfied.
+4. **Usage re-import**: a new import for a period marks the previous one AVVIST (application
+   logic) and **keeps its rows** — lines of a discarded run still reference them. "The period's
+   usage" is the latest VALIDERT import's rows, and each run records `bruksdata_import_id`.
+   (Until V8 the old rows were deleted, which failed on `fakturalinje_bruksdata_id_fkey` once any
+   run existed for the period — specs/002 research R1.)
 5. **`ordre_nr` lives on `faktura`, not on lines**: if it turns out LG04 cannot carry
    multiple amount lines per invoice (OQ-1), one faktura is split into several LG04 orders
    at export time — the domain model does not change.

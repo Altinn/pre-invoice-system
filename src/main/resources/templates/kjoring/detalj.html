@@ -12,6 +12,65 @@
               th:text="${kjoring.status()}">GENERERT</span>
     </div>
 
+    <!-- Stopped export (specs/002 FR-005a): the run is untouched, say so and whom to contact. -->
+    <p class="ds-alert" data-color="danger" th:if="${eksportStoppet}" th:text="${eksportStoppet}">Eksport stoppet</p>
+
+    <!-- Summary (specs/002 FR-001..003). VAT treatment is open (OQ-11): no VAT figure, only the label. -->
+    <h2 class="ds-heading" data-size="xs" style="margin-top:1rem;">Sammendrag</h2>
+    <table class="ds-table" data-size="sm" style="max-width:32rem;">
+        <tbody>
+        <tr><th scope="row">Periode</th><td class="hoyre" th:text="${sammendrag.periode()}">2027-01</td></tr>
+        <tr><th scope="row">Antall fakturaer</th><td class="hoyre" th:text="${sammendrag.antallFakturaer()}">0</td></tr>
+        <tr><th scope="row">Antall LG04-ordrer <span class="ds-paragraph" data-size="xs">(én ordre per fakturalinje, OQ-1)</span></th>
+            <td class="hoyre" th:text="${antallOrdrer}">0</td></tr>
+        <tr><th scope="row">Antall linjer</th><td class="hoyre" th:text="${sammendrag.antallLinjer()}">0</td></tr>
+        <tr><th scope="row">Sum beløp <span class="ds-paragraph" data-size="xs">(eksl./inkl. mva uavklart)</span></th>
+            <td class="hoyre" th:text="${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
+        </tbody>
+    </table>
+    <p class="ds-alert" data-color="danger" th:unless="${sammendrag.konsistent()}"
+       th:text="|Summen av fakturaene (${sammendrag.sumFakturaer()}) er ikke lik summen av linjene (${sammendrag.sumBelop()}). Dette er en feil i forsystemet — kontakt forsystem-teamet.|">
+        Summene stemmer ikke.</p>
+
+    <!-- Figures for the covering email to regnskap (OQ-8). -->
+    <div th:if="${kjoring.status() == 'GODKJENT' or kjoring.status() == 'EKSPORTERT'}">
+        <h2 class="ds-heading" data-size="xs" style="margin-top:1rem;">Til e-post til regnskap</h2>
+        <pre id="epost" class="ds-paragraph" data-size="sm"
+             th:text="|Periode: ${sammendrag.periode()} (${sammendrag.periode().norskLabel()})
+Antall fakturaer: ${sammendrag.antallFakturaer()}
+Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')} kr (eksl./inkl. mva uavklart)|">…</pre>
+        <button class="ds-button" data-variant="secondary" data-size="sm" type="button"
+                onclick="navigator.clipboard.writeText(document.getElementById('epost').innerText); this.textContent='Kopiert';">Kopier</button>
+    </div>
+
+    <!-- LG04 reconciliation (specs/002 FR-006/007). A failure is shown as an error, never as a match. -->
+    <div th:if="${lg04Avstemming != null}" th:with="a=${lg04Avstemming}">
+        <h2 class="ds-heading" data-size="xs" style="margin-top:1rem;">LG04-avstemming</h2>
+        <p class="ds-alert" data-color="danger" th:if="${a.kilde().name() == 'FEIL'}"
+           th:text="|LG04-filen kunne ikke avstemmes: ${a.feil()}|">Kunne ikke avstemmes</p>
+        <div th:unless="${a.kilde().name() == 'FEIL'}">
+            <p class="ds-alert" th:data-color="${a.stemmer()} ? 'success' : 'danger'"
+               th:text="${a.stemmer()} ? 'LG04 stemmer med fakturagrunnlaget' : 'LG04 stemmer IKKE med fakturagrunnlaget'">
+                LG04 stemmer med fakturagrunnlaget</p>
+            <table class="ds-table" data-size="sm" style="max-width:32rem;">
+                <thead><tr><th></th><th class="hoyre">LG04-fil</th><th class="hoyre">Kjøring</th></tr></thead>
+                <tbody>
+                <tr><th scope="row">Ordrer</th>
+                    <td class="hoyre" th:text="${a.antallOrdrerFil()}">0</td>
+                    <td class="hoyre" th:text="${a.antallOrdrerKjoring()}">0</td></tr>
+                <tr><th scope="row">Beløp</th>
+                    <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopFil(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+                    <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopKjoring(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
+                </tbody>
+            </table>
+            <p class="ds-paragraph" data-size="sm" th:if="${a.kilde().name() == 'LAGRET'}"
+               th:text="|Avstemt ved eksport av ${a.avstemtAv()}, ${#temporals.format(a.avstemtAt(), 'dd.MM.yyyy HH:mm')}.|">Avstemt ved eksport.</p>
+            <p class="ds-paragraph" data-size="sm" th:if="${a.kilde().name() == 'BEREGNET_FRA_ARKIV'}">
+                Avstemt mot arkivert fil nå (kjøringen ble eksportert før automatisk avstemming).</p>
+        </div>
+        <a class="ds-link" th:href="@{/kjoringer/{id}/lg04-kontroll(id=${kjoring.id()})}">Kontroller arkivert LG04 på nytt</a>
+    </div>
+
     <!-- Findings -->
     <div th:if="${!blokkerende.isEmpty()}">
         <h2 class="ds-heading" data-size="xs" style="margin-top:1rem;">Blokkerende kontrollfunn</h2>
@@ -26,26 +85,40 @@
         </p>
     </div>
 
+    <!-- Controls before approval (specs/002). -->
+    <div class="rad" style="margin-top:1rem;">
+        <a class="ds-button" data-variant="secondary" data-size="sm"
+           th:href="@{/kjoringer/{id}/avstemming(id=${kjoring.id()})}">Avstemming bruksdata</a>
+        <th:block th:if="${kjoring.status() != 'FORKASTET'}">
+            <!-- hx-boost off + download: a real file download, not an htmx page swap. -->
+            <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false" download
+               th:href="@{/kjoringer/{id}/fakturagrunnlag.xlsx(id=${kjoring.id()})}">Last ned fakturagrunnlag (XLSX, for Excel)</a>
+            <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false" download
+               th:href="@{/kjoringer/{id}/fakturagrunnlag.csv(id=${kjoring.id()})}">(CSV)</a>
+        </th:block>
+    </div>
+
     <!-- Invoices -->
     <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Fakturaer</h2>
     <table class="ds-table" data-size="sm">
         <thead>
-        <tr><th>Ordre</th><th>Kundenummer</th><th>Tilleggstekst</th><th>Mottaker (orgnr)</th><th class="hoyre">Sum</th><th></th></tr>
+        <tr><th>Ordre</th><th>Kunde</th><th>Kundenummer</th><th>Tilleggstekst</th><th>Mottaker (orgnr)</th><th class="hoyre">Sum</th><th></th></tr>
         </thead>
         <tbody>
         <tr th:each="f : ${fakturaer}">
             <td th:text="${f.ordreNr()}">1</td>
+            <td th:text="${kundenavn.get(f.id())}">Kunde</td>
             <td th:text="${f.kundenummer()}">100200</td>
             <td th:text="${f.tilleggstekst()} ?: '—'">—</td>
             <td th:text="${f.fakturamottakerOrgnr()}">123456789</td>
-            <td class="hoyre" th:text="${f.sumBelop()}">0.00</td>
+            <td class="hoyre" th:text="${#numbers.formatDecimal(f.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
             <td class="hoyre">
                 <a class="ds-button" data-variant="tertiary" data-size="sm"
                    th:href="@{/kjoringer/{id}/faktura/{fid}(id=${kjoring.id()},fid=${f.id()})}">Linjer</a>
             </td>
         </tr>
         <tr th:if="${fakturaer.isEmpty()}">
-            <td colspan="6" class="ds-paragraph" data-size="sm">Ingen fakturaer.</td>
+            <td colspan="7" class="ds-paragraph" data-size="sm">Ingen fakturaer.</td>
         </tr>
         </tbody>
     </table>

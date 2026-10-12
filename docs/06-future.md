@@ -11,8 +11,9 @@ prepares for it*. Build the seams now, the features later.
   stages the previous month at 06:00 on the 7th for a FORVALTER to confirm. Off by default in code
   (`forsystem.dwh.enabled`); switched on in tt02 and prod on 2026-10-07 for testing (scheduler off).
 - **Remaining before production use**: the product-name mapping must be confirmed (OQ-18); the DWH
-  team must close the API with Entra auth and fix the entity key that makes paging lossy (OQ-19 —
-  until then forsystem fetches a month in one request and refuses any `nextLink`); view retention
+  team must confirm Entra auth for forsystem's identity (the API has required a token since
+  2026-10-12; scope and access are unconfirmed) and fix the entity key that makes paging lossy
+  (OQ-19 — until then forsystem fetches a month in one request and refuses any `nextLink`); view retention
   and refresh semantics (OQ-20); quantity units (OQ-21). The issues are written up for the DWH team
   in Norwegian in specs/001-dwh-usage-import/sak-til-dwh-teamet.md.
 - **Data timing**: the previous month is complete on the **6th** (Azure costs final 5 days in).

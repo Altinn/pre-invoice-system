@@ -16,6 +16,7 @@ public record Fakturakjoring(
         LocalDate periode,
         String status,
         Long prisversjonId,
+        Long bruksdataImportId,
         String generertAv,
         OffsetDateTime generertAt,
         String godkjentAv,

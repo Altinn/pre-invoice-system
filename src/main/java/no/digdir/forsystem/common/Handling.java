@@ -17,5 +17,9 @@ public enum Handling {
     GODKJENTE,
     FORKASTET,
     HENTET,
-    EKSPORTERTE
+    EKSPORTERTE,
+    /** An export was stopped because the LG04 file did not reconcile with the run; nothing was written. */
+    EKSPORT_STOPPET,
+    /** A fakturagrunnlag spreadsheet was downloaded (also before approval); changes nothing. */
+    LASTET_NED
 }
