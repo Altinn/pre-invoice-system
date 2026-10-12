@@ -9,6 +9,7 @@ import no.digdir.forsystem.billing.FakturakjoringService;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
 import no.digdir.forsystem.export.EksportService;
+import no.digdir.forsystem.export.Lg04Avvik;
 import no.digdir.forsystem.registry.ProduktService;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/kjoringer")
@@ -67,13 +69,32 @@ class FakturakjoringController {
                 .filter(f -> "ADVARSEL".equals(f.alvorlighet())).toList());
         model.addAttribute("harBlokkerende", kjoringer.harBlokkerende(id));
         model.addAttribute("eksportfiler", kjoringer.eksportfiler(id));
+        model.addAttribute("sammendrag", kjoringer.sammendrag(id));
+        model.addAttribute("antallOrdrer", eksport.forventetAntallOrdrer(id));
+        model.addAttribute("lg04Avstemming", eksport.avstemmingFor(id).orElse(null));
         return "kjoring/detalj";
     }
 
+    /**
+     * A stopped export (LG04 did not reconcile) comes back to the run page with the explanation, not
+     * to the generic error page; it is logged here because the export's own transaction rolled back.
+     */
     @PostMapping("/{id}/eksporter")
-    String eksporter(@PathVariable Long id) {
-        eksport.eksporter(id);
+    String eksporter(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            eksport.eksporter(id);
+        } catch (Lg04Avvik avvik) {
+            eksport.loggStoppetEksport(id, avvik);
+            redirect.addFlashAttribute("eksportStoppet", avvik.getMessage());
+        }
         return "redirect:/kjoringer/" + id;
+    }
+
+    @GetMapping("/{id}/lg04-kontroll")
+    String lg04Kontroll(@PathVariable Long id, Model model) {
+        model.addAttribute("kjoring", kjoringer.hent(id));
+        model.addAttribute("kontroll", eksport.kontrollerArkiv(id));
+        return "kjoring/lg04-kontroll";
     }
 
     @GetMapping("/{id}/eksportfil/{filId}")

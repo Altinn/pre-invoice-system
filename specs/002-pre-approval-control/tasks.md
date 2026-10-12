@@ -80,42 +80,42 @@ an `EKSPORT_STOPPET` event.
 
 ### Tests for User Story 1 (write first, see them fail)
 
-- [ ] T010 [P] [US1] Write `T/export/lg04/Lg04LeserTest.java` (plain unit test):
+- [x] T010 [P] [US1] Write `T/export/lg04/Lg04LeserTest.java` (plain unit test):
   - (a) reading the three golden lines `src/test/resources/lg04/linje1..3.txt` joined with `\n` gives 1 order and the golden amount in øre (read the expected value from `Lg04SkriverTest`'s fixture)
   - (b) round-trip: build 5 `Lg04Ordre` values, including a 0 amount and a negative amount, through `Lg04Eksport.bygg`; the reader gives count 5 and the exact øre sum
   - (c) one test per structural error: a short line, a line count not a multiple of 3, the wrong line-type order, mismatched order numbers within a triple, amount@212 ≠ amount@965, a non-numeric amount
-- [ ] T011 [P] [US1] Write `T/billing/EksportAvstemmingIT.java` (in package `billing`, alongside `EksportIT`):
+- [x] T011 [P] [US1] Write `T/billing/EksportAvstemmingIT.java` (in package `billing`, alongside `EksportIT`):
   - (a) a successful export stores one `lg04_avstemming` row whose file and run figures are equal and match the run, with `sha256` = the LG04 `eksportfil.sha256`
   - (b) with a faulty order assembly injected (for example a `@TestConfiguration` that replaces `Lg04Eksport` with a subclass whose `bygg` drops the last order), `eksporter` throws `Lg04Avvik`; the run stays GODKJENT; there are 0 `eksportfil` rows and no new files under the archive root
   - (c) after (b), `loggStoppetEksport` has written an `EKSPORT_STOPPET` hendelseslogg row with both sides' figures
   - (d) `forventetAntallOrdrer` equals the number of lines
   - (e) `sammendrag` gives the right fakturaer, lines and sum
-- [ ] T012 [P] [US1] Extend `T/billing/WebKjoringRoleIT.java`:
+- [x] T012 [P] [US1] (Done inside `T/billing/EksportAvstemmingIT.java` instead, to share its Lg04Eksport spy context.) Web checks:
   - LESER GET `/kjoringer/{id}` shows "eksl./inkl. mva uavklart" and the summary figures
   - LESER GET `/kjoringer/{id}/lg04-kontroll` on an exported run is 200
   - a GODKJENNER POST `/kjoringer/{id}/eksporter` with the faulty assembly from T011 redirects to `/kjoringer/{id}` with a flash containing "Eksport stoppet" (a MockMvc `flash().attributeExists`)
 
 ### Implementation for User Story 1
 
-- [ ] T013 [US1] Create `R/db/migration/V9__lg04_avstemming.sql` with the `lg04_avstemming` table exactly as in data-model.md, including the equality `check`.
-- [ ] T014 [P] [US1] Create the entity `M/billing/Lg04Avstemming.java` (a `@Table("lg04_avstemming")` record) and `M/billing/Lg04AvstemmingRepository.java` with `Optional<Lg04Avstemming> findByKjoringId(Long)`.
-- [ ] T015 [P] [US1] Create `M/export/lg04/Lg04Leser.java`:
+- [x] T013 [US1] Create `R/db/migration/V9__lg04_avstemming.sql` with the `lg04_avstemming` table exactly as in data-model.md, including the equality `check`.
+- [x] T014 [P] [US1] Create the entity `M/billing/Lg04Avstemming.java` (a `@Table("lg04_avstemming")` record) and `M/billing/Lg04AvstemmingRepository.java` with `Optional<Lg04Avstemming> findByKjoringId(Long)`.
+- [x] T015 [P] [US1] Create `M/export/lg04/Lg04Leser.java`:
   - Signature: `public Lg04Innhold les(byte[] windows1252)`. Nested record `Lg04Innhold(int antallOrdrer, long sumOre, int antallLinjer, List<String> feil)` with `boolean gyldig()`.
   - Use its **own** offset constants: type@2493, amount@212..231 and @965..984, order number@3130..3144. Do not import or call `Lg04Skriver` (D4).
   - Decode as windows-1252, split on `\n`, and drop the single trailing empty element.
   - Every structural problem from T010(c) adds a Norwegian message to `feil`.
   - Parse amounts with `Long.parseLong(trim)`.
   - Class Javadoc explains why it is independent of the writer.
-- [ ] T016 [P] [US1] Create `M/export/Lg04Avvik.java`, a `Regelbrudd` subclass:
+- [x] T016 [P] [US1] Create `M/export/Lg04Avvik.java`, a `Regelbrudd` subclass:
   - fields: periode, the file's `Lg04Innhold`, the run's `antallOrdrer`/`sumOre`
   - a `melding()` that produces the FR-005a text (spec.md) with amounts formatted as Norwegian kroner from øre (space thousands separator, comma decimals)
   - a `detaljer()` map for the audit log
-- [ ] T017 [P] [US1] Create the record `M/billing/Kjoringssammendrag.java` (periode, antallFakturaer, antallLinjer, sumBelop, sumFakturaer, `boolean konsistent()`). Add `public Kjoringssammendrag sammendrag(Long kjoringId)` to `M/billing/FakturakjoringService.java`, read-only and computed from the stored fakturaer and lines.
-- [ ] T018 [US1] Refactor `M/export/EksportService.java`:
+- [x] T017 [P] [US1] Create the record `M/billing/Kjoringssammendrag.java` (periode, antallFakturaer, antallLinjer, sumBelop, sumFakturaer, `boolean konsistent()`). Add `public Kjoringssammendrag sammendrag(Long kjoringId)` to `M/billing/FakturakjoringService.java`, read-only and computed from the stored fakturaer and lines.
+- [x] T018 [US1] Refactor `M/export/EksportService.java`:
   - extract the order assembly into `List<Lg04Ordre> ordrerFor(Fakturakjoring, List<Faktura>)`, behaviour unchanged
   - add `public int forventetAntallOrdrer(Long kjoringId)`, which delegates to it (D5)
   - add `static long ore(...)` as the run-side øre sum helper, reusing `ore(BigDecimal)`
-- [ ] T019 [US1] In `M/export/EksportService.java` `eksporter()`, reorder per D3:
+- [x] T019 [US1] In `M/export/EksportService.java` `eksporter()`, reorder per D3:
   1. Build the LG04 bytes.
   2. Call `Lg04Leser.les`.
   3. Compute the run's order count and øre sum.
@@ -125,15 +125,15 @@ an `EKSPORT_STOPPET` event.
   7. Save `Lg04Avstemming`, linked to the LG04 `eksportfil` id (change `arkiver` to return the saved `Eksportfil`).
   8. Call `settEksportert`.
   9. Add `antallOrdrer`, `sumOre` and `lg04Sha256` to the `EKSPORTERTE` audit details.
-- [ ] T020 [US1] Add to `M/export/EksportService.java`:
+- [x] T020 [US1] Add to `M/export/EksportService.java`:
   - `public void loggStoppetEksport(Long kjoringId, Lg04Avvik e)`. It is **not** `@Transactional`; it calls `audit.logg(EKSPORT_STOPPET, …)` (D7).
   - `public Optional<LgAvstemmingVisning> avstemmingFor(Long kjoringId)`, a view record with file/run figures, who, when, and a `kilde` of `LAGRET`, `BEREGNET_FRA_ARKIV` or `FEIL` with a reason. It reads the stored row, or for an EKSPORTERT run without a row it reads the archived LG04 via `FileArchive.hent`, checks the SHA-256 against `eksportfil.sha256`, and reconciles without persisting (D6). Any read error or hash mismatch gives `FEIL` with a reason (FR-007).
   - `public LgAvstemmingVisning kontrollerArkiv(Long kjoringId)`, which always re-reads and re-hashes.
-- [ ] T021 [US1] In `M/web/FakturakjoringController.java`:
+- [x] T021 [US1] In `M/web/FakturakjoringController.java`:
   - `detalj` adds `sammendrag`, `antallOrdrer` (`eksport.forventetAntallOrdrer`) and `lg04Avstemming` (`eksport.avstemmingFor`) to the model
   - `eksporter` catches `Lg04Avvik`, calls `eksport.loggStoppetEksport`, and redirects to `/kjoringer/{id}` with `RedirectAttributes.addFlashAttribute("eksportStoppet", e.getMessage())`
   - add `GET /{id}/lg04-kontroll`, which renders `kjoring/lg04-kontroll.html` with `eksport.kontrollerArkiv(id)`
-- [ ] T022 [US1] Extend `R/templates/kjoring/detalj.html` per contracts/ui.md §1–4:
+- [x] T022 [US1] Extend `R/templates/kjoring/detalj.html` per contracts/ui.md §1–4:
   - a *Sammendrag* `dl` with the "eksl./inkl. mva uavklart" label and the OQ-1 hint
   - a danger alert when `!sammendrag.konsistent()`
   - the *Til e-post til regnskap* block for GODKJENT/EKSPORTERT, with a `<pre id="epost">` and a "Kopier" button using `navigator.clipboard.writeText` (inline `<script>`, small, CSP permitting; otherwise `js/` static)
@@ -141,8 +141,8 @@ an `EKSPORT_STOPPET` event.
   - the `eksportStoppet` flash as a danger alert
 
   Use Designsystemet classes as the existing template does.
-- [ ] T023 [P] [US1] Create `R/templates/kjoring/lg04-kontroll.html`, which shows the re-check result with a link back to the run.
-- [ ] T024 [US1] Run `./mvnw verify`. T010–T012 must be green, and `Lg04SkriverTest` must be untouched and green (FR-022). Commit.
+- [x] T023 [P] [US1] Create `R/templates/kjoring/lg04-kontroll.html`, which shows the re-check result with a link back to the run.
+- [x] T024 [US1] Run `./mvnw verify`. T010–T012 must be green, and `Lg04SkriverTest` must be untouched and green (FR-022). Commit.
 
 **Checkpoint**: BF1 T15 can be done on the run page, and a faulty LG04 can't leave forsystem.
 

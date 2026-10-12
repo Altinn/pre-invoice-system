@@ -345,6 +345,24 @@ public class FakturakjoringService {
         return fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
     }
 
+    /** Headline figures for the run page and the covering email (specs/002 FR-001..003). */
+    @Transactional(readOnly = true)
+    public Kjoringssammendrag sammendrag(Long kjoringId) {
+        Fakturakjoring kj = hent(kjoringId);
+        List<Faktura> fs = fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
+        int antallLinjer = 0;
+        BigDecimal sumLinjer = BigDecimal.ZERO;
+        BigDecimal sumFakturaer = BigDecimal.ZERO;
+        for (Faktura f : fs) {
+            sumFakturaer = sumFakturaer.add(f.sumBelop());
+            for (Fakturalinje l : linjer.findByFakturaIdOrderById(f.id())) {
+                antallLinjer++;
+                sumLinjer = sumLinjer.add(l.belop());
+            }
+        }
+        return new Kjoringssammendrag(new Periode(kj.periode()), fs.size(), antallLinjer, sumLinjer, sumFakturaer);
+    }
+
     @Transactional(readOnly = true)
     public Faktura hentFaktura(Long fakturaId) {
         return fakturaer.findById(fakturaId).orElseThrow(() -> new Regelbrudd("Fant ikke faktura " + fakturaId));
