@@ -15,7 +15,7 @@ explicit.
 required (— = read/none). *Ref* = source doc / open question.
 
 Status of the whole MVP: **Phases 0–5 complete** (docs/04). All features below are implemented and
-covered by automated tests (61 tests; byte-exact LG04 golden) unless the row says otherwise.
+covered by automated tests (142 tests; byte-exact LG04 golden) unless the row says otherwise.
 
 ---
 
@@ -74,7 +74,7 @@ covered by automated tests (61 tests; byte-exact LG04 golden) unless the row say
 | F-USG-09 | Validation: amount rules | Missing/non-numeric/negative antall (volume) or belop (cost) → rejected. | `UsageImportService` | — | docs/04 P2 |
 | F-USG-10 | Validation: duplicates | Duplicate (periode, orgnr, produkt, type) → rejected. | `UsageImportService` | — | docs/04 P2 |
 | F-USG-11 | All-or-nothing import | Any reject blocks the whole file; a rejected file leaves zero rows. | POST `/bruksdata/bekreft` | FORVALTER | docs/04 P2 |
-| F-USG-12 | Re-import replacement | Re-importing a period deletes prior rows and marks the old import AVVIST. | `UsageImportService` | FORVALTER | docs/03 §4 |
+| F-USG-12 | Re-import replacement | Re-importing a period marks the old import AVVIST; its rows are **kept** (read-only), so a discarded run stays traceable. The period's usage is the latest VALIDERT import's rows; each run records its import. (Before specs/002 the rows were deleted, which crashed after any generated run.) | `UsageImportService.gjeldendeImport` | FORVALTER | docs/03 §4, specs/002 D1 |
 | F-USG-13 | Block import on active run | Import blocked if a non-FORKASTET kjøring exists for the period. | `KjoringStatusPort` (billing adapter) | — | docs/04 P2 |
 | F-USG-14 | Import detail view | View an import's rows. | GET `/bruksdata/{id}` | LESER | docs/04 P2 |
 | F-USG-15 | Pass-through cost rows | AZURE_KOSTNAD and SMS_KOSTNAD carried as belop. | `Bruksdatatype` | — | OQ-3 |
@@ -102,6 +102,9 @@ covered by automated tests (61 tests; byte-exact LG04 golden) unless the row say
 | F-GEN-11 | ordre_nr on faktura | Order id per invoice; enables splitting into LG04 orders at export. | `Faktura.ordre_nr` | — | docs/03 §5, OQ-1 |
 | F-GEN-12 | UUIDv7 faktura_uuid | Time-ordered UUID; also the PDF filename. | `common.UuidV7` | — | docs/03 |
 | F-GEN-13 | Totals = exact sum of lines | faktura.sum_belop = exact sum of line belop. | `FakturakjoringService` | — | docs/04 P3 |
+| F-GEN-15 | Run summary + email block | Run page: antall fakturaer, antall LG04-ordrer, antall linjer, sum labelled «eksl./inkl. mva uavklart» (OQ-11); a copyable block for the covering email to regnskap (OQ-8). | `FakturakjoringService.sammendrag`, GET `/kjoringer/{id}` | LESER | specs/002 US1, BF1 T15 |
+| F-GEN-16 | Usage reconciliation view | Per product × type: imported vs invoiced (rows, sum); every usage row kept off the invoice with the finding that blocked it (linked at generation); active products without usage listed. | GET `/kjoringer/{id}/avstemming` · `BruksdataavstemmingService` | LESER | specs/002 US2, BF1 T06/T10 |
+| F-GEN-17 | Customer name snapshot | `faktura.kundenavn` frozen at generation; older invoices show the registry name marked «(nåværende navn)». | `FakturakjoringService.kundenavn` | — | specs/002 D9 |
 | F-GEN-14 | Run + faktura screens | Run overview (invoices + findings) and faktura drill-down to lines/bruksdata. | GET `/kjoringer/{id}`, `/kjoringer/{id}/faktura/{fid}` | LESER | docs/04 P3 |
 
 ## Controls — kontrollfunn
@@ -141,17 +144,19 @@ covered by automated tests (61 tests; byte-exact LG04 golden) unless the row say
 | F-EXP-06 | Kontering from product | account/dims/article from produkt (not hardcoded). | `EksportService` | — | docs/04 P4 |
 | F-EXP-07 | Responsible from config | LG04 responsible persons from `EksportKonfig` (placeholders until OQ-2). | `EksportKonfig` | — | OQ-2 |
 | F-EXP-08 | PDF detail per invoice | XHTML→PDF, zipped, named `<kundenummer>-<faktura_uuid>.pdf`. | `PdfEksport` | GODKJENNER | docs/04 P4 |
-| F-EXP-09 | CSV export of lines | Run's lines as CSV. | `RegnearkEksport.csv` | GODKJENNER | docs/04 P4 |
-| F-EXP-10 | XLSX export of lines | Run's lines as XLSX. | `RegnearkEksport.xlsx` | GODKJENNER | docs/04 P4 |
+| F-EXP-09 | CSV export of lines | Run's lines as CSV, same columns as F-EXP-15. | `RegnearkEksport.csv`, `FakturagrunnlagRegneark` | GODKJENNER | docs/04 P4 |
+| F-EXP-10 | XLSX export of lines | Run's lines as XLSX; numbers are numeric cells. | `RegnearkEksport.xlsx`, `FakturagrunnlagRegneark` | GODKJENNER | docs/04 P4 |
 | F-EXP-11 | FileArchive port + local adapter | Artifacts archived behind a port; local filesystem adapter with SHA-256. | `archive.FileArchive` / `LocalFileArchive` | — | docs/02 |
 | F-EXP-12 | eksportfil records | Each artifact recorded (type, filnavn, blob_url, sha256). | `EksportfilRepository` | — | docs/03 V4 |
+| F-EXP-14 | LG04 read-back reconciliation | At export the LG04 is read back by an independent reader and compared with the run (orders, øre sum) before anything is archived. Mismatch: export stopped, nothing written, run stays GODKJENT, `EKSPORT_STOPPET` logged, explanation on the run page. Match: stored as `lg04_avstemming` and shown; runs exported earlier are reconciled from the archive; a read-only re-check re-hashes the archived file. | `Lg04Leser`, `EksportService.eksporter`, GET `/kjoringer/{id}/lg04-kontroll` | GODKJENNER (export), LESER (view) | specs/002 US1, BF1 T15 |
+| F-EXP-15 | Spreadsheet before approval | Fakturagrunnlag as XLSX/CSV for GENERERT/GODKJENT/EKSPORTERT runs; status in file name; no export file recorded; `LASTET_NED` logged. | GET `/kjoringer/{id}/fakturagrunnlag.{xlsx,csv}` | LESER | specs/002 US3, BF1 T01 |
 | F-EXP-13 | Download export files | Download LG04/PDF/CSV/XLSX from the run page. | GET `/kjoringer/{id}/eksportfil/{filId}` | LESER | docs/04 P4 |
 
 ## Cross-cutting — audit, security, period, architecture
 
 | ID | Feature | Description | Where | Role | Ref |
 |---|---|---|---|---|---|
-| F-AUD-01 | Audit log (hendelseslogg) | Every state change recorded (who/what/when/details as jsonb). | `common.AuditService`, GET `/hendelseslogg` | LESER | docs/02 |
+| F-AUD-01 | Audit log (hendelseslogg) | Every state change recorded (who/what/when/details as jsonb); also stopped exports (`EKSPORT_STOPPET`) and spreadsheet downloads (`LASTET_NED`). | `common.AuditService`, GET `/hendelseslogg` | LESER | docs/02 |
 | F-SEC-01 | Roles LESER/FORVALTER/GODKJENNER | Authorization: writes require FORVALTER, approve/export require GODKJENNER, reads LESER. | `web.security.SecurityConfig` | — | docs/02 |
 | F-SEC-02 | OIDC login (prod) | OIDC against any issuer (Entra ID); wired when an issuer is configured. | `SecurityConfig` | — | docs/02 |
 | F-SEC-03 | Stubbed login (local) | Fixed dev user with all roles for offline use. | `StubAuthenticationFilter` (profile `local`) | — | docs/04 P0 |
@@ -165,8 +170,8 @@ covered by automated tests (61 tests; byte-exact LG04 golden) unless the row say
 
 | ID | Feature | Description | Where | Role | Ref |
 |---|---|---|---|---|---|
-| F-NFR-01 | Flyway schema migrations | V1–V6 versioned in git; applied on start. | `db/migration` | — | docs/03 |
-| F-NFR-02 | Testcontainers tests | 61 tests on real PostgreSQL 16 (no H2). | `src/test` | — | docs/05 |
+| F-NFR-01 | Flyway schema migrations | V1–V11 versioned in git; applied on start. | `db/migration` | — | docs/03 |
+| F-NFR-02 | Testcontainers tests | 142 tests (99 integration on real PostgreSQL 16, no H2; 43 unit). | `src/test` | — | docs/05 |
 | F-NFR-03 | LG04 golden-file tests | Byte-identical single line, 4324 invariant, Windows-1252, field offsets. | `Lg04SkriverTest` | — | docs/05 |
 | F-NFR-04 | End-to-end scenario test | import→generate→approve→export verified. | `E2eScenarioIT` | — | docs/04 P5 |
 | F-NFR-05 | Load sanity | 5000 customers × 6 products generate in < 1 min (~16 s measured). | `LoadIT` (`-Dload=true`) | — | docs/04 P5 |

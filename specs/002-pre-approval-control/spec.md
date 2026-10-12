@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-12
 
-**Status**: Draft
+**Status**: Implemented (2026-10-12)
 
 **Input**: User description: "Kontrollgrunnlag før godkjenning — the three Must items from
 docs/11-testplan-bf1.md that let Økonomi control a fakturakjøring before approving it and reconcile
