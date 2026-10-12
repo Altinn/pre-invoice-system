@@ -53,14 +53,14 @@ independent and are delivered in plan order, one commit each.
 
 **Commit**: `feat(billing): warn when an active customer has no usage in the period`
 
-- [ ] T016 [US4] Extend `T/billing/GenereringControlsIT.java`:
+- [x] T016 [US4] Extend `T/billing/GenereringControlsIT.java`:
   - active customers A and B, usage only for A → exactly one `AKTIV_KUNDE_UTEN_BRUK` naming B, with ADVARSEL severity, and approval succeeds
   - an INAKTIV customer with no usage → no finding
   - a customer whose usage hit MANGLER_KUNDENUMMER → no no-usage finding
-- [ ] T017 [US4] Add `AKTIV_KUNDE_UTEN_BRUK` under ADVARSEL in `M/billing/Kontrollkode.java`.
-- [ ] T018 [US4] In `M/billing/FakturakjoringService.java` `bygg()`, after the usage loop, add one `advarsel(kjoringId, null, AKTIV_KUNDE_UTEN_BRUK, "Kunde <navn> (<orgnr>) har aktiv avtale, men ingen bruk i perioden")` for each customer with `avtalestatus = AKTIV` whose orgnr has no row in `bruk`, in orgnr order.
-- [ ] T019 Check that existing tests that assert exact finding lists still hold (`grep -rn "findByKjoringId\|funn(" src/test`). Adjust them, keeping their intent.
-- [ ] T020 Run `./mvnw verify` green, then commit.
+- [x] T017 [US4] Add `AKTIV_KUNDE_UTEN_BRUK` under ADVARSEL in `M/billing/Kontrollkode.java`.
+- [x] T018 [US4] In `M/billing/FakturakjoringService.java` `bygg()`, after the usage loop, add one `advarsel(kjoringId, null, AKTIV_KUNDE_UTEN_BRUK, "Kunde <navn> (<orgnr>) har aktiv avtale, men ingen bruk i perioden")` for each customer with `avtalestatus = AKTIV` whose orgnr has no row in `bruk`, in orgnr order.
+- [x] T019 Check that existing tests that assert exact finding lists still hold (`grep -rn "findByKjoringId\|funn(" src/test`). Adjust them, keeping their intent.
+- [x] T020 Run `./mvnw verify` green, then commit.
 
 ## Phase 4: US5 — export-file download logging (C-08) (P2)
 
