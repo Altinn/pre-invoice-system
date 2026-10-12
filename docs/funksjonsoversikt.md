@@ -15,7 +15,7 @@ explicit.
 required (— = read/none). *Ref* = source doc / open question.
 
 Status of the whole MVP: **Phases 0–5 complete** (docs/04). All features below are implemented and
-covered by automated tests (142 tests; byte-exact LG04 golden) unless the row says otherwise.
+covered by automated tests (152 tests; byte-exact LG04 golden) unless the row says otherwise.
 
 ---
 
@@ -27,6 +27,7 @@ covered by automated tests (142 tests; byte-exact LG04 golden) unless the row sa
 | F-REG-PROD-02 | Seeded product catalog | Six products preloaded: melding, formidling, varsling, autorisasjon, studio, appinfra. | Flyway `V6` | — | docs/03 V6 |
 | F-REG-PROD-03 | Create product | Add a product (kode, navn, enhet). | POST `/produkter` | FORVALTER | docs/04 P1 |
 | F-REG-PROD-04 | Edit product + kontering | Edit navn, enhet, aktiv, and kontering: artikkel_id, konto, dim_1/2/4. | GET/POST `/produkter/{id}` | FORVALTER | docs/04 P1 |
+| F-REG-PROD-06 | Product list order and dimensions | Active products first; Dim 1/2/4 shown with labels from `PRODUKT_DIMn_NAVN` (empty until OQ-2). | `ProduktService.oversikt`, `Dimensjonsnavn` | LESER | specs/003, BF1 F01/F03 |
 | F-REG-PROD-05 | Kontering nullable until OQ-2 | Kontering stays NULL until Økonomi delivers values; NULL is deliberately allowed here and blocked at generation. | `ProduktService` | — | OQ-2 |
 
 ## Registry — Prisversjon / Pris (price versions & prices)
@@ -41,6 +42,8 @@ covered by automated tests (142 tests; byte-exact LG04 golden) unless the row sa
 | F-REG-PRIS-06 | One active version per date range | Activation blocked if another AKTIV version overlaps the date range. | `PrisversjonService` | FORVALTER | docs/04 P1 |
 | F-REG-PRIS-07 | Archive active version | AKTIV → ARKIVERT. | POST `/prisversjoner/{id}/arkiver` | FORVALTER | docs/04 P1 |
 | F-REG-PRIS-08 | Prices locked outside draft | enhetspris editable only in UTKAST. | `PrisversjonService` | — | docs/04 P1 |
+| F-REG-PRIS-09 | Only products that need a price | A version lists active products, plus inactive ones it already prices (tagged «inaktiv»). | `PrisversjonService.produkterFor` | LESER | specs/003, BF1 F06 |
+| F-REG-PRIS-10 | Coverage in words | Each version states which billing periods it covers (a period is covered when its first day is within the dates); the new-version form explains the rule. | `Prisdekning` | LESER | specs/003, BF1 F05 |
 
 ## Registry — Kunde (customers) and the FinMod special cases
 
@@ -119,6 +122,7 @@ covered by automated tests (142 tests; byte-exact LG04 golden) unless the row sa
 | F-CTRL-06 | STORT_AVVIK (warning) | Customer sum deviates > ±30 % vs the previous period. | `FakturakjoringService` | — | docs/04 P3 |
 | F-CTRL-07 | NULLBELOP (warning) | Invoice has a zero-amount line. | `FakturakjoringService` | — | docs/04 P3 |
 | F-CTRL-08 | NY_KUNDE (warning) | Customer not invoiced in the previous period. | `FakturakjoringService` | — | docs/04 P3 |
+| F-CTRL-10 | AKTIV_KUNDE_UTEN_BRUK (warning) | Active customer with no usage row in the period. | `FakturakjoringService` | — | specs/003, BF1 T10 |
 | F-CTRL-09 | Findings surfaced in UI | Blocking + warnings shown on the run and per-faktura. | GET `/kjoringer/{id}` | LESER | docs/04 P3 |
 
 ## Approval & state machine — fakturakjøring
@@ -149,6 +153,7 @@ covered by automated tests (142 tests; byte-exact LG04 golden) unless the row sa
 | F-EXP-11 | FileArchive port + local adapter | Artifacts archived behind a port; local filesystem adapter with SHA-256. | `archive.FileArchive` / `LocalFileArchive` | — | docs/02 |
 | F-EXP-12 | eksportfil records | Each artifact recorded (type, filnavn, blob_url, sha256). | `EksportfilRepository` | — | docs/03 V4 |
 | F-EXP-14 | LG04 read-back reconciliation | At export the LG04 is read back by an independent reader and compared with the run (orders, øre sum) before anything is archived. Mismatch: export stopped, nothing written, run stays GODKJENT, `EKSPORT_STOPPET` logged, explanation on the run page. Match: stored as `lg04_avstemming` and shown; runs exported earlier are reconciled from the archive; a read-only re-check re-hashes the archived file. | `Lg04Leser`, `EksportService.eksporter`, GET `/kjoringer/{id}/lg04-kontroll` | GODKJENNER (export), LESER (view) | specs/002 US1, BF1 T15 |
+| F-EXP-16 | Export-file download logging | Every download of an archived export file is logged (`LASTET_NED`, type, file name); a file id from another run is refused. | `EksportService.lastNedEksportfil` | LESER | specs/003, BF1 T09/T14 |
 | F-EXP-15 | Spreadsheet before approval | Fakturagrunnlag as XLSX/CSV for GENERERT/GODKJENT/EKSPORTERT runs; status in file name; no export file recorded; `LASTET_NED` logged. | GET `/kjoringer/{id}/fakturagrunnlag.{xlsx,csv}` | LESER | specs/002 US3, BF1 T01 |
 | F-EXP-13 | Download export files | Download LG04/PDF/CSV/XLSX from the run page. | GET `/kjoringer/{id}/eksportfil/{filId}` | LESER | docs/04 P4 |
 
@@ -171,7 +176,7 @@ covered by automated tests (142 tests; byte-exact LG04 golden) unless the row sa
 | ID | Feature | Description | Where | Role | Ref |
 |---|---|---|---|---|---|
 | F-NFR-01 | Flyway schema migrations | V1–V11 versioned in git; applied on start. | `db/migration` | — | docs/03 |
-| F-NFR-02 | Testcontainers tests | 142 tests (99 integration on real PostgreSQL 16, no H2; 43 unit). | `src/test` | — | docs/05 |
+| F-NFR-02 | Testcontainers tests | 152 tests (103 integration on real PostgreSQL 16, no H2; 49 unit). | `src/test` | — | docs/05 |
 | F-NFR-03 | LG04 golden-file tests | Byte-identical single line, 4324 invariant, Windows-1252, field offsets. | `Lg04SkriverTest` | — | docs/05 |
 | F-NFR-04 | End-to-end scenario test | import→generate→approve→export verified. | `E2eScenarioIT` | — | docs/04 P5 |
 | F-NFR-05 | Load sanity | 5000 customers × 6 products generate in < 1 min (~16 s measured). | `LoadIT` (`-Dload=true`) | — | docs/04 P5 |

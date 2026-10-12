@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-12
 
-**Status**: Draft
+**Status**: Implemented (2026-10-12)
 
 **Input**: User description: "Quick fixes from Økonomi's BF1 test findings and the remaining small
 control gaps: F06 (only active products when pricing), F05 (explain gyldig fra/til), F03 (sort

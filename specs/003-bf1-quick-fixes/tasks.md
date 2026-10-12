@@ -80,16 +80,16 @@ independent and are delivered in plan order, one commit each.
 
 **Commit**: `docs: document BF1 quick fixes (003)`
 
-- [ ] T025 [P] `docs/brukerveiledning.md`:
+- [x] T025 [P] `docs/brukerveiledning.md`:
   - §4 Produkter: order and Dim columns
   - §5 Prisversjoner: what the dates mean, with the mid-month example, and which products are shown
   - §11 Kontrollfunn: a new row for `AKTIV_KUNDE_UTEN_BRUK`
   - §9 Hendelseslogg: downloads are logged
-- [ ] T026 [P] `docs/funksjonsoversikt.md`:
+- [x] T026 [P] `docs/funksjonsoversikt.md`:
   - new rows F-REG-PRIS-09 (only products that need a price), F-REG-PRIS-10 (coverage text), F-REG-PROD-06 (order and dimensions), F-CTRL-10 (`AKTIV_KUNDE_UTEN_BRUK`), F-EXP-16 (download logging and ownership check)
   - update the test count
-- [ ] T027 [P] `docs/runbook.md`: document `PRODUKT_DIM1_NAVN`/`PRODUKT_DIM2_NAVN`/`PRODUKT_DIM4_NAVN`, which are set per environment once Økonomi names the dimensions (OQ-2).
-- [ ] T028 Run `./mvnw verify` green, walk through quickstart.md on a separate compose project, then commit.
+- [x] T027 [P] `docs/runbook.md`: document `PRODUKT_DIM1_NAVN`/`PRODUKT_DIM2_NAVN`/`PRODUKT_DIM4_NAVN`, which are set per environment once Økonomi names the dimensions (OQ-2).
+- [x] T028 (Done 2026-10-12 on a separate compose project with PRODUKT_DIM1_NAVN set: labels, help text, coverage sentence, export, download logged, foreign file id refused. The no-usage warning is not visible in the demo data because every demo customer has usage; covered by GenereringControlsIT.) Run `./mvnw verify` green, walk through quickstart.md on a separate compose project, then commit.
 
 ## Dependencies
 

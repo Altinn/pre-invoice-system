@@ -99,8 +99,8 @@ regnskapskodene som må stå på hvert produkt før grunnlaget kan eksporteres.
 |---|---|
 | Kode / Navn | Produktets id og visningsnavn. |
 | Enhet | Måleenhet (standard «transaksjon»). |
-| Konto / Artikkel-id | Kontering (regnskap). **Er tom («—») til Økonomi leverer verdiene.** |
-| Aktiv | Om produktet er i bruk. |
+| Konto / Dim 1, 2, 4 / Artikkel-id | Kontering (regnskap). **Er tom («—») til Økonomi leverer verdiene.** Når Økonomi har bekreftet hva dimensjonene er, får kolonnene navn, f.eks. «Dim 1 (koststed)». |
+| Aktiv | Om produktet er i bruk. Inaktive produkter står nederst i lista. |
 
 - **Rediger** (per rad) → åpner redigeringssiden.
 - **Legg til** (skjema nederst): opprett et nytt produkt med kode, navn og enhet. (Normalt ikke
@@ -138,10 +138,19 @@ stateDiagram-v2
 merke). **Åpne** en versjon, eller lag en ny med **Opprett** (skjemaet «Ny prisversjon (utkast)»:
 navn, gyldig fra, evt. gyldig til).
 
+> **Hva datoene betyr:** gyldig fra/til er en **teknisk regel**, ikke bare informasjon. En kjøring for
+> en periode bruker den aktive versjonen som dekker **periodens første dag**. Begge datoer er
+> inkludert, tom «til» betyr uten sluttdato, og to aktive versjoner kan ikke overlappe. Derfor dekker
+> en versjon som starter midt i en måned (f.eks. 15. januar) først **neste** måned (februar). Siden til
+> hver versjon sier i klartekst hvilke perioder den brukes for, f.eks. «Brukes for kjøringer fra januar
+> 2027 og fremover».
+
 **Detalj-siden:**
 
 - Øverst: navn, gyldighet og status.
-- **Pristabell** — én rad per produkt:
+- **Pristabell** — én rad per **aktivt** produkt (de som må ha pris for at versjonen kan aktiveres).
+  Et inaktivt produkt vises bare hvis versjonen allerede har en pris for det, og er da merket
+  «inaktiv»:
   - Når versjonen er **UTKAST**: skriv inn **Enhetspris** per produkt og trykk **Lagre** på raden.
   - Når versjonen er **AKTIV/ARKIVERT**: prisene vises, men kan ikke endres (låst).
 - **Aktiver** (kun i utkast): setter versjonen aktiv. Systemet sjekker først at
@@ -333,8 +342,9 @@ bruksdata-id og pris-id. Kontrollfunn knyttet til fakturaen vises øverst.
 ## 9. Hendelseslogg
 
 En skrivebeskyttet, tidssortert logg over alle endringer: hvem gjorde hva, når, på hvilken entitet, med
-detaljer. Hver registerendring, import, generering, godkjenning og eksport havner her automatisk. Bruk
-den til å svare på «hva skjedde med denne kjøringen / kunden?».
+detaljer. Hver registerendring, import, generering, godkjenning og eksport havner her automatisk, og
+hver nedlasting av eksportfiler og fakturagrunnlag (`LASTET_NED`, med filtype). Bruk den til å svare på
+«hva skjedde med denne kjøringen / kunden?» og «er LG04-fila allerede hentet?».
 
 ---
 
@@ -390,6 +400,7 @@ er kun til informasjon.
 | `STORT_AVVIK` | Advarsel | Kundens sum avviker > 30 % fra forrige periode. | Sjekk at bruken stemmer. |
 | `NULLBELOP` | Advarsel | Fakturaen har en linje med beløp 0. | Vurder om linjen skal være med. |
 | `NY_KUNDE` | Advarsel | Kunden ble ikke fakturert forrige periode. | Bekreft at ny kunde er forventet. |
+| `AKTIV_KUNDE_UTEN_BRUK` | Advarsel | Kunden har aktiv avtale, men ingen bruk i perioden. En forventet tjenesteeier kan mangle i grunnlaget. | Sjekk om fraværet er riktig (ingen fakturerbar bruk), eller om bruken mangler i datavarehuset. |
 
 **Etter å ha rettet:** forkast kjøringen, rett dataene, og generer på nytt. Funnene beregnes på nytt.
 
