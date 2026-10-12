@@ -66,15 +66,15 @@ independent and are delivered in plan order, one commit each.
 
 **Commit**: `feat(export): log export-file downloads and check they belong to the run`
 
-- [ ] T021 [US5] Extend `T/billing/EksportAvstemmingIT.java` (it already has MockMvc and an exported run):
+- [x] T021 [US5] Extend `T/billing/EksportAvstemmingIT.java` (it already has MockMvc and an exported run):
   - downloading the LG04 twice gives two `LASTET_NED` rows with `"type": "LG04"`
   - the file id of another run's file gives a 400 and no new `LASTET_NED`
-- [ ] T022 [US5] Add `@Transactional public Nedlasting lastNedEksportfil(Long kjoringId, Long filId)` to `M/export/EksportService.java`:
+- [x] T022 [US5] Add `@Transactional public Nedlasting lastNedEksportfil(Long kjoringId, Long filId)` to `M/export/EksportService.java`:
   - load the file
   - if `fil.kjoringId()` differs, throw `Regelbrudd("Fant ikke eksportfil " + filId + " for kjøring " + kjoringId)`
   - read the archive, log `LASTET_NED` with periode, type and filnavn, and return a `Nedlasting` with the media type per file type
-- [ ] T023 [US5] In `M/web/FakturakjoringController.java` `lastNed`, delegate to the service. Remove the controller's now-unused `mediatype` helper and the `FileArchive` field if nothing else uses them.
-- [ ] T024 Run `./mvnw verify` green, then commit.
+- [x] T023 [US5] In `M/web/FakturakjoringController.java` `lastNed`, delegate to the service. Remove the controller's now-unused `mediatype` helper and the `FileArchive` field if nothing else uses them.
+- [x] T024 Run `./mvnw verify` green, then commit.
 
 ## Phase 5: Docs
 

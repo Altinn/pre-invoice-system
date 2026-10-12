@@ -3,9 +3,7 @@ package no.digdir.forsystem.web;
 import java.time.format.DateTimeParseException;
 import java.util.stream.Collectors;
 
-import no.digdir.forsystem.archive.FileArchive;
 import no.digdir.forsystem.billing.BruksdataavstemmingService;
-import no.digdir.forsystem.billing.Eksportfil;
 import no.digdir.forsystem.billing.FakturakjoringService;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
@@ -31,15 +29,13 @@ class FakturakjoringController {
     private final FakturakjoringService kjoringer;
     private final ProduktService produkter;
     private final EksportService eksport;
-    private final FileArchive arkiv;
     private final BruksdataavstemmingService avstemming;
 
     FakturakjoringController(FakturakjoringService kjoringer, ProduktService produkter,
-                             EksportService eksport, FileArchive arkiv, BruksdataavstemmingService avstemming) {
+                             EksportService eksport, BruksdataavstemmingService avstemming) {
         this.kjoringer = kjoringer;
         this.produkter = produkter;
         this.eksport = eksport;
-        this.arkiv = arkiv;
         this.avstemming = avstemming;
     }
 
@@ -121,22 +117,11 @@ class FakturakjoringController {
 
     @GetMapping("/{id}/eksportfil/{filId}")
     ResponseEntity<byte[]> lastNed(@PathVariable Long id, @PathVariable Long filId) {
-        Eksportfil fil = kjoringer.hentEksportfil(filId);
-        byte[] innhold = arkiv.hent(fil.blobUrl());
+        EksportService.Nedlasting n = eksport.lastNedEksportfil(id, filId);
         return ResponseEntity.ok()
-                .contentType(mediatype(fil.type()))
-                .header("Content-Disposition",
-                        ContentDisposition.attachment().filename(fil.filnavn()).build().toString())
-                .body(innhold);
-    }
-
-    private static MediaType mediatype(String type) {
-        return switch (type) {
-            case "PDF" -> MediaType.valueOf("application/zip");
-            case "CSV" -> MediaType.valueOf("text/csv");
-            case "XLSX" -> MediaType.valueOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            default -> MediaType.TEXT_PLAIN;
-        };
+                .contentType(MediaType.valueOf(n.mediatype()))
+                .header("Content-Disposition", ContentDisposition.attachment().filename(n.filnavn()).build().toString())
+                .body(n.innhold());
     }
 
     @PostMapping("/{id}/godkjenn")

@@ -164,6 +164,32 @@ public class EksportService {
     }
 
     /**
+     * Download one of a run's archived export files (specs/003 D6, BF1 T09/T14). The file must belong to
+     * the run in the request — an id from another run is refused with the same message as an unknown one —
+     * and every download is logged, so "has this LG04 been fetched (and sent) already?" can be answered.
+     */
+    @Transactional   // not read-only: it writes the LASTET_NED audit row
+    public Nedlasting lastNedEksportfil(Long kjoringId, Long filId) {
+        Fakturakjoring kj = kjoringer.hent(kjoringId);
+        Eksportfil fil = eksportfiler.findById(filId)
+                .filter(f -> f.kjoringId().equals(kjoringId))
+                .orElseThrow(() -> new Regelbrudd("Fant ikke eksportfil " + filId + " for kjøring " + kjoringId));
+        byte[] innhold = arkiv.hent(fil.blobUrl());
+        audit.logg(Handling.LASTET_NED, "FAKTURAKJORING", kjoringId,
+                Map.of("periode", kj.periode().toString(), "type", fil.type(), "filnavn", fil.filnavn()));
+        return new Nedlasting(fil.filnavn(), mediatype(fil.type()), innhold);
+    }
+
+    private static String mediatype(String type) {
+        return switch (type) {
+            case "PDF" -> "application/zip";
+            case "CSV" -> "text/csv";
+            case "XLSX" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            default -> "text/plain";
+        };
+    }
+
+    /**
      * Record a stopped export (D7). Deliberately not transactional: it runs after {@link #eksporter}
      * rolled back, so the audit row is not lost with the rest.
      */
