@@ -34,15 +34,15 @@
             </div>
             <div class="kort-rad">
                 <div class="ds-field">
-                    <label class="ds-label" for="dim1">Dim 1</label>
+                    <label class="ds-label" for="dim1" th:text="${dimensjoner.etikett(1)}">Dim 1</label>
                     <input class="ds-input" id="dim1" name="dim1" th:value="${produkt.dim1()}">
                 </div>
                 <div class="ds-field">
-                    <label class="ds-label" for="dim2">Dim 2</label>
+                    <label class="ds-label" for="dim2" th:text="${dimensjoner.etikett(2)}">Dim 2</label>
                     <input class="ds-input" id="dim2" name="dim2" th:value="${produkt.dim2()}">
                 </div>
                 <div class="ds-field">
-                    <label class="ds-label" for="dim4">Dim 4</label>
+                    <label class="ds-label" for="dim4" th:text="${dimensjoner.etikett(4)}">Dim 4</label>
                     <input class="ds-input" id="dim4" name="dim4" th:value="${produkt.dim4()}">
                 </div>
             </div>

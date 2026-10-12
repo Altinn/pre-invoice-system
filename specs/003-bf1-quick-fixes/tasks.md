@@ -41,13 +41,13 @@ independent and are delivered in plan order, one commit each.
 
 **Commit**: `feat(registry): product list shows active first and dimension columns`
 
-- [ ] T009 [P] [US3] Add a test for `oversikt()`: with melding active, studio inactive and varsling active, the order is melding, varsling, studio (existing registry IT, or a new `T/registry/ProduktServiceIT.java`).
-- [ ] T010 [P] [US3] Add a unit test `T/web/DimensjonsnavnTest.java`: `etikett(1)` is "Dim 1" when empty and "Dim 1 (koststed)" when set; blank counts as empty.
-- [ ] T011 [US3] Add `public List<Produkt> oversikt()` to `M/registry/ProduktService.java`: active first, then by code.
-- [ ] T012 [US3] Create `M/web/Dimensjonsnavn.java`: `@ConfigurationProperties("forsystem.produkt.dimensjoner")` record `(String dim1, String dim2, String dim4)` with `etikett(int n)`. Add the `forsystem.produkt.dimensjoner.dim1/2/4: ${PRODUKT_DIMn_NAVN:}` entries to `R/application.yaml` with a comment pointing at OQ-2.
-- [ ] T013 [US3] In `M/web/ProduktController.java`, use `oversikt()` in `liste` and add `dimensjoner` to the model in `liste` and `rediger`.
-- [ ] T014 [US3] In `R/templates/produkt/liste.html`, add Dim columns (`?: '—'`) and tag inactive rows. In `R/templates/produkt/rediger.html`, use the labels.
-- [ ] T015 Run `./mvnw verify` green, then commit.
+- [x] T009 [P] [US3] Add a test for `oversikt()`: with melding active, studio inactive and varsling active, the order is melding, varsling, studio (existing registry IT, or a new `T/registry/ProduktServiceIT.java`).
+- [x] T010 [P] [US3] Add a unit test `T/web/DimensjonsnavnTest.java`: `etikett(1)` is "Dim 1" when empty and "Dim 1 (koststed)" when set; blank counts as empty.
+- [x] T011 [US3] Add `public List<Produkt> oversikt()` to `M/registry/ProduktService.java`: active first, then by code.
+- [x] T012 [US3] Create `M/web/Dimensjonsnavn.java`: `@ConfigurationProperties("forsystem.produkt.dimensjoner")` record `(String dim1, String dim2, String dim4)` with `etikett(int n)`. Add the `forsystem.produkt.dimensjoner.dim1/2/4: ${PRODUKT_DIMn_NAVN:}` entries to `R/application.yaml` with a comment pointing at OQ-2.
+- [x] T013 [US3] In `M/web/ProduktController.java`, use `oversikt()` in `liste` and add `dimensjoner` to the model in `liste` and `rediger`.
+- [x] T014 [US3] In `R/templates/produkt/liste.html`, add Dim columns (`?: '—'`) and tag inactive rows. In `R/templates/produkt/rediger.html`, use the labels.
+- [x] T015 Run `./mvnw verify` green, then commit.
 
 ## Phase 3: US4 — no-usage warning (C-09) (P1)
 

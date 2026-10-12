@@ -16,10 +16,12 @@ class ProduktController {
 
     private final ProduktService produkter;
     private final ProduktKildenavnService kildenavn;
+    private final Dimensjonsnavn dimensjoner;
 
-    ProduktController(ProduktService produkter, ProduktKildenavnService kildenavn) {
+    ProduktController(ProduktService produkter, ProduktKildenavnService kildenavn, Dimensjonsnavn dimensjoner) {
         this.produkter = produkter;
         this.kildenavn = kildenavn;
+        this.dimensjoner = dimensjoner;
     }
 
     /** Mapping of datavarehus product names to forsystem products (OQ-18). */
@@ -45,13 +47,15 @@ class ProduktController {
 
     @GetMapping
     String liste(Model model) {
-        model.addAttribute("produkter", produkter.alle());
+        model.addAttribute("produkter", produkter.oversikt());
+        model.addAttribute("dimensjoner", dimensjoner);
         return "produkt/liste";
     }
 
     @GetMapping("/{id}")
     String rediger(@PathVariable Long id, Model model) {
         model.addAttribute("produkt", produkter.hent(id));
+        model.addAttribute("dimensjoner", dimensjoner);
         return "produkt/rediger";
     }
 

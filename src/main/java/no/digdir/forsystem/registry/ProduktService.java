@@ -1,5 +1,6 @@
 package no.digdir.forsystem.registry;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,6 +29,14 @@ public class ProduktService {
     @Transactional(readOnly = true)
     public List<Produkt> alle() {
         return produkter.findAllByOrderByKode();
+    }
+
+    /** The product list's order (specs/003 D3, BF1 F03): active products first, inactive ones last, each by code. */
+    @Transactional(readOnly = true)
+    public List<Produkt> oversikt() {
+        return produkter.findAllByOrderByKode().stream()
+                .sorted(Comparator.comparing((Produkt p) -> !p.aktiv()))
+                .toList();
     }
 
     @Transactional(readOnly = true)
