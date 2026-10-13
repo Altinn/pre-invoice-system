@@ -11,5 +11,7 @@ public enum Kontrollkode {
     // ADVARSEL
     STORT_AVVIK,
     NULLBELOP,
-    NY_KUNDE
+    NY_KUNDE,
+    /** A customer with an active agreement has no usage in the period — an expected TE may be missing (BF1 T10). */
+    AKTIV_KUNDE_UTEN_BRUK
 }

@@ -111,6 +111,18 @@ provider, files archived to a local directory.
 
 ---
 
+## Naming the product dimensions
+
+The product pages label Dim 1, Dim 2 and Dim 4 from configuration, empty by default because what each
+dimension means is still open (OQ-2). Once Økonomi confirms the names, set them per environment —
+no code change:
+
+```
+PRODUKT_DIM1_NAVN=<name>   # e.g. koststed, if Økonomi confirms it
+PRODUKT_DIM2_NAVN=<name>
+PRODUKT_DIM4_NAVN=<name>
+```
+
 ## Deployment (Azure) — deferred
 
 Azure provisioning is out of scope for the local MVP and is not yet available. The application is

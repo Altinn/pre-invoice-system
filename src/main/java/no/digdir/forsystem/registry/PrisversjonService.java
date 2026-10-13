@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import no.digdir.forsystem.common.AuditService;
 import no.digdir.forsystem.common.Handling;
@@ -53,6 +55,25 @@ public class PrisversjonService {
     @Transactional(readOnly = true)
     public List<Pris> priser(Long prisversjonId) {
         return priser.findByPrisversjonId(prisversjonId);
+    }
+
+    /**
+     * The products a price version's page lists (specs/003 D1, BF1 F06): every active product — the ones
+     * activation needs a price for — plus any inactive product this version already prices, so no
+     * existing price is hidden. Ordered by code.
+     */
+    @Transactional(readOnly = true)
+    public List<Produkt> produkterFor(Long versjonId) {
+        Set<Long> priset = priser.findByPrisversjonId(versjonId).stream().map(Pris::produktId)
+                .collect(Collectors.toSet());
+        return produkter.findAllByOrderByKode().stream()
+                .filter(p -> p.aktiv() || priset.contains(p.id()))
+                .toList();
+    }
+
+    /** Which billing periods the version is used for — the same rule generation applies (D2). */
+    public Prisdekning dekning(Prisversjon versjon) {
+        return Prisdekning.fra(versjon.gyldigFra(), versjon.gyldigTil());
     }
 
     public Prisversjon opprettUtkast(String navn, LocalDate gyldigFra, LocalDate gyldigTil) {

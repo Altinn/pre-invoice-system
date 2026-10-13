@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import no.digdir.forsystem.common.HendelsesloggRepository;
+import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.export.EksportService;
 import no.digdir.forsystem.export.Lg04Avvik;
 import no.digdir.forsystem.export.Lg04AvstemmingVisning;
@@ -163,5 +164,34 @@ class EksportAvstemmingIT extends BillingFixture {
         mvc.perform(get("/kjoringer/{id}/lg04-kontroll", kj.id()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("LG04 stemmer med fakturagrunnlaget")));
+    }
+
+    @Test
+    @WithMockUser(username = "leser", roles = "LESER")
+    void exportFileDownloadsAreLoggedAndMustBelongToTheRun() throws Exception {
+        var kj = godkjentKjoring();
+        eksport.eksporter(kj.id());
+        Eksportfil lg04 = eksportfiler.findByKjoringIdOrderByType(kj.id()).stream()
+                .filter(f -> "LG04".equals(f.type())).findFirst().orElseThrow();
+
+        mvc.perform(get("/kjoringer/{id}/eksportfil/{fid}", kj.id(), lg04.id())).andExpect(status().isOk());
+        mvc.perform(get("/kjoringer/{id}/eksportfil/{fid}", kj.id(), lg04.id())).andExpect(status().isOk());
+        assertThat(nedlastinger()).hasSize(2).allSatisfy(h -> {
+            assertThat(h.entitetId()).isEqualTo(kj.id());
+            assertThat(h.detaljer().json()).contains("\"type\": \"LG04\"").contains(lg04.filnavn());
+        });
+
+        // The same file id requested under another run is refused and not logged.
+        Periode feb = Periode.av(2027, 2);
+        Long imp = nyImport(feb);
+        bruk(imp, feb, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
+        var annen = tjeneste.generer(feb);
+        mvc.perform(get("/kjoringer/{id}/eksportfil/{fid}", annen.id(), lg04.id()))
+                .andExpect(status().isBadRequest());
+        assertThat(nedlastinger()).hasSize(2);
+    }
+
+    private List<no.digdir.forsystem.common.Hendelseslogg> nedlastinger() {
+        return hendelser.findAll().stream().filter(h -> "LASTET_NED".equals(h.handling())).toList();
     }
 }

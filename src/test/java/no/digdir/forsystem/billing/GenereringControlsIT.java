@@ -120,6 +120,40 @@ class GenereringControlsIT extends BillingFixture {
     }
 
     @Test
+    void activeCustomerWithoutUsageGetsAWarningThatDoesNotBlock() {
+        settKontoAlle();
+        standardVersjon();
+        Long a = kunde("100000001", "Med bruk", "AKTIV", null).id();
+        regel(a, "KN1", null, null, null);
+        kunde("100000002", "Uten bruk", "AKTIV", null);
+        kunde("100000003", "Inaktiv uten bruk", "INAKTIV", null);
+        Long b = kunde("100000004", "Blokkert bruk", "AKTIV", null).id();   // usage, but no kundenummer rule
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "5", null);
+        bruk(imp, JAN, "100000004", "melding", Bruksdatatype.BRUKSVOLUM, "5", null);
+
+        var kj = tjeneste.generer(JAN);
+
+        var utenBruk = tjeneste.funn(kj.id()).stream()
+                .filter(f -> "AKTIV_KUNDE_UTEN_BRUK".equals(f.kode())).toList();
+        assertThat(utenBruk).singleElement().satisfies(f -> {
+            assertThat(f.alvorlighet()).isEqualTo("ADVARSEL");
+            assertThat(f.melding()).isEqualTo("Kunde Uten bruk (100000002) har aktiv avtale, men ingen bruk i perioden");
+        });
+        // The blocked customer had usage, so it gets MANGLER_KUNDENUMMER, not the no-usage warning.
+        assertThat(koder(kj.id())).contains("MANGLER_KUNDENUMMER");
+
+        // The warning alone never blocks approval.
+        tjeneste.forkast(kj.id());
+        regel(b, "KN4", null, null, null);
+        var ren = tjeneste.generer(JAN);
+        assertThat(koder(ren.id())).contains("AKTIV_KUNDE_UTEN_BRUK");
+        assertThat(tjeneste.harBlokkerende(ren.id())).isFalse();
+        tjeneste.godkjenn(ren.id());
+        assertThat(tjeneste.hent(ren.id()).status()).isEqualTo("GODKJENT");
+    }
+
+    @Test
     void nullbelopWarningFires() {
         settKontoAlle();
         standardVersjon();

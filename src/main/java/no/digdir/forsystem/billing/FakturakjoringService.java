@@ -10,6 +10,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import no.digdir.forsystem.common.AuditService;
 import no.digdir.forsystem.common.BrukerContext;
@@ -230,6 +232,17 @@ public class FakturakjoringService {
                         "Kunde " + k.virksomhetsnavn() + " har avtalestatus " + k.avtalestatus()));
             }
         });
+
+        // Completeness (specs/003 D5, BF1 T10): an active customer without a single usage row may be an
+        // expected tjenesteeier missing from the basis. A warning, not a blocker — a month without
+        // billable usage can be legitimate, and Økonomi decides.
+        Set<String> orgnrMedBruk = bruk.stream().map(Bruksdata::organisasjonsnummer).collect(Collectors.toSet());
+        kundeByOrgnr.values().stream()
+                .filter(k -> "AKTIV".equals(k.avtalestatus()) && !orgnrMedBruk.contains(k.organisasjonsnummer()))
+                .sorted(Comparator.comparing(Kunde::organisasjonsnummer))
+                .forEach(k -> funnListe.add(advarsel(ctx.kjoringId, null, Kontrollkode.AKTIV_KUNDE_UTEN_BRUK,
+                        "Kunde " + k.virksomhetsnavn() + " (" + k.organisasjonsnummer()
+                                + ") har aktiv avtale, men ingen bruk i perioden")));
 
         // Create invoices in deterministic order and assign ordre_nr.
         List<Gruppe> sorterteGrupper = new ArrayList<>(grupper.keySet());
