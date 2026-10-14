@@ -17,9 +17,12 @@ import no.digdir.forsystem.common.BrukerContext;
 import no.digdir.forsystem.common.Handling;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
+import no.digdir.forsystem.registry.Avtalestatus;
+import no.digdir.forsystem.registry.Kunde;
 import no.digdir.forsystem.registry.KundeReferanse;
 import no.digdir.forsystem.registry.KundeReferanseRepository;
 import no.digdir.forsystem.registry.KundeRepository;
+import no.digdir.forsystem.registry.KundeService;
 import no.digdir.forsystem.registry.KundenummerRegel;
 import no.digdir.forsystem.registry.KundenummerRegelRepository;
 import no.digdir.forsystem.registry.Produkt;
@@ -58,12 +61,13 @@ public class DwhImportService {
     private final FileArchive arkiv;
     private final AuditService audit;
     private final BrukerContext brukerContext;
+    private final KundeService kundeService;
 
     DwhImportService(ObjectProvider<DwhUsageClient> klient, DwhEgenskaper egenskaper, UsageImportService usage,
                      BruksdataImportRepository importer, ProduktKildenavnRepository kildenavn,
                      ProduktRepository produkter, KundeRepository kunder, KundeReferanseRepository referanser,
                      KundenummerRegelRepository kundenummerRegler, FileArchive arkiv, AuditService audit,
-                     BrukerContext brukerContext) {
+                     BrukerContext brukerContext, KundeService kundeService) {
         this.klient = klient;
         this.egenskaper = egenskaper;
         this.usage = usage;
@@ -76,6 +80,7 @@ public class DwhImportService {
         this.arkiv = arkiv;
         this.audit = audit;
         this.brukerContext = brukerContext;
+        this.kundeService = kundeService;
     }
 
     /** Whether the DWH source is configured; the UI hides the fetch action otherwise. */
@@ -124,6 +129,57 @@ public class DwhImportService {
         return Optional.of(lagret);
     }
 
+    /**
+     * Build the preview from an uploaded CSV export of the datavarehus view — the fallback while the API
+     * is unreachable (OQ-19). Same aggregation, mapping and cross-check as a fetch; the file itself is
+     * archived as the raw payload on confirm. Not persisted here.
+     */
+    @Transactional(readOnly = true)
+    public Forhaandsvisning forhaandsvisFil(Periode periode, String filnavn, byte[] innhold) {
+        List<DwhRad> rader = DwhCsv.les(innhold);
+        return bygg(periode, filnavn, rader, new Raadata(innhold, OffsetDateTime.now(), null, null), null);
+    }
+
+    /** Organisations in an uploaded export that have no customer in the registry yet. */
+    @Transactional(readOnly = true)
+    public List<DwhCsv.KundeIFil> manglendeKunder(byte[] innhold) {
+        return DwhCsv.kunder(innhold).stream()
+                .filter(k -> kunder.findByOrganisasjonsnummer(k.organisasjonsnummer()).isEmpty())
+                .toList();
+    }
+
+    /**
+     * Register the export's organisations that are missing from the customer registry: name, a default
+     * kundenummer rule and the invoice reference, as the datavarehus carries them (from CRM). Avtalestatus
+     * is AKTIV because the datavarehus only delivers usage under active agreements (OQ-4). Each customer
+     * is created on its own, through the registry's normal validation and audit, so one refused orgnr
+     * does not stop the others. A stopgap until customers come from CRM (OQ-5).
+     */
+    public Kundeoppretting opprettManglendeKunder(byte[] innhold) {
+        List<String> opprettet = new ArrayList<>();
+        List<String> feilet = new ArrayList<>();
+        for (DwhCsv.KundeIFil k : manglendeKunder(innhold)) {
+            try {
+                String navn = k.navn() == null ? k.organisasjonsnummer() : k.navn();
+                Kunde ny = kundeService.opprett(k.organisasjonsnummer(), navn, null, Avtalestatus.AKTIV);
+                if (k.kundenummer() != null) {
+                    kundeService.leggTilRegel(ny.id(), k.kundenummer(), null, null, null);
+                }
+                if (k.fakturareferanse() != null || k.bestillingsnummer() != null) {
+                    kundeService.leggTilReferanse(ny.id(), null, k.fakturareferanse(), k.bestillingsnummer());
+                }
+                opprettet.add(k.organisasjonsnummer());
+            } catch (Regelbrudd e) {
+                feilet.add(k.organisasjonsnummer() + ": " + e.getMessage());
+            }
+        }
+        return new Kundeoppretting(opprettet, feilet);
+    }
+
+    /** The outcome of {@link #opprettManglendeKunder}: created orgnrs, and refused ones with the reason. */
+    public record Kundeoppretting(List<String> opprettet, List<String> feilet) {
+    }
+
     /** Rebuild the preview of a staged import from its archived payload (mapping/registry may have changed). */
     @Transactional(readOnly = true)
     public Forhaandsvisning forhaandsvisStaget(Long importId) {
@@ -150,12 +206,16 @@ public class DwhImportService {
     }
 
     private Forhaandsvisning bygg(Periode periode, Raadata raadata, Long stagetImportId) {
-        List<DwhRad> rader = DwhRespons.les(raadata.innhold());
+        return bygg(periode, filnavn(periode), DwhRespons.les(raadata.innhold()), raadata, stagetImportId);
+    }
+
+    private Forhaandsvisning bygg(Periode periode, String filnavn, List<DwhRad> rader, Raadata raadata,
+                                  Long stagetImportId) {
         if (rader.isEmpty()) {
             throw new Regelbrudd("Ingen bruksdata i datavarehus for " + periode.norskLabel() + " ennå");
         }
         DwhAggregering.Resultat agg = DwhAggregering.aggreger(periode, rader, kobling());
-        return usage.vurder(periode, filnavn(periode), Kilde.DWH, agg.rader(), agg.avviste(),
+        return usage.vurder(periode, filnavn, Kilde.DWH, agg.rader(), agg.avviste(),
                 kryssjekkKunderegister(rader), raadata, stagetImportId);
     }
 

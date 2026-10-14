@@ -1,0 +1,5 @@
+"maaned","organisation_number","organisation_name","product_name","kundenummer","fakturareferanse","bestillingsnummer","source_table","quantity","amount_nok","antall_rader"
+"2026-09-01","100000001","testetat en","Autorisasjon","9001","REF-EN",NULL,"digdir_prod_autorisasjon_data_main",1200,NULL,29
+"2026-09-01","100000001","testetat en","Altinn studio","9001","REF-EN",NULL,"digdir_prod_studio_instanser_data_main",30,NULL,30
+"2026-09-01","100000002","testetat to","Autorisasjon","9002","Navn, med komma",NULL,"digdir_prod_autorisasjon_data_main",55,NULL,10
+"2026-09-01","100000003","testetat tre","Varsling e-post","9003",NULL,NULL,"digdir_prod_core_email_data_main",7,NULL,13

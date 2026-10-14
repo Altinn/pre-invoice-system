@@ -53,6 +53,15 @@ Re-uploading a period **replaces** it: the previous import's rows for that perio
 previous import is marked `AVVIST` (docs/03 §4). The natural key (periode, orgnr, produkt, type) stays
 unique.
 
+## The datavarehus's own export
+
+While the DWH API is unreachable (OQ-19), a CSV export of the view `mv_altinn_usage_monthly` can be
+uploaded as it is, under *Bruksdata → Last opp eksport fra datavarehuset*. It is **not** this format:
+it keeps the view's columns (`organisation_number`, `organisation_name`, `product_name`, `quantity`,
+`amount_nok`, `kundenummer`, `fakturareferanse`, `bestillingsnummer`, and `maaned` or
+`transaction_date`), double-quoted text and the literal `NULL`. Product names are mapped under
+*Produkter → Kildenavn*, exactly as for an API fetch, and missing customers can be created from the file.
+
 ## Provisional — SMS and Azure (OQ-3, OQ-4)
 
 The `SMS_KOSTNAD` and `AZURE_KOSTNAD` rows and the `belop` semantics are **provisional**. The

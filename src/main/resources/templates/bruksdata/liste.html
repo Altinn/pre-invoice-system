@@ -48,6 +48,26 @@
         <button class="ds-button" data-color="accent" type="submit">Forhåndsvis</button>
     </form>
 
+    <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Last opp eksport fra datavarehuset</h2>
+    <p class="ds-paragraph" data-size="sm" style="max-width:40rem;">
+        Når API-et ikke kan brukes: last opp datavarehusets egen CSV-eksport av <code>mv_altinn_usage_monthly</code>
+        (kolonnene <code>organisation_number</code>, <code>product_name</code>, <code>quantity</code> …). Den går gjennom
+        samme kontroll som henting fra datavarehuset, og produktnavnene kobles under
+        <a class="ds-link" th:href="@{/produkter/kildenavn}">Kildenavn</a>. Organisasjoner som ikke er kunder ennå, kan
+        opprettes fra fila i forhåndsvisningen.</p>
+    <form th:action="@{/bruksdata/last-opp-dwh(_csrf=${_csrf.token})}" method="post"
+          enctype="multipart/form-data" hx-boost="false" class="rad">
+        <div class="ds-field">
+            <label class="ds-label" for="dwhPeriode">Periode</label>
+            <input class="ds-input" id="dwhPeriode" name="periode" type="month" required>
+        </div>
+        <div class="ds-field">
+            <label class="ds-label" for="dwhFil">Eksportfil</label>
+            <input class="ds-input" id="dwhFil" name="fil" type="file" required>
+        </div>
+        <button class="ds-button" data-color="accent" type="submit">Forhåndsvis</button>
+    </form>
+
     <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Importer</h2>
     <table class="ds-table" data-size="sm">
         <thead>

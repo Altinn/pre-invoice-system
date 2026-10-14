@@ -205,9 +205,20 @@ public class UsageImportService {
 
     /** Archive a DWH payload under the period; returns it with location and checksum. */
     Raadata arkiver(Periode periode, Raadata r) {
-        String navn = "bruksdata/" + periode + "/dwh-" + r.hentetAt().toInstant().toEpochMilli() + ".json";
+        String navn = "bruksdata/" + periode + "/dwh-" + r.hentetAt().toInstant().toEpochMilli()
+                + (erJson(r.innhold()) ? ".json" : ".csv");
         FileArchive.Arkivert a = arkiv.lagre(navn, r.innhold());
         return new Raadata(r.innhold(), r.hentetAt(), a.blobUrl(), a.sha256());
+    }
+
+    /** An API payload is JSON; an uploaded export from the datavarehus is CSV. */
+    public static boolean erJson(byte[] innhold) {
+        for (byte b : innhold) {
+            if (!Character.isWhitespace(b)) {
+                return b == '{' || b == '[';
+            }
+        }
+        return false;
     }
 
     @Transactional(readOnly = true)
