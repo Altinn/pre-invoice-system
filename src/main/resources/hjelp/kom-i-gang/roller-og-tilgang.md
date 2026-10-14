@@ -13,9 +13,9 @@ Hva du kan gjøre i forsystem avhenger av rollen din. Rollene kommer fra innlogg
 |---|---|
 | **LESER** | Se alt: produkter, prisversjoner, bruksdata, kjøringer, filer og hendelseslogg. Du kan laste ned filer og regneark. Du kan ikke endre noe. |
 | **FORVALTER** | Endre registre, hente og laste opp bruksdata, generere og forkaste kjøringer, endre tekstene på fakturaen og sjekke ut advarsler. |
-| **GODKJENNER** | Godkjenne og eksportere kjøringer, og sjekke ut advarsler. |
+| **GODKJENNER** | Godkjenne og eksportere kjøringer, og sjekke ut advarsler. Du kan ikke godkjenne en kjøring du genererte selv (sidemannskontroll). |
 
-Rollene bygger ikke på hverandre. GODKJENNER er ikke automatisk FORVALTER, og motsatt. Den som skal gjøre hele månedsrutinen, trenger begge rollene. Godkjenning og eksport er bevisst en egen oppgave.
+Rollene bygger ikke på hverandre. GODKJENNER er ikke automatisk FORVALTER, og motsatt. Godkjenning og eksport er bevisst en egen oppgave: den som genererte en kjøring, kan ikke godkjenne den selv. En annen med rollen GODKJENNER må gjøre det.
 
 Alle som er logget inn kan lese. Har du ingen rolle, kan du se, men ikke endre.
 

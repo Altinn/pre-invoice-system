@@ -13,10 +13,13 @@ Rollen din styrer hva du får endre. Alle som er logget inn, kan lese alt. Det e
 |---|---|
 | **LESER** | Se registre, bruksdata, kjøringer og logg, og laste ned filer. Kan ikke endre noe. |
 | **FORVALTER** | Vedlikeholde registre, hente eller laste opp bruksdata, generere og forkaste kjøringer. |
-| **GODKJENNER** | Godkjenne og eksportere kjøringer. |
+| **GODKJENNER** | Godkjenne og eksportere kjøringer. Ikke en kjøring du genererte selv (sidemannskontroll). |
 
 > [!IMPORTANT]
 > Rollene bygger ikke oppå hverandre. GODKJENNER får ikke FORVALTERs rettigheter automatisk, og FORVALTER kan ikke godkjenne. Roller tildeles gjennom grupper, og du har begge bare hvis du er med i begge gruppene. I den lokale demoen har brukeren alle tre.
+
+> [!IMPORTANT]
+> **Sidemannskontroll:** Den som genererte en kjøring, kan ikke godkjenne den. Har du både FORVALTER og GODKJENNER, må en annen godkjenne kjøringene du genererer. Hvert miljø trenger derfor minst to personer med GODKJENNER. Regelen er slått av i den lokale demoen, som bare har én bruker.
 
 ## Handling for handling
 
@@ -33,7 +36,7 @@ Rollen din styrer hva du får endre. Alle som er logget inn, kan lese alt. Det e
 | Forkaste en kjøring | nei | ja | nei |
 | Lage korrigeringskjøring fra en sammenligning | nei | ja | nei |
 | Krysse av **Funn akseptert** på en advarsel | nei | ja | ja |
-| [Godkjenn](knapp:) en kjøring | nei | nei | ja |
+| [Godkjenn](knapp:) en kjøring (ikke en du genererte selv) | nei | nei | ja |
 | [Eksporter](knapp:) en kjøring | nei | nei | ja |
 
 Testverktøyet «nullstill periode» finnes bare i testmiljøet tt02 og lokalt. Det krever FORVALTER.

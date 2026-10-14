@@ -96,6 +96,7 @@ class FakturakjoringController {
                         ? avstemming.forKjoring(id) : null);
         model.addAttribute("antallValgteEndringer",
                 kjoring.erKorrigering() ? kjoringer.valgteEndringIder(id).size() : 0);
+        model.addAttribute("maaGodkjennesAvAnnen", kjoringer.maaGodkjennesAvAnnen(id));
         model.addAttribute("sammendrag", kjoringer.sammendrag(id));
         model.addAttribute("antallOrdrer", eksport.forventetAntallOrdrer(id));
         model.addAttribute("lg04Avstemming", eksport.avstemmingFor(id).orElse(null));

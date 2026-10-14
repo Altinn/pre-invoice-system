@@ -14,6 +14,8 @@ Godkjenning er det siste du gjør før eksport. Etter godkjenning kan grunnlaget
 
 Du trenger rollen GODKJENNER. FORVALTER kan ikke godkjenne, med mindre du også har GODKJENNER. Se [Roller](../oppslag/roller.md).
 
+**Sidemannskontroll:** Den som genererte kjøringen, kan ikke godkjenne den selv. En annen person med rollen GODKJENNER må gjøre det.
+
 ## Før du starter
 
 - Det er ingen blokkerende funn.
@@ -33,6 +35,6 @@ Kjøringen har status «Klar til eksport», og siden viser «Godkjent av» med n
 
 ## Hvis noe går galt
 
-- **Godkjenn er grå.** Siden sier hvorfor: enten er det blokkerende funn, eller advarsler som ikke er sjekket ut. Se [Godkjenn er grå](../nar-noe-gar-galt/godkjenn-er-gra.md).
+- **Godkjenn er grå.** Siden sier hvorfor: blokkerende funn, advarsler som ikke er sjekket ut, eller at du genererte kjøringen selv. Se [Godkjenn er grå](../nar-noe-gar-galt/godkjenn-er-gra.md).
 - **Du ser ikke Godkjenn, eller får «Ingen tilgang».** Du mangler rollen GODKJENNER.
 - **Du oppdager en feil etter godkjenning.** Be en FORVALTER trykke [Forkast](knapp:), rette feilen og generere på nytt. Er kjøringen eksportert, kan den ikke forkastes. Se [Eksportert kan ikke forkastes](../nar-noe-gar-galt/eksportert-kan-ikke-forkastes.md).
