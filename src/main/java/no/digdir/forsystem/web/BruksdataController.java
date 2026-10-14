@@ -30,6 +30,7 @@ class BruksdataController {
 
     /** Session key for the staged preview between upload and commit. */
     static final String STAGED = "stagetForhaandsvisning";
+    static final String DWH_FIL = "dwhFil";
 
     private final UsageImportService service;
     private final DwhImportService dwh;
@@ -66,10 +67,12 @@ class BruksdataController {
     ResponseEntity<byte[]> raadata(@PathVariable Long id) {
         BruksdataImport imp = service.hentImport(id);
         byte[] innhold = service.raadata(id);
+        boolean json = UsageImportService.erJson(innhold);
         return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
+                .contentType(json ? MediaType.APPLICATION_JSON : MediaType.valueOf("text/csv"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                        .filename("bruksdata-" + imp.periode() + "-import-" + id + ".json").build().toString())
+                        .filename("bruksdata-" + imp.periode() + "-import-" + id + (json ? ".json" : ".csv"))
+                        .build().toString())
                 .body(innhold);
     }
 
@@ -87,6 +90,47 @@ class BruksdataController {
             throw new UncheckedIOException("Kunne ikke lese filen", e);
         }
         return visForhaandsvisning(fv, session, model);
+    }
+
+    /**
+     * Upload a CSV export of the datavarehus view (while the API is unreachable, OQ-19). Same preview as a
+     * fetch; the file is kept in the session so missing customers can be created from it before confirming.
+     */
+    @PostMapping("/last-opp-dwh")
+    String lastOppDwh(@RequestParam String periode, @RequestParam("fil") MultipartFile fil,
+                      HttpSession session, Model model) {
+        if (fil == null || fil.isEmpty()) {
+            throw new Regelbrudd("Ingen fil ble lastet opp");
+        }
+        byte[] innhold;
+        try {
+            innhold = fil.getBytes();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Kunne ikke lese filen", e);
+        }
+        Periode p = parsePeriode(periode);
+        session.setAttribute(DWH_FIL, new DwhFil(p, fil.getOriginalFilename(), innhold));
+        return visDwhFil(session, model, null);
+    }
+
+    /** Register the uploaded export's organisations that are not customers yet, then show the preview again. */
+    @PostMapping("/last-opp-dwh/opprett-kunder")
+    String opprettKunderFraDwhFil(HttpSession session, Model model) {
+        if (!(session.getAttribute(DWH_FIL) instanceof DwhFil f)) {
+            throw new Regelbrudd("Ingen opplastet datavarehus-fil. Last den opp på nytt.");
+        }
+        return visDwhFil(session, model, dwh.opprettManglendeKunder(f.innhold()));
+    }
+
+    private String visDwhFil(HttpSession session, Model model, DwhImportService.Kundeoppretting resultat) {
+        DwhFil f = (DwhFil) session.getAttribute(DWH_FIL);
+        model.addAttribute("manglendeKunder", dwh.manglendeKunder(f.innhold()));
+        model.addAttribute("kundeoppretting", resultat);
+        return visForhaandsvisning(dwh.forhaandsvisFil(f.periode(), f.filnavn(), f.innhold()), session, model);
+    }
+
+    /** An uploaded datavarehus export kept between preview, customer creation and confirm. */
+    record DwhFil(Periode periode, String filnavn, byte[] innhold) implements java.io.Serializable {
     }
 
     private static String visForhaandsvisning(Forhaandsvisning fv, HttpSession session, Model model) {

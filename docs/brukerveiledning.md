@@ -215,7 +215,12 @@ Normalt hentes den fra datavarehuset; CSV-opplasting er reserveløsningen.
   Datavarehuset leverer bruk per dag; forsystemet summerer til én rad per organisasjon, produkt og type
   og viser samme forhåndsvisning som for CSV. Produktnavn fra datavarehuset må være koblet til et
   produkt under **Produkter → Kildenavn** — et ukjent navn avviser importen.
-- **Last opp CSV**: velg **Periode** (måned) og **CSV-fil**, trykk **Forhåndsvis**.
+- **Last opp CSV**: velg **Periode** (måned) og **CSV-fil** i forsystemets eget format, trykk **Forhåndsvis**.
+- **Last opp eksport fra datavarehuset**: når API-et ikke kan brukes, last opp datavarehusets egen
+  CSV-eksport (`mv_altinn_usage_monthly`). Den kontrolleres akkurat som en henting fra datavarehuset
+  (produktnavn kobles under **Kildenavn**). I forhåndsvisningen ser du hvor mange organisasjoner i fila
+  som ikke er kunder ennå; **Opprett kunder fra fila** registrerer dem med navn, kundenummer og
+  fakturareferanse slik datavarehuset har dem, og avtalestatus AKTIV. Deretter **Bekreft import**.
 - Tabell over tidligere importer med status. En import med status **MOTTATT** er hentet automatisk og
   venter på at du åpner den og trykker **Bekreft import**.
 
