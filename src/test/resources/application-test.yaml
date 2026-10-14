@@ -8,6 +8,9 @@ logging:
 
 # Export artifacts land under target/ in tests (gitignored, not cleaned between runs).
 forsystem:
+  # Off for the suite, where one test user generates and approves; SidemannskontrollIT turns it on.
+  godkjenning:
+    sidemannskontroll: false
   arkiv:
     katalog: target/arkiv-test
   eksport:

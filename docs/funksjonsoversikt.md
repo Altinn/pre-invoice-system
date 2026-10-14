@@ -134,6 +134,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-APPR-03 | Blocking prevents approval | Approval blocked while any BLOKKERENDE finding exists. | `FakturakjoringService.godkjenn` | — | docs/04 P3 |
 | F-APPR-04 | Forkast (pre-export) | Discard a GENERERT/GODKJENT run. | POST `/kjoringer/{id}/forkast` | FORVALTER | docs/04 P3 |
 | F-APPR-05 | One active run per period | Partial unique index; re-run requires forkasting the previous. | Flyway `V4` + `FakturakjoringService` | — | docs/03 §3 |
+| F-APPR-07 | Four-eyes approval (sidemannskontroll) | The user who generated a run cannot approve it; the run page says so and disables Godkjenn. On by default (`FORSYSTEM_SIDEMANNSKONTROLL`), off only in the single-user `local` profile. | `FakturakjoringService.godkjenn`, `GodkjenningKonfig` | GODKJENNER | Økonomi 2026-10-13, BF1 T13 |
 | F-APPR-06 | Exported run immutable | An EKSPORTERT run cannot be forkastet. | `FakturakjoringService.forkast` | — | docs/04 P3 |
 
 ## Export — LG04, PDF, CSV, XLSX
