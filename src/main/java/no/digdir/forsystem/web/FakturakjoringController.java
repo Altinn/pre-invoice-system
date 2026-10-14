@@ -69,6 +69,7 @@ class FakturakjoringController {
         model.addAttribute("advarsler", funn.stream()
                 .filter(f -> "ADVARSEL".equals(f.alvorlighet())).toList());
         model.addAttribute("harBlokkerende", kjoringer.harBlokkerende(id));
+        model.addAttribute("maaGodkjennesAvAnnen", kjoringer.maaGodkjennesAvAnnen(id));
         model.addAttribute("eksportfiler", kjoringer.eksportfiler(id));
         model.addAttribute("sammendrag", kjoringer.sammendrag(id));
         model.addAttribute("antallOrdrer", eksport.forventetAntallOrdrer(id));

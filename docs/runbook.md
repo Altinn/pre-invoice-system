@@ -36,7 +36,10 @@ derived from today's date.
    - Control before approval (BF1 T01/T06/T10): the *Sammendrag* on the run page, **Avstemming
      bruksdata** (imported vs invoiced, and every row kept off the invoice with its reason), and
      **Last ned fakturagrunnlag (XLSX)** to sample in Excel. None of these change the run.
-4. **Approve** (GODKJENNER): **Godkjenn** the run once there are no blocking findings.
+4. **Approve** (GODKJENNER, a *different* person from the one who generated the run — four-eyes,
+   Økonomi 2026-10-13): **Godkjenn** the run once there are no blocking findings. Every environment
+   therefore needs at least two people with the GODKJENNER role. The rule is on by default
+   (`FORSYSTEM_SIDEMANNSKONTROLL=true`); only the offline `local` profile turns it off.
 5. **Export** (GODKJENNER): **Eksporter**. The LG04 is read back and reconciled against the run
    before anything is saved; the run page then shows **LG04 stemmer med fakturagrunnlaget** with the
    file's and the run's orders and amount (BF1 T15). Four files are produced and archived (with

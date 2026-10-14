@@ -49,9 +49,9 @@ exists for the period — forkast that run before re-importing.
 
 ## Re-import
 
-Re-uploading a period **replaces** it: the previous import's rows for that period are deleted and the
-previous import is marked `AVVIST` (docs/03 §4). The natural key (periode, orgnr, produkt, type) stays
-unique.
+Re-uploading a period **supersedes** it: the previous import is marked `AVVIST` and its rows are kept,
+read-only, so a discarded run stays traceable (docs/03 §4, specs/002). Only the latest `VALIDERT`
+import counts as the period's usage. Within one file, (periode, orgnr, produkt, type) must be unique.
 
 ## Provisional — SMS and Azure (OQ-3, OQ-4)
 

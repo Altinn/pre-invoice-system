@@ -12,3 +12,9 @@ management:
   endpoint:
     health:
       show-details: always
+
+# The offline stub has a single user ("dev") holding every role, so four-eyes approval would make
+# the local demo impossible to approve. Everywhere else it is on (application.yaml).
+forsystem:
+  godkjenning:
+    sidemannskontroll: false
