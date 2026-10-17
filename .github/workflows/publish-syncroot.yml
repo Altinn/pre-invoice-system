@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # An empty image-tag means "deploy what is on main right now". The job is gated on main
       # above, so github.sha is main's head — and it is the same commit these overlays were

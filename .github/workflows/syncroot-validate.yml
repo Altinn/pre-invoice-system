@@ -24,7 +24,7 @@ jobs:
     name: Build and validate every overlay
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       # Same check the platform's publish pipeline relies on: every environment the artifact is
       # tagged for must have an overlay to build.
