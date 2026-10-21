@@ -68,6 +68,7 @@ public class FakturakjoringService {
     private final UsageImportService usage;
     private final AuditService audit;
     private final BrukerContext brukerContext;
+    private final GodkjenningKonfig godkjenning;
 
     FakturakjoringService(FakturakjoringRepository kjoringer, FakturaRepository fakturaer,
                           FakturalinjeRepository linjer, KontrollfunnRepository funn,
@@ -75,7 +76,8 @@ public class FakturakjoringService {
                           ProduktRepository produkter, PrisRepository priser,
                           PrisversjonRepository prisversjoner, KundeRepository kunder,
                           KundeReferanseRepository referanser, KundenummerRegelRepository regler,
-                          UsageImportService usage, AuditService audit, BrukerContext brukerContext) {
+                          UsageImportService usage, AuditService audit, BrukerContext brukerContext,
+                          GodkjenningKonfig godkjenning) {
         this.kjoringer = kjoringer;
         this.fakturaer = fakturaer;
         this.linjer = linjer;
@@ -91,6 +93,7 @@ public class FakturakjoringService {
         this.usage = usage;
         this.audit = audit;
         this.brukerContext = brukerContext;
+        this.godkjenning = godkjenning;
     }
 
     /** Suffix for a customer name read from the registry because the invoice predates the frozen name. */
@@ -332,6 +335,10 @@ public class FakturakjoringService {
             throw new Regelbrudd("Kjøringen har blokkerende kontrollfunn og kan ikke godkjennes");
         }
         String bruker = brukerContext.naavaerendeBruker();
+        if (maaGodkjennesAvAnnen(kj, bruker)) {
+            throw new Regelbrudd("Du genererte denne kjøringen og kan ikke godkjenne den selv (sidemannskontroll)."
+                    + " En annen med godkjennerrolle må godkjenne.");
+        }
         kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.GODKJENT.name(),
                 kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), bruker, OffsetDateTime.now(), kj.kommentar()));
         audit.logg(Handling.GODKJENTE, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString()));
@@ -347,6 +354,17 @@ public class FakturakjoringService {
         kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.EKSPORTERT.name(),
                 kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
                 kj.kommentar()));
+    }
+
+    /** Four-eyes: true when the rule is on and {@code bruker} generated the run (BF1 T13). */
+    public boolean maaGodkjennesAvAnnen(Fakturakjoring kj, String bruker) {
+        return godkjenning.sidemannskontroll() && bruker.equals(kj.generertAv());
+    }
+
+    /** For the run page: whether the signed-in user is barred from approving this run. */
+    @Transactional(readOnly = true)
+    public boolean maaGodkjennesAvAnnen(Long kjoringId) {
+        return maaGodkjennesAvAnnen(hent(kjoringId), brukerContext.naavaerendeBruker());
     }
 
     @Transactional

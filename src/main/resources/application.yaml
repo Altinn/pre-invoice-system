@@ -45,6 +45,9 @@ info:
 # Datavarehus usage source (specs/001-dwh-usage-import, docs/06 §1). Off by default: local runs and
 # tests never need the DWH, and CSV upload works regardless. See DwhEgenskaper for every key.
 forsystem:
+  godkjenning:
+    # Four-eyes: whoever generated a run may not approve it (Økonomi, 2026-10-13, BF1 T13).
+    sidemannskontroll: ${FORSYSTEM_SIDEMANNSKONTROLL:true}
   produkt:
     # Display names for Dim 1/2/4 on the product pages. Empty until Økonomi confirms what each
     # dimension is (OQ-2) — never guessed; set per environment, e.g. PRODUKT_DIM1_NAVN=koststed.

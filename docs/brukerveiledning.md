@@ -62,7 +62,7 @@ som brukeren **dev** med alle roller.
 |---|---|
 | **LESER** | Se alt (registre, kjøringer, logg). Kan ikke endre noe. |
 | **FORVALTER** | Alt LESER kan, pluss: vedlikeholde registre, importere bruksdata, generere kjøringer. |
-| **GODKJENNER** | Godkjenne og eksportere kjøringer. |
+| **GODKJENNER** | Godkjenne og eksportere kjøringer. **Sidemannskontroll:** den som genererte en kjøring kan ikke godkjenne den selv — en annen godkjenner må gjøre det. |
 
 > Prøver du en handling du ikke har rolle for, får du «tilgang nektet» (403). I demoen har du alt.
 
@@ -367,7 +367,8 @@ Den komplette rutinen for å fakturere forrige måned (roller i parentes):
    sammendrag, fakturaer og funn. Kontroller med **Avstemming bruksdata** og **Last ned
    fakturagrunnlag (XLSX)**.
 4. **Løs blokkerende funn** hvis noen: rett dataene, **Forkast** kjøringen, og **Generer** på nytt.
-5. **Godkjenn** (GODKJENNER): **Godkjenn** når det ikke er blokkerende funn.
+5. **Godkjenn** (GODKJENNER — en *annen* person enn den som genererte): **Godkjenn** når det ikke er
+   blokkerende funn. Genererte du kjøringen selv, er knappen deaktivert og siden sier hvorfor.
 6. **Eksporter** (GODKJENNER): **Eksporter**. Sjekk at **LG04-avstemming** sier at fila stemmer, og
    **Last ned** LG04 + PDF-zip + CSV/XLSX.
 7. **Send til DFØ** (manuelt): send LG04-fila videre med tallene fra **Til e-post til regnskap**;
