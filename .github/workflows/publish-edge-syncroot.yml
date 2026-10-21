@@ -1,0 +1,55 @@
+# Publishes the dis-edge Flux syncroot for one environment as an OCI artifact to altinncr.
+#
+# edge-syncroot/ holds only the public route in the dis-edge cluster (HTTPRoute, Envoy Backend,
+# BackendTLSPolicy) that proxies to the application's dis-core route. There is no workload and no
+# image tag to stamp, so this is a plain build-and-push of what is on main. Flux in dis-edge
+# watches oci://altinncr.azurecr.io/preinvoicingsystem/edge-syncroot and reconciles the tag
+# belonging to its environment. The application itself is deployed by publish-syncroot.yml.
+name: Publish edge syncroot
+
+run-name: Deploy edge route ${{ github.sha }} to ${{ inputs.environment }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        type: choice
+        required: true
+        options:
+          - tt02
+          - prod
+
+env:
+  SYNCROOT_ARTIFACT_NAME: preinvoicingsystem/edge-syncroot
+
+permissions:
+  contents: read
+  # Required: setup-flux-acr exchanges the job's OIDC token for Azure federated credentials.
+  id-token: write
+
+# Never let two deploys race for the same tag.
+concurrency:
+  group: publish-edge-syncroot-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  publish-edge-syncroot:
+    name: Publish edge syncroot artifact
+    # Deploy only what is on main. A syncroot built from a feature branch would put unreviewed
+    # manifests in front of Flux.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and push edge syncroot artifact
+        uses: Altinn/altinn-platform/actions/flux/build-push-image@cc2d766fe7dd2e9d96737a30e965399832728598 # main
+        with:
+          image_name: ${{ env.SYNCROOT_ARTIFACT_NAME }}
+          tag: ${{ inputs.environment }}
+          workdir: ./edge-syncroot
+          azure_subscription_id: ${{ secrets.DIS_SYNCROOT_AZURE_SUBSCRIPTION_ID }}
+          azure_app_id: ${{ secrets.DIS_SYNCROOT_AZURE_CLIENT_ID }}
+          azure_tenant_id: ${{ secrets.DIS_SYNCROOT_AZURE_TENANT_ID }}

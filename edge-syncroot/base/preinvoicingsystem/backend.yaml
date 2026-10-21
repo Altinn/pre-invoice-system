@@ -1,0 +1,13 @@
+# The application's dis-core ingress, seen from dis-edge as an external FQDN (Envoy Gateway).
+#
+# The application itself only runs in dis-core (../../../syncroot). The hostname is the internal
+# dis-core name of the environment and is set per overlay.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: Backend
+metadata:
+  name: preinvoicingsystem
+spec:
+  endpoints:
+    - fqdn:
+        hostname: will-be-patched
+        port: 443

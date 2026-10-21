@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: product-preinvoicingsystem
+resources:
+  - ../base
+
+patches:
+  - target:
+      kind: HTTPRoute
+      name: preinvoicingsystem
+      group: gateway.networking.k8s.io
+    patch: |-
+      - op: add
+        path: /spec/hostnames
+        value:
+          - preinvoicingsystem.tt02.dis.altinn.cloud
+      # The dis-core HTTPRoute only matches its own hostname (syncroot/tt02/kustomization.yaml).
+      - op: replace
+        path: /spec/rules/0/filters/0/urlRewrite/hostname
+        value: preinvoicingsystem.tt02.dis-core.altinn.cloud
+  - target:
+      kind: Backend
+      name: preinvoicingsystem
+      group: gateway.envoyproxy.io
+    patch: |-
+      - op: replace
+        path: /spec/endpoints/0/fqdn/hostname
+        value: preinvoicingsystem.tt02.dis-core.altinn.cloud
+  - target:
+      kind: BackendTLSPolicy
+      name: preinvoicingsystem
+      group: gateway.networking.k8s.io
+    patch: |-
+      - op: replace
+        path: /spec/validation/hostname
+        value: preinvoicingsystem.tt02.dis-core.altinn.cloud

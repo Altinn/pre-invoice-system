@@ -75,7 +75,7 @@ written so that a missing one fails loudly rather than deploying something subtl
 | Entra app registration + the three vault secrets below | platform / Digdir IT | **done** (docs/07 OQ-17) — secrets written into the vault by the environment's PIS AKS Admin group once it is up |
 | Role-mapping groups (reader / maintainer / approver) | Digdir IT | **done** — object ids default in `application-prod.yaml` |
 | PostgreSQL authentication mode | both | **done** — Entra token auth (docs/07 OQ-16); smoke test on first deploy |
-| Externally advertised hostname | platform | **TODO(OQ-17)**, internal dis-core name used meanwhile |
+| Externally advertised hostname | platform | tt02 **configured** via dis-edge, see [Edge](#edge--public-route-through-dis-edge); prod **TODO(OQ-17)**, a placeholder name is in place for testing |
 
 ### Human access to the vault and database
 
@@ -123,6 +123,44 @@ recycle inside the token window. `DB_PASSWORD` stays absent — with the plugin 
 reads it, and local development (`docker compose up`, Testcontainers) keeps ordinary password auth
 because nothing outside these manifests sets the URL property. See docs/07 OQ-16.
 
+## Edge — public route through dis-edge
+
+`../edge-syncroot/` is a second syncroot, deployed by Flux to the **dis-edge** cluster. It has the
+same layout as this one (`base/` plus `tt02/` and `prod/` overlays, and the folder name is the OCI
+tag). It holds no workload, only the public route, which proxies to this syncroot's dis-core route:
+
+```
+client ──▶ preinvoicingsystem.<env>.dis.altinn.cloud        (dis-edge, Envoy, ListenerSet dis/https)
+              │  Host rewritten, path unchanged
+              ▼
+           preinvoicingsystem.<env>.dis-core.altinn.cloud   (dis-core, Traefik, httproute.yaml here)
+```
+
+```
+edge-syncroot/base/preinvoicingsystem/
+  httproute.yaml           HTTPRoute: same match as the core route (PathPrefix /), Host rewrite only
+  backend.yaml             Envoy Backend -> the dis-core name on 443
+  backendtlspolicy.yaml    verifies the dis-core certificate against the system CAs
+edge-syncroot/tt02/  prod/ overlays: edge hostname, dis-core hostname
+```
+
+| Environment | Public hostname (edge) | Upstream (core) |
+|---|---|---|
+| `tt02` | `preinvoicingsystem.tt02.dis.altinn.cloud` | `preinvoicingsystem.tt02.dis-core.altinn.cloud` |
+| `prod` | `preinvoicingsystem.prod.dis.altinn.cloud` (TODO(OQ-17), for testing) | `preinvoicingsystem.prod.dis-core.altinn.cloud` |
+
+The dis-core `HTTPRoute` keeps matching only its dis-core hostname. That is why the edge rewrites
+the Host header. If the core hostname changes, change both syncroots together.
+
+Deploy with the **Publish edge syncroot** workflow (`publish-edge-syncroot.yml`) and choose the
+environment. It pushes `oci://altinncr.azurecr.io/preinvoicingsystem/edge-syncroot:<env>`. There is
+no image tag, and the edge does not need to be republished when the application changes.
+
+The OIDC redirect URI follows the hostname the browser sees. Once users go through the edge, the
+Entra app registration needs `https://preinvoicingsystem.<env>.dis.altinn.cloud/login/oauth2/code/*`
+as a redirect URI. Because the Host header is rewritten, Spring builds its redirect from the dis-core name
+unless it receives the original host (`X-Forwarded-Host`). Verify this on the first tt02 login.
+
 ## Known gaps
 
 - **APIM.** The issue puts APIM in front of the UI. `dis-apim-operator`'s `Api` resource requires
@@ -147,6 +185,8 @@ because nothing outside these manifests sets the URL property. See docs/07 OQ-16
 ```bash
 kustomize build syncroot/tt02    # render an overlay
 kustomize build syncroot/prod
+kustomize build edge-syncroot/tt02
+kustomize build edge-syncroot/prod
 
 # schema-check a rendered overlay exactly the way CI does
 kustomize build syncroot/tt02 | kubeconform -strict -summary \
@@ -156,7 +196,8 @@ kustomize build syncroot/tt02 | kubeconform -strict -summary \
   -
 ```
 
-All of it runs in CI on every PR touching `syncroot/`, via `syncroot-validate.yml`.
+All of it runs in CI on every PR touching `syncroot/` or `edge-syncroot/`, via
+`syncroot-validate.yml`, for all four overlays.
 
 `kustomize build` only proves the overlay is well-formed YAML, so the rendered output is also
 schema-checked. `-strict` makes unknown fields and duplicate keys errors — the failure mode that

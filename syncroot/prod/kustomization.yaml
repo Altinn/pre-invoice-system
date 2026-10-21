@@ -47,9 +47,9 @@ patches:
       - op: add
         path: /spec/hostnames
         value:
-          # TODO(OQ-17): no externally advertised name is assigned yet — the issue sketched
-          # `<product>.<domain>`, but both the product name and the domain have moved on.
-          # This is the internal dis-core name.
+          # The internal dis-core name. The public name, preinvoicingsystem.prod.dis.altinn.cloud,
+          # lives in dis-edge (edge-syncroot/prod), which rewrites the Host header to this one, so
+          # change the two together.
           - preinvoicingsystem.prod.dis-core.altinn.cloud
   - target:
       kind: DatabaseServer

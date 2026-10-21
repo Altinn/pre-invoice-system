@@ -1,0 +1,14 @@
+# Edge -> core is TLS: Envoy verifies the dis-core certificate against the system CAs, for the
+# same dis-core name the Backend points at. Set per overlay.
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: preinvoicingsystem
+spec:
+  targetRefs:
+    - group: gateway.envoyproxy.io
+      kind: Backend
+      name: preinvoicingsystem
+  validation:
+    wellKnownCACertificates: System
+    hostname: will-be-patched
