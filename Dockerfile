@@ -2,7 +2,7 @@
 # stage 2 runs it on a slim Temurin 21 JRE (docs/02). No Azure anything — runs on any container host.
 
 # --- build ---
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:25-jdk@sha256:2d5d5e9b533342a565907c84f47a2ec298c40cde7b13a3ca85d4950fa456a641 AS build
 WORKDIR /workspace
 
 # Cache dependencies first: copy only what the wrapper + pom need, resolve offline-able deps.
@@ -15,7 +15,7 @@ COPY src/ src/
 RUN ./mvnw -B -q clean package -DskipTests
 
 # --- run ---
-FROM eclipse-temurin:21-jre AS run
+FROM eclipse-temurin:25-jre@sha256:dbb43d81099eec91e0800226ed2296d03146ee7857165b95112372ad0d67e87f AS run
 WORKDIR /app
 
 # Non-root runtime user, plus a writable archive directory it owns. Exports (LG04/PDF/CSV/XLSX)
