@@ -6,15 +6,15 @@
 <main id="hovedinnhold" class="side" tabindex="-1" th:with="a=${kontroll}">
     <nav class="ds-breadcrumbs" aria-label="Du er her:">
         <a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}"
-           th:attr="aria-label=|Tilbake til kjøring ${kjoring.periode()}|">Kjøring</a>
+           th:attr="aria-label=|Tilbake til kjøring ${kjoring.periodeLabel()}|">Kjøring</a>
         <ol>
             <li><a class="ds-link" th:href="@{/}">Forside</a></li>
             <li><a class="ds-link" th:href="@{/kjoringer}">Kjøringer</a></li>
-            <li><a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}" th:text="|Kjøring ${kjoring.periode()}|">Kjøring</a></li>
+            <li><a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}" th:text="|Kjøring ${kjoring.periodeLabel()}|">Kjøring</a></li>
             <li><a class="ds-link" aria-current="page" >LG04-kontroll</a></li>
         </ol>
     </nav>
-    <h1 class="ds-heading" data-size="lg" th:text="|Kontroll av arkivert LG04 — ${kjoring.periode()}|">Kontroll av arkivert LG04</h1>
+    <h1 class="ds-heading" data-size="lg" th:text="|Kontroll av arkivert LG04 — ${kjoring.periodeLabel()}|">Kontroll av arkivert LG04</h1>
     <p class="ds-paragraph">Den arkiverte LG04-filen er lest på nytt, sjekksummen er kontrollert mot eksporten, og
         ordrer og beløp er sammenlignet med kjøringen. Ingenting er endret.</p>
 

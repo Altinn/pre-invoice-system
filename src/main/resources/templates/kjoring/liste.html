@@ -27,7 +27,7 @@
         </thead>
         <tbody>
         <tr th:each="k : ${kjoringer}">
-            <td th:text="${k.periode()}">2027-01-01</td>
+            <td class="periode" th:text="${k.periodeLabel()}">januar 2027</td>
             <td>
                 <span class="ds-tag"
                       th:data-color="${k.status() == 'GODKJENT' or k.status() == 'EKSPORTERT'} ? 'success' : (${k.status() == 'FORKASTET'} ? 'neutral' : 'warning')"

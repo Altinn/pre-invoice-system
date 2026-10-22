@@ -60,14 +60,20 @@ class FakturakjoringController {
     @GetMapping("/{id}")
     String detalj(@PathVariable Long id, Model model) {
         var funn = kjoringer.funn(id);
-        model.addAttribute("kjoring", kjoringer.hent(id));
+        var kjoring = kjoringer.hent(id);
+        model.addAttribute("kjoring", kjoring);
         var fakturaer = kjoringer.fakturaer(id);
         model.addAttribute("fakturaer", fakturaer);
         model.addAttribute("kundenavn", kjoringer.kundenavn(fakturaer));
-        model.addAttribute("blokkerende", funn.stream()
-                .filter(f -> "BLOKKERENDE".equals(f.alvorlighet())).toList());
-        model.addAttribute("advarsler", funn.stream()
-                .filter(f -> "ADVARSEL".equals(f.alvorlighet())).toList());
+        // Findings one row per code, and the counts the next-step checklist shows (specs/005).
+        model.addAttribute("funngrupper", Funngruppe.av(funn));
+        model.addAttribute("antallBlokkerende", funn.stream()
+                .filter(f -> "BLOKKERENDE".equals(f.alvorlighet())).count());
+        model.addAttribute("antallAdvarsler", funn.stream()
+                .filter(f -> "ADVARSEL".equals(f.alvorlighet())).count());
+        // The usage check matters only before approval; other statuses skip the query.
+        model.addAttribute("bruksdataavstemming",
+                "GENERERT".equals(kjoring.status()) ? avstemming.forKjoring(id) : null);
         model.addAttribute("harBlokkerende", kjoringer.harBlokkerende(id));
         model.addAttribute("eksportfiler", kjoringer.eksportfiler(id));
         model.addAttribute("sammendrag", kjoringer.sammendrag(id));
