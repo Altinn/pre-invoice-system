@@ -8,7 +8,7 @@ Deployment is **pull-based** (altinn-platform RFC 0001). Nothing in this reposit
 cluster:
 
 ```
-ci.yml            ──▶ ghcr.io/altinn/pre-invoice-system:<tag>
+ci.yml            ──▶ ghcr.io/altinn/pre-invoice-system:<tag>     (push to main → also deploys tt02)
                                      │
 publish-syncroot.yml ──▶ oci://altinncr.azurecr.io/preinvoicingsystem/syncroot:<env>
                                      │
@@ -45,10 +45,19 @@ to match on both sides. If a different cluster is assigned, rename the folder an
 
 ## Deploying
 
-1. Merge to `main`. `ci.yml` builds and pushes `ghcr.io/altinn/pre-invoice-system:<sha>`.
-2. Run the **Publish syncroot** workflow and choose the environment. Leave **Image tag** empty to
-   deploy the head of `main`; fill it in to pin an older sha, for a rollback.
-3. Flux reconciles within its sync interval.
+**tt02 is deployed automatically.** On every push to `main`, `ci.yml` does three things in order:
+
+1. runs the tests
+2. builds and pushes `ghcr.io/altinn/pre-invoice-system:<sha>`
+3. calls `publish-syncroot.yml` for `tt02` with that sha (the **Deploy to tt02** job)
+
+The image and the overlays come from the same commit. Flux reconciles within its sync interval. A
+failing test or image build stops the deploy.
+
+**prod is deployed by hand.** Run the **Publish syncroot** workflow and choose `prod`.
+- Leave **Image tag** empty to deploy the head of `main`.
+- Fill it in to pin an older sha, for a rollback. The same works for `tt02`. The next push to
+  `main` then moves tt02 forward again.
 
 The empty field resolves to the commit sha of `main`, not the `latest` tag CI also pushes: the
 syncroot is reconciled by content, so an artifact that always reads `newTag: latest` is
@@ -93,7 +102,7 @@ investigation (reading, writing and schema changes); the prod group receives **R
 (read-only). The application's identity retains Owner access for Flyway in both environments.
 
 These groups replace `forsystem-vault-admin` and `forsystem-db-admin` in the published overlays.
-Publish the syncroot separately for `tt02` and `prod` after merge to reconcile the changes.
+Merging deploys `tt02`. Publish `prod` by hand to reconcile the changes there.
 Group membership is managed separately in `altinn-access-management/Terraform/DIS/{Dev,Prod}`.
 
 ### Vault secrets the app expects

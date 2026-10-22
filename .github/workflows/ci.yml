@@ -59,3 +59,19 @@ jobs:
           tags: |
             ${{ steps.img.outputs.name }}:latest
             ${{ steps.img.outputs.name }}:${{ github.sha }}
+
+  # Every green push to main goes to the test environment, with the image this run just pushed and
+  # the overlays from the same commit. Prod stays a manual run of publish-syncroot.yml.
+  deploy-tt02:
+    name: Deploy to tt02
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      # setup-flux-acr in publish-syncroot.yml exchanges the job's OIDC token for Azure credentials.
+      id-token: write
+    uses: ./.github/workflows/publish-syncroot.yml
+    with:
+      environment: tt02
+      image-tag: ${{ github.sha }}
+    secrets: inherit

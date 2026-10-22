@@ -8,6 +8,12 @@
 # The image must already exist in GHCR (built by ci.yml on push to main). The cluster pulls it
 # through the ACR cache, so the tag passed here is a GHCR tag, e.g. a commit sha from ci.yml.
 # Leaving image-tag empty deploys the current head of main — see "Resolve image tag" below.
+#
+# Two ways in:
+#   - ci.yml calls this for tt02 after every green push to main, with that commit's sha, so the test
+#     environment always runs main.
+#   - Anyone runs it by hand (workflow_dispatch) for prod, or to roll tt02 back to an older sha.
+#     Prod is never deployed automatically.
 name: Publish syncroot
 
 run-name: Deploy ${{ inputs.image-tag || github.sha }} to ${{ inputs.environment }}
@@ -24,6 +30,16 @@ on:
           - prod
       image-tag:
         description: "Image tag to deploy (a tag that exists in ghcr.io/altinn/pre-invoice-system). Leave empty to deploy the current head of main."
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target environment. ci.yml passes tt02; prod is deployed by hand only."
+        type: string
+        required: true
+      image-tag:
+        description: "Image tag to deploy; ci.yml passes the sha it just built."
         type: string
         required: false
 
