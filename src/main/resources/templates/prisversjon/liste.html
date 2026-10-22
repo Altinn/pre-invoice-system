@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Prisversjoner')}"></head>
-<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
-<header th:replace="~{layout :: topbar}"></header>
-<main class="side">
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('prisversjoner')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
     <h1 class="ds-heading" data-size="lg">Prisversjoner</h1>
 
-    <table class="ds-table" data-size="sm">
+    <table class="ds-table" data-size="sm" data-hover>
         <thead>
         <tr><th>Navn</th><th>Gyldig fra</th><th>Gyldig til</th><th>Status</th><th></th></tr>
         </thead>
@@ -26,29 +26,33 @@
             </td>
         </tr>
         <tr th:if="${prisversjoner.isEmpty()}">
-            <td colspan="5" class="ds-paragraph" data-size="sm">Ingen prisversjoner ennå.</td>
+            <td colspan="5" class="tom">Ingen prisversjoner ennå. Opprett et utkast nedenfor.</td>
         </tr>
         </tbody>
     </table>
 
-    <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Ny prisversjon (utkast)</h2>
+    <h2 class="ds-heading" data-size="xs">Ny prisversjon (utkast)</h2>
     <form th:action="@{/prisversjoner}" method="post" class="rad">
         <th:block th:replace="~{layout :: csrf}"></th:block>
-        <div class="ds-field">
+        <ds-field class="ds-field">
             <label class="ds-label" for="navn">Navn</label>
-            <input class="ds-input" id="navn" name="navn" placeholder="Prisliste 2027" required>
-        </div>
-        <div class="ds-field">
+            <input class="ds-input" id="navn" name="navn" placeholder="Prisliste 2027" required
+                   data-feilmelding="Gi prisversjonen et navn.">
+            <p class="ds-validation-message" data-field="validation" hidden></p>
+        </ds-field>
+        <ds-field class="ds-field">
             <label class="ds-label" for="gyldigFra">Gyldig fra</label>
-            <input class="ds-input" id="gyldigFra" name="gyldigFra" type="date" required>
-        </div>
+            <input class="ds-input" id="gyldigFra" name="gyldigFra" type="date" required
+                   data-feilmelding="Velg datoen versjonen gjelder fra.">
+            <p class="ds-validation-message" data-field="validation" hidden></p>
+        </ds-field>
         <div class="ds-field">
-            <label class="ds-label" for="gyldigTil">Gyldig til (valgfritt)</label>
+            <label class="ds-label" for="gyldigTil">Gyldig til <span class="ds-tag" data-color="info" data-size="sm">Valgfritt</span></label>
             <input class="ds-input" id="gyldigTil" name="gyldigTil" type="date">
         </div>
         <button class="ds-button" data-color="accent" type="submit">Opprett</button>
     </form>
-    <p class="ds-paragraph" data-size="sm" style="max-width:40rem;">
+    <p class="ds-paragraph liten bred">
         Datoene bestemmer hvilke perioder prisversjonen brukes for. En kjøring for en periode bruker den
         aktive versjonen som dekker periodens første dag. Begge datoer er inkludert, tom «til» betyr uten
         sluttdato, og to aktive versjoner kan ikke overlappe.

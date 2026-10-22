@@ -1,51 +1,53 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
 <!--
-  Shared layout fragments. Pages set data-color-scheme/data-size/data-color on <body>, pull in
-  `layout :: head(...)` for the <head>, insert `layout :: topbar` as the first child of <body>,
-  and include `layout :: csrf` inside every POST <form>.
+  Shared layout fragments (specs/004 contracts/ui.md). Pages use <html lang="nb">, set
+  data-color-scheme="auto"/data-size/data-color on <body>, pull in `layout :: head(...)` for the
+  <head>, insert `layout :: topbar('<seksjon>')` as the first child of <body>, wrap content in
+  <main id="hovedinnhold" class="side" tabindex="-1">, and include `layout :: csrf` inside every
+  POST <form>.
 -->
 <head th:fragment="head(tittel)">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <meta name="text-scale" content="scale">
     <title th:text="|${tittel} — forsystem|">forsystem</title>
-    <link rel="stylesheet" th:href="@{/css/digdir-theme.css}">
+    <!-- Designsystemet first, then the Digdir theme (the order its setup docs give), then app styles. -->
     <link rel="stylesheet" th:href="@{/css/designsystemet.css}">
+    <link rel="stylesheet" th:href="@{/css/digdir-theme.css}">
+    <link rel="stylesheet" th:href="@{/css/forsystem.css}">
     <!-- htmx 2 drops 4xx/5xx responses by default, so a failed boosted form looked like "nothing
          happened". Swap error responses in too: Regelbrudd (400) renders feil.html, anything else
          renders error.html — the user always sees why. -->
     <meta name="htmx-config"
           content='{"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"[45]..","swap":true,"error":true},{"code":"...","swap":false}]}'>
     <script th:src="@{/js/htmx.min.js}" defer></script>
-    <style>
-        body { margin: 0; }
-        .side { max-width: 64rem; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
-        .topbar { border-bottom: 1px solid var(--ds-color-neutral-border-subtle);
-                  background: var(--ds-color-neutral-background-tinted); }
-        .topbar-inner { max-width: 64rem; margin: 0 auto; padding: 0.75rem 1rem;
-                        display: flex; gap: 1.25rem; align-items: baseline; flex-wrap: wrap; }
-        .topbar a { color: var(--ds-color-neutral-text-default); text-decoration: none; }
-        .topbar a:hover { text-decoration: underline; }
-        .topbar .merke { font-weight: 600; }
-        .rad { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
-        .stikk { display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap; }
-        .hoyre { text-align: right; }
-        table.ds-table { width: 100%; }
-        .kort-rad { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
-    </style>
+    <!-- Designsystemet web components (<ds-field> aria wiring) and polyfills (dialog command/closedby). -->
+    <script th:src="@{/js/designsystemet-web.js}" defer></script>
+    <script th:src="@{/js/forsystem.js}" defer></script>
 </head>
 <body>
-<header th:fragment="topbar" class="topbar">
-    <nav class="topbar-inner">
-        <a class="merke" th:href="@{/}">forsystem</a>
-        <a th:href="@{/produkter}">Produkter</a>
-        <a th:href="@{/prisversjoner}">Prisversjoner</a>
-        <a th:href="@{/kunder}">Kunder</a>
-        <a th:href="@{/bruksdata}">Bruksdata</a>
-        <a th:href="@{/kjoringer}">Kjøringer</a>
-        <a th:href="@{/hendelseslogg}">Hendelseslogg</a>
-    </nav>
-</header>
+<!-- Skip link + header. `seksjon` marks the current main section: produkter, prisversjoner,
+     kunder, bruksdata, kjoringer, hendelseslogg — or '' (start page, error pages). -->
+<th:block th:fragment="topbar(seksjon)">
+    <a class="ds-skip-link" href="#hovedinnhold">Hopp til hovedinnhold</a>
+    <header class="topbar ikke-utskrift">
+        <div class="topbar-inner">
+            <a class="merke" th:href="@{/}">forsystem <span class="merke-eier">Digdir</span></a>
+            <nav class="hovedmeny" aria-label="Hovedmeny">
+                <ul>
+                    <li><a th:href="@{/produkter}" th:attr="aria-current=${seksjon == 'produkter'} ? 'page'">Produkter</a></li>
+                    <li><a th:href="@{/prisversjoner}" th:attr="aria-current=${seksjon == 'prisversjoner'} ? 'page'">Prisversjoner</a></li>
+                    <li><a th:href="@{/kunder}" th:attr="aria-current=${seksjon == 'kunder'} ? 'page'">Kunder</a></li>
+                    <li><a th:href="@{/bruksdata}" th:attr="aria-current=${seksjon == 'bruksdata'} ? 'page'">Bruksdata</a></li>
+                    <li><a th:href="@{/kjoringer}" th:attr="aria-current=${seksjon == 'kjoringer'} ? 'page'">Kjøringer</a></li>
+                    <li><a th:href="@{/hendelseslogg}" th:attr="aria-current=${seksjon == 'hendelseslogg'} ? 'page'">Hendelseslogg</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+</th:block>
 
 <!-- CSRF hidden field for POST forms (no Spring Security Thymeleaf dialect on the classpath). -->
 <th:block th:fragment="csrf">

@@ -1,12 +1,18 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<!-- Business-rule rejection (Regelbrudd, 400). Unexpected failures use error.html. -->
 <head th:replace="~{layout :: head('Feil')}"></head>
-<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
-<header th:replace="~{layout :: topbar}"></header>
-<main class="side">
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
     <h1 class="ds-heading" data-size="lg">Kan ikke fullføre</h1>
-    <p class="ds-alert" data-color="danger" th:text="${melding}">En regel ble brutt.</p>
-    <p><a class="ds-link" href="javascript:history.back()">← Tilbake</a></p>
+    <div class="ds-alert bred" data-color="danger" role="alert">
+        <p th:text="${melding}">En regel ble brutt.</p>
+    </div>
+    <div class="rad">
+        <button class="ds-button" data-variant="secondary" type="button" onclick="history.back()">Tilbake</button>
+        <a class="ds-button" data-variant="tertiary" th:href="@{/}">Til forsiden</a>
+    </div>
 </main>
 </body>
 </html>

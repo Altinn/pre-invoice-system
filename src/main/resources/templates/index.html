@@ -1,27 +1,35 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Forside')}"></head>
-<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
-<header th:replace="~{layout :: topbar}"></header>
-<main class="side">
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
     <h1 class="ds-heading" data-size="lg">forsystem</h1>
-    <p class="ds-paragraph">Fakturerings-forsystem for Altinn-produkter under FinMod-prismodellen.
-        Vedlikehold registre, og senere: importer bruk, generer fakturagrunnlag og eksporter.</p>
+    <p class="ds-paragraph ingress" data-size="lg">Fakturerings-forsystem for Altinn-produkter under
+        FinMod-prismodellen. Vedlikehold registre, importer bruk, generer fakturagrunnlag og eksporter.</p>
 
-    <div class="kort-rad" style="margin-top: 1.5rem;">
-        <a class="ds-card" data-color="neutral" th:href="@{/produkter}" style="text-decoration:none;">
+    <div class="kort-rad">
+        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/produkter}">
             <h2 class="ds-heading" data-size="xs">Produkter</h2>
             <p class="ds-paragraph" data-size="sm">De seks Altinn-produktene og kontering.</p>
         </a>
-        <a class="ds-card" data-color="neutral" th:href="@{/prisversjoner}" style="text-decoration:none;">
+        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/prisversjoner}">
             <h2 class="ds-heading" data-size="xs">Prisversjoner</h2>
             <p class="ds-paragraph" data-size="sm">Årlige prislister. Utkast → aktiv → arkivert.</p>
         </a>
-        <a class="ds-card" data-color="neutral" th:href="@{/kunder}" style="text-decoration:none;">
+        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/kunder}">
             <h2 class="ds-heading" data-size="xs">Kunder</h2>
             <p class="ds-paragraph" data-size="sm">Tjenesteeiere, referanser og kundenummerregler.</p>
         </a>
-        <a class="ds-card" data-color="neutral" th:href="@{/hendelseslogg}" style="text-decoration:none;">
+        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/bruksdata}">
+            <h2 class="ds-heading" data-size="xs">Bruksdata</h2>
+            <p class="ds-paragraph" data-size="sm">Hent bruk fra datavarehuset eller last opp per periode.</p>
+        </a>
+        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/kjoringer}">
+            <h2 class="ds-heading" data-size="xs">Kjøringer</h2>
+            <p class="ds-paragraph" data-size="sm">Generer fakturagrunnlag, kontroller, godkjenn og eksporter.</p>
+        </a>
+        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/hendelseslogg}">
             <h2 class="ds-heading" data-size="xs">Hendelseslogg</h2>
             <p class="ds-paragraph" data-size="sm">Sporbar logg over alle endringer.</p>
         </a>

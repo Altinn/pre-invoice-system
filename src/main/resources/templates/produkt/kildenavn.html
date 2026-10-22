@@ -1,16 +1,23 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Kildenavn')}"></head>
-<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
-<header th:replace="~{layout :: topbar}"></header>
-<main class="side">
-    <a class="ds-link" th:href="@{/produkter}">← Produkter</a>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('produkter')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <nav class="ds-breadcrumbs" aria-label="Du er her:">
+        <a class="ds-link" th:href="@{/produkter}" aria-label="Tilbake til Produkter">Produkter</a>
+        <ol>
+            <li><a class="ds-link" th:href="@{/}">Forside</a></li>
+            <li><a class="ds-link" th:href="@{/produkter}">Produkter</a></li>
+            <li><a class="ds-link" aria-current="page">Kildenavn</a></li>
+        </ol>
+    </nav>
     <h1 class="ds-heading" data-size="lg">Kildenavn fra datavarehus</h1>
-    <p class="ds-paragraph" data-size="sm">Datavarehuset bruker egne produktnavn (f.eks. «Varsling e-post»).
+    <p class="ds-paragraph ingress">Datavarehuset bruker egne produktnavn (f.eks. «Varsling e-post»).
         Her kobles hvert navn til et produkt og en type. Flere navn kan kobles til samme produkt og type — da
         summeres de. Et navn uten kobling avviser importen. Koblingene må bekreftes av produkteierne (OQ-18).</p>
 
-    <table class="ds-table" data-size="sm">
+    <table class="ds-table" data-size="sm" data-hover>
         <thead>
         <tr><th>Kildenavn</th><th>Produkt</th><th>Type</th><th></th></tr>
         </thead>
@@ -29,18 +36,21 @@
             </td>
         </tr>
         <tr th:if="${koblinger.isEmpty()}">
-            <td colspan="4" class="ds-paragraph" data-size="sm">Ingen koblinger ennå.</td>
+            <td colspan="4" class="tom">Ingen koblinger ennå. Legg til den første nedenfor.</td>
         </tr>
         </tbody>
     </table>
 
-    <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Ny kobling</h2>
+    <h2 class="ds-heading" data-size="xs">Ny kobling</h2>
     <form th:action="@{/produkter/kildenavn}" method="post" class="rad">
         <th:block th:replace="~{layout :: csrf}"></th:block>
-        <div class="ds-field">
-            <label class="ds-label" for="kildenavn">Kildenavn (nøyaktig som i datavarehuset)</label>
-            <input class="ds-input" id="kildenavn" name="kildenavn" required>
-        </div>
+        <ds-field class="ds-field">
+            <label class="ds-label" for="kildenavn">Kildenavn</label>
+            <p data-field="description">Nøyaktig som i datavarehuset</p>
+            <input class="ds-input" id="kildenavn" name="kildenavn" required
+                   data-feilmelding="Skriv inn kildenavnet slik det står i datavarehuset.">
+            <p class="ds-validation-message" data-field="validation" hidden></p>
+        </ds-field>
         <div class="ds-field">
             <label class="ds-label" for="produktId">Produkt</label>
             <select class="ds-input" id="produktId" name="produktId" required>

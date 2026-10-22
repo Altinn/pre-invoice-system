@@ -41,7 +41,7 @@ flowchart TD
 | Language/runtime | Java 21 (LTS) | Direct reuse of the LG04 writer + golden tests from `../agresso`; org competence; boring and stable |
 | Framework | Spring Boot 3.5.x, Maven | Same as the old repo — zero translation cost for the ported code |
 | Persistence | PostgreSQL 16+, Flyway, Spring Data JDBC | Schema versioned in git from day one (the old system's biggest gap); simple aggregates, no JPA magic |
-| Web UI | Thymeleaf + htmx, Digdir **Designsystemet** CSS | Server-rendered CRUD + tables + buttons is the whole UI; one deployable, no frontend build pipeline; REST under `/api` keeps a future SPA possible |
+| Web UI | Thymeleaf + htmx, Digdir **Designsystemet** 1.23 (CSS, Digdir theme, `designsystemet-web` components), Inter | Server-rendered CRUD + tables + buttons is the whole UI; one deployable, no frontend build pipeline; REST under `/api` keeps a future SPA possible. All assets are vendored under `static/` (no CDN); page conventions in `specs/004-designsystemet-ux/contracts/ui.md` |
 | Auth | OIDC via Spring Security (Entra ID in prod) | Standard protocol — any OIDC provider works locally (e.g. Keycloak in compose, or a dev stub profile) |
 | Files | Blob storage behind a `FileArchive` port | Local filesystem in dev/test, Azure Blob in prod |
 | Packaging | Docker (temurin JRE slim, multi-stage build) | Runs on Container Apps, AKS, or any container host |

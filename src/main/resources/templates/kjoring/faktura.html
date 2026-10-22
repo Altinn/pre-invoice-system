@@ -1,28 +1,35 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Faktura')}"></head>
-<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
-<header th:replace="~{layout :: topbar}"></header>
-<main class="side">
-    <a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}">← Kjøring</a>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('kjoringer')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <nav class="ds-breadcrumbs" aria-label="Du er her:">
+        <a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}"
+           th:attr="aria-label=|Tilbake til kjøring ${kjoring.periode()}|">Kjøring</a>
+        <ol>
+            <li><a class="ds-link" th:href="@{/}">Forside</a></li>
+            <li><a class="ds-link" th:href="@{/kjoringer}">Kjøringer</a></li>
+            <li><a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}" th:text="|Kjøring ${kjoring.periode()}|">Kjøring</a></li>
+            <li><a class="ds-link" aria-current="page" th:text="|Ordre ${faktura.ordreNr()}|">Faktura</a></li>
+        </ol>
+    </nav>
     <h1 class="ds-heading" data-size="lg" th:text="|Faktura ordre ${faktura.ordreNr()}|">Faktura</h1>
-    <p class="ds-paragraph" data-size="sm">
+    <p class="ds-paragraph liten">
         Kundenummer <strong th:text="${faktura.kundenummer()}">100200</strong> ·
         mottaker orgnr <span th:text="${faktura.fakturamottakerOrgnr()}">123456789</span> ·
-        sum <strong th:text="${faktura.sumBelop()}">0.00</strong> ·
+        sum <strong th:text="${#numbers.formatDecimal(faktura.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</strong> ·
         uuid <code th:text="${faktura.fakturaUuid()}">…</code>
     </p>
 
-    <div th:if="${!funn.isEmpty()}">
-        <p class="ds-alert" th:each="f : ${funn}"
-           th:data-color="${f.alvorlighet() == 'BLOKKERENDE'} ? 'danger' : 'warning'">
-            <strong th:text="${f.kode()}">KODE</strong>: <span th:text="${f.melding()}">melding</span>
-        </p>
+    <div class="seksjon" th:if="${!funn.isEmpty()}">
+        <div class="ds-alert" th:each="f : ${funn}"
+           th:data-color="${f.alvorlighet() == 'BLOKKERENDE'} ? 'danger' : 'warning'"><h3 class="ds-heading" data-size="2xs" th:text="${f.kode()}">KODE</h3><p th:text="${f.melding()}">melding</p></div>
     </div>
 
-    <h2 class="ds-heading" data-size="xs" style="margin-top:1rem;">Linjer</h2>
-    <p class="ds-paragraph" data-size="sm">Hver linje er sporbar til bruksdata (bruksdata-id) og pris (pris-id).</p>
-    <table class="ds-table" data-size="sm">
+    <h2 class="ds-heading" data-size="xs">Linjer</h2>
+    <p class="ds-paragraph liten">Hver linje er sporbar til bruksdata (bruksdata-id) og pris (pris-id).</p>
+    <table class="ds-table" data-size="sm" data-hover>
         <thead>
         <tr>
             <th>Produkt</th><th>Beskrivelse</th><th>Servicekode</th><th>Ref.</th>
@@ -43,7 +50,7 @@
             <td class="hoyre" th:text="${l.prisId()} ?: '—'">3</td>
         </tr>
         <tr th:if="${linjer.isEmpty()}">
-            <td colspan="9" class="ds-paragraph" data-size="sm">Ingen linjer.</td>
+            <td colspan="9" class="tom">Ingen linjer.</td>
         </tr>
         </tbody>
     </table>

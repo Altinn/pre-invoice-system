@@ -1,25 +1,27 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Kjøringer')}"></head>
-<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
-<header th:replace="~{layout :: topbar}"></header>
-<main class="side">
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('kjoringer')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
     <h1 class="ds-heading" data-size="lg">Fakturakjøringer</h1>
-    <p class="ds-paragraph" data-size="sm">Generer fakturagrunnlag for en periode fra bruksdata og den
-        aktive prisversjonen. Kjør kontroller, godkjenn, og (senere) eksporter.</p>
+    <p class="ds-paragraph ingress">Generer fakturagrunnlag for en periode fra bruksdata og den
+        aktive prisversjonen. Kjør kontroller, godkjenn og eksporter.</p>
 
-    <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Ny kjøring</h2>
+    <h2 class="ds-heading" data-size="xs">Ny kjøring</h2>
     <form th:action="@{/kjoringer}" method="post" class="rad">
         <th:block th:replace="~{layout :: csrf}"></th:block>
-        <div class="ds-field">
+        <ds-field class="ds-field">
             <label class="ds-label" for="periode">Periode</label>
-            <input class="ds-input" id="periode" name="periode" type="month" required>
-        </div>
+            <input class="ds-input" id="periode" name="periode" type="month" required
+                   data-feilmelding="Velg perioden (måned og år).">
+            <p class="ds-validation-message" data-field="validation" hidden></p>
+        </ds-field>
         <button class="ds-button" data-color="accent" type="submit">Generer</button>
     </form>
 
-    <h2 class="ds-heading" data-size="xs" style="margin-top:2rem;">Kjøringer</h2>
-    <table class="ds-table" data-size="sm">
+    <h2 class="ds-heading" data-size="xs">Kjøringer</h2>
+    <table class="ds-table" data-size="sm" data-hover>
         <thead>
         <tr><th>Periode</th><th>Status</th><th>Generert av</th><th>Godkjent av</th><th></th></tr>
         </thead>
@@ -39,7 +41,7 @@
             </td>
         </tr>
         <tr th:if="${kjoringer.isEmpty()}">
-            <td colspan="5" class="ds-paragraph" data-size="sm">Ingen kjøringer ennå.</td>
+            <td colspan="5" class="tom">Ingen kjøringer ennå. Velg en periode over og trykk Generer.</td>
         </tr>
         </tbody>
     </table>

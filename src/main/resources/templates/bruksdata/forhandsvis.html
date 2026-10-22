@@ -1,26 +1,31 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Forhåndsvisning')}"></head>
-<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
-<header th:replace="~{layout :: topbar}"></header>
-<main class="side">
-    <a class="ds-link" th:href="@{/bruksdata}">← Bruksdata</a>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('bruksdata')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <nav class="ds-breadcrumbs" aria-label="Du er her:">
+        <a class="ds-link" th:href="@{/bruksdata}" aria-label="Tilbake til Bruksdata">Bruksdata</a>
+        <ol>
+            <li><a class="ds-link" th:href="@{/}">Forside</a></li>
+            <li><a class="ds-link" th:href="@{/bruksdata}">Bruksdata</a></li>
+            <li><a class="ds-link" aria-current="page">Forhåndsvisning</a></li>
+        </ol>
+    </nav>
     <h1 class="ds-heading" data-size="lg">Forhåndsvisning</h1>
 
     <!-- Uploaded datavarehus export: organisations that are not customers yet can be created from the file. -->
-    <div th:if="${kundeoppretting != null}">
-        <p class="ds-alert" data-color="success" th:unless="${kundeoppretting.opprettet().isEmpty()}"
-           th:text="|Opprettet ${kundeoppretting.opprettet().size()} kunder fra fila (navn, kundenummer og fakturareferanse).|">
-            Opprettet kunder.</p>
+    <div class="seksjon" th:if="${kundeoppretting != null}">
+        <div class="ds-alert" data-color="success" th:unless="${kundeoppretting.opprettet().isEmpty()}">
+            <p th:text="|Opprettet ${kundeoppretting.opprettet().size()} kunder fra fila (navn, kundenummer og fakturareferanse).|">Opprettet kunder.</p></div>
         <div class="ds-alert" data-color="danger" th:unless="${kundeoppretting.feilet().isEmpty()}">
             <p>Disse kunne ikke opprettes:</p>
             <ul class="ds-list"><li th:each="f : ${kundeoppretting.feilet()}" th:text="${f}">feil</li></ul>
         </div>
     </div>
-    <div th:if="${manglendeKunder != null and !manglendeKunder.isEmpty()}">
-        <p class="ds-alert" data-color="warning"
-           th:text="|${manglendeKunder.size()} organisasjoner i fila finnes ikke i kunderegisteret. Uten kunde gir bruken deres et blokkerende funn (MANGLER_KUNDE) når kjøringen genereres.|">
-            Manglende kunder.</p>
+    <div class="seksjon" th:if="${manglendeKunder != null and !manglendeKunder.isEmpty()}">
+        <div class="ds-alert" data-color="warning">
+            <p th:text="|${manglendeKunder.size()} organisasjoner i fila finnes ikke i kunderegisteret. Uten kunde gir bruken deres et blokkerende funn (MANGLER_KUNDE) når kjøringen genereres.|">Manglende kunder.</p></div>
         <form th:action="@{/bruksdata/last-opp-dwh/opprett-kunder}" method="post" class="rad" hx-disabled-elt="find button">
             <th:block th:replace="~{layout :: csrf}"></th:block>
             <button class="ds-button" data-variant="secondary" type="submit"
@@ -31,8 +36,8 @@
     </div>
 
     <!-- The staging report; also rendered on a staged (MOTTATT) import's detail page. -->
-    <section th:fragment="rapport(fv)">
-    <p class="ds-paragraph" data-size="sm">
+    <section class="seksjon" th:fragment="rapport(fv)">
+    <p class="ds-paragraph liten">
         <th:block th:if="${fv.kilde().name() == 'CSV'}">Fil <strong th:text="${fv.filnavn()}">bruk.csv</strong> ·</th:block>
         <th:block th:if="${fv.kilde().name() == 'DWH' and manglendeKunder != null}">Eksport fra datavarehuset,
             fil <strong th:text="${fv.filnavn()}">eksport.csv</strong> ·</th:block>
@@ -44,21 +49,24 @@
     </p>
 
     <!-- Blocking reasons (e.g. an existing run) prevent import entirely. -->
-    <div th:if="${!fv.blokkeringer().isEmpty()}">
-        <p class="ds-alert" data-color="danger" th:each="b : ${fv.blokkeringer()}" th:text="${b}">Blokkert.</p>
+    <div class="seksjon" th:if="${!fv.blokkeringer().isEmpty()}">
+        <div class="ds-alert" data-color="danger" th:each="b : ${fv.blokkeringer()}"><p th:text="${b}">Blokkert.</p></div>
     </div>
 
     <!-- Warnings never block; they ask for a second look before confirming. -->
-    <div th:if="${!fv.advarsler().isEmpty()}">
-        <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Advarsler</h2>
-        <p class="ds-alert" data-color="warning">Sjekk disse før du bekrefter. De hindrer ikke import.</p>
-        <ul class="ds-list">
-            <li class="ds-paragraph" data-size="sm" th:each="a : ${fv.advarsler()}" th:text="${a}">Avvik.</li>
-        </ul>
+    <div class="seksjon" th:if="${!fv.advarsler().isEmpty()}">
+        <h2 class="ds-heading" data-size="xs">Advarsler</h2>
+        <div class="ds-alert bred" data-color="warning">
+            <h3 class="ds-heading" data-size="2xs">Sjekk disse før du bekrefter</h3>
+            <p>De hindrer ikke import.</p>
+            <ul class="ds-list">
+                <li th:each="a : ${fv.advarsler()}" th:text="${a}">Avvik.</li>
+            </ul>
+        </div>
     </div>
 
-    <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Summer per produkt</h2>
-    <table class="ds-table" data-size="sm">
+    <h2 class="ds-heading" data-size="xs">Summer per produkt</h2>
+    <table class="ds-table" data-size="sm" data-hover>
         <thead>
         <tr><th>Produkt</th><th class="hoyre">Antall rader</th><th class="hoyre">Sum antall</th><th class="hoyre">Sum beløp</th></tr>
         </thead>
@@ -70,16 +78,16 @@
             <td class="hoyre" th:text="${s.sumBelop()}">0.00</td>
         </tr>
         <tr th:if="${fv.summer().isEmpty()}">
-            <td colspan="4" class="ds-paragraph" data-size="sm">Ingen gyldige rader.</td>
+            <td colspan="4" class="tom">Ingen gyldige rader.</td>
         </tr>
         </tbody>
     </table>
 
-    <div th:if="${!fv.avviste().isEmpty()}">
-        <h2 class="ds-heading" data-size="xs" style="margin-top:1.5rem;">Avviste rader</h2>
-        <p class="ds-alert" data-color="warning">Grunnlaget har avvik og kan ikke importeres. Rett opp og prøv
-            på nytt — ingen rader lagres før alt er gyldig.</p>
-        <table class="ds-table" data-size="sm">
+    <div class="seksjon" th:if="${!fv.avviste().isEmpty()}">
+        <h2 class="ds-heading" data-size="xs">Avviste rader</h2>
+        <div class="ds-alert" data-color="warning"><p>Grunnlaget har avvik og kan ikke importeres. Rett opp og prøv
+            på nytt — ingen rader lagres før alt er gyldig.</p></div>
+        <table class="ds-table" data-size="sm" data-hover>
             <thead><tr><th th:text="${fv.kilde().name() == 'CSV'} ? 'Linje' : 'Rad'">Linje</th><th>Årsak</th></tr></thead>
             <tbody>
             <tr th:each="a : ${fv.avviste()}">
@@ -90,7 +98,7 @@
         </table>
     </div>
 
-    <div class="rad" style="margin-top:1.5rem;">
+    <div class="rad">
         <form th:if="${fv.kanImporteres()}"
               th:action="${fv.stagetImportId() == null} ? @{/bruksdata/bekreft} : @{/bruksdata/{id}/bekreft(id=${fv.stagetImportId()})}"
               method="post" class="rad" hx-disabled-elt="find button">
