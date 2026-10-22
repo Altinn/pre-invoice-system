@@ -1,26 +1,36 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Rediger produkt')}"></head>
-<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
-<header th:replace="~{layout :: topbar}"></header>
-<main class="side">
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('produkter')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <nav class="ds-breadcrumbs" aria-label="Du er her:">
+        <a class="ds-link" th:href="@{/produkter}" aria-label="Tilbake til Produkter">Produkter</a>
+        <ol>
+            <li><a class="ds-link" th:href="@{/}">Forside</a></li>
+            <li><a class="ds-link" th:href="@{/produkter}">Produkter</a></li>
+            <li><a class="ds-link" aria-current="page" th:text="${produkt.navn()}">Produkt</a></li>
+        </ol>
+    </nav>
     <h1 class="ds-heading" data-size="lg" th:text="|Produkt: ${produkt.navn()}|">Produkt</h1>
-    <p class="ds-paragraph" data-size="sm">Kode <strong th:text="${produkt.kode()}">melding</strong>
+    <p class="ds-paragraph liten">Kode <strong th:text="${produkt.kode()}">melding</strong>
         (kan ikke endres).</p>
 
-    <form th:action="@{/produkter/{id}(id=${produkt.id()})}" method="post"
-          style="display:grid; gap:1rem; max-width:32rem;">
+    <form th:action="@{/produkter/{id}(id=${produkt.id()})}" method="post" class="skjema">
         <th:block th:replace="~{layout :: csrf}"></th:block>
-        <div class="ds-field">
+        <ds-field class="ds-field">
             <label class="ds-label" for="navn">Navn</label>
-            <input class="ds-input" id="navn" name="navn" th:value="${produkt.navn()}" required>
-        </div>
+            <input class="ds-input" id="navn" name="navn" th:value="${produkt.navn()}" required
+                   data-feilmelding="Skriv inn produktnavnet.">
+            <p class="ds-validation-message" data-field="validation" hidden></p>
+        </ds-field>
         <div class="ds-field">
-            <label class="ds-label" for="enhet">Enhet</label>
+            <label class="ds-label" for="enhet">Enhet <span class="ds-tag" data-color="info" data-size="sm">Valgfritt</span></label>
             <input class="ds-input" id="enhet" name="enhet" th:value="${produkt.enhet()}">
         </div>
         <fieldset class="ds-fieldset">
-            <legend class="ds-label">Kontering (OQ-2 — la stå tomt til Økonomi svarer)</legend>
+            <legend class="ds-label">Kontering <span class="ds-tag" data-color="info" data-size="sm">Valgfritt</span></legend>
+            <p data-field="description">La stå tomt til Økonomi svarer (OQ-2). Manglende kontering blokkerer fakturering.</p>
             <div class="kort-rad">
                 <div class="ds-field">
                     <label class="ds-label" for="artikkelId">Artikkel-id</label>
@@ -47,11 +57,10 @@
                 </div>
             </div>
         </fieldset>
-        <div class="ds-field">
-            <label class="ds-label">
-                <input type="checkbox" name="aktiv" value="true" th:checked="${produkt.aktiv()}"> Aktiv
-            </label>
-        </div>
+        <ds-field class="ds-field">
+            <input class="ds-input" type="checkbox" id="aktiv" name="aktiv" value="true" th:checked="${produkt.aktiv()}">
+            <label class="ds-label" for="aktiv">Aktiv</label>
+        </ds-field>
         <div class="rad">
             <button class="ds-button" data-color="accent" type="submit">Lagre</button>
             <a class="ds-button" data-variant="tertiary" th:href="@{/produkter}">Avbryt</a>

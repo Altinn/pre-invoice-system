@@ -34,9 +34,16 @@ export DOCKER_HOST="unix://$HOME/.colima/default/docker.sock"
 export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE="/var/run/docker.sock"
 ```
 
-Vendored front-end assets (served locally, no CDN): Digdir
-[Designsystemet](https://github.com/digdir/designsystemet) CSS + theme (MIT) and
-[htmx](https://htmx.org) (0BSD), under `src/main/resources/static/`.
+Vendored front-end assets (served locally, no CDN), under `src/main/resources/static/`:
+
+- Digdir [Designsystemet](https://github.com/digdir/designsystemet) 1.23.0 (MIT):
+  - `@digdir/designsystemet-css` (`css/designsystemet.css`)
+  - the Digdir theme from the repo's `internal/digdir/themes/digdir.css` (`css/digdir-theme.css`)
+  - `@digdir/designsystemet-web`, UMD build (`js/designsystemet-web.js`)
+- [Inter](https://rsms.me/inter/) 4.1, Regular/Medium/SemiBold (OFL, `css/fonts/`)
+- [htmx](https://htmx.org) (0BSD)
+
+App styles and scripts live in `css/forsystem.css` and `js/forsystem.js`.
 
 ## Key dates
 

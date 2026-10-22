@@ -1,0 +1,174 @@
+/*
+  forsystem app styles on top of Designsystemet (specs/004 contracts/ui.md).
+  Unlayered on purpose: Designsystemet lives in @layer ds.*, so these rules win without !important.
+  Use design tokens only (--ds-*) — no literal colours, so light and dark mode both work.
+*/
+
+/* Inter 4.1, self-hosted (OFL, fonts/LICENSE.txt). Designsystemet is designed for 400/500/600. */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/Inter-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/Inter-Medium.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/Inter-SemiBold.woff2") format("woff2"); }
+
+body {
+    margin: 0;
+    font-family: var(--ds-font-family), sans-serif;
+    font-feature-settings: 'cv05' 1; /* Inter's lowercase l with tail, as Designsystemet recommends */
+}
+
+/* ---- Header ---------------------------------------------------------------------------- */
+
+.topbar {
+    background: var(--ds-color-neutral-background-default);
+    border-bottom: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle);
+}
+.topbar-inner {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 0 var(--ds-size-4);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--ds-size-8);
+}
+.merke {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--ds-size-2);
+    padding-block: var(--ds-size-4);
+    color: var(--ds-color-neutral-text-default);
+    text-decoration: none;
+    font-size: var(--ds-body-lg-font-size);
+    font-weight: 600;
+}
+.merke-eier {
+    color: var(--ds-color-accent-text-subtle);
+    font-size: var(--ds-body-xs-font-size);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+.hovedmeny ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-size-1) var(--ds-size-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.hovedmeny a {
+    display: block;
+    padding-block: var(--ds-size-4) calc(var(--ds-size-4) - var(--ds-border-width-focus));
+    border-bottom: var(--ds-border-width-focus) solid transparent;
+    color: var(--ds-color-neutral-text-subtle);
+    font-weight: 500;
+    text-decoration: none;
+}
+.hovedmeny a:hover {
+    color: var(--ds-color-neutral-text-default);
+    border-bottom-color: var(--ds-color-neutral-border-default);
+}
+.hovedmeny a[aria-current="page"] {
+    color: var(--ds-color-accent-text-default);
+    border-bottom-color: var(--ds-color-accent-base-default);
+}
+@media (max-width: 40rem) {
+    .merke { padding-block: var(--ds-size-3) 0; }
+    .hovedmeny a { padding-block: var(--ds-size-2) calc(var(--ds-size-2) - var(--ds-border-width-focus)); }
+}
+.hovedmeny a:focus-visible {
+    outline: var(--dsc-focus-outline);
+    box-shadow: var(--dsc-focus-boxShadow);
+}
+
+/* ---- Page layout ----------------------------------------------------------------------- */
+
+.side {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: var(--ds-size-6) var(--ds-size-4) var(--ds-size-18);
+}
+.side:focus { outline: none; } /* skip-link target; focus is shown by the skip link itself */
+
+/* Vertical rhythm: siblings in the page and in a section are spaced by one token. */
+.side > * + *,
+.seksjon > * + * { margin-block-start: var(--ds-size-4); }
+/* A new section (a heading, or a conditional block that starts with one) gets extra space above. */
+.side > h2,
+.side > .seksjon:has(> h2:first-child) { margin-block-start: var(--ds-size-10); }
+.side > .ds-breadcrumbs + h1 { margin-block-start: var(--ds-size-3); }
+
+/* Heading row with an action on the right (title + "Ny kunde"). */
+.topprad {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-size-3) var(--ds-size-6);
+    align-items: center;
+    justify-content: space-between;
+}
+/* Buttons in a row, or inline form controls aligned on their bottom edge. */
+.rad {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-size-3);
+    align-items: flex-end;
+}
+.rad > form { display: contents; }
+.rad-slutt { justify-content: flex-end; }
+/* Vertical form layout. */
+.skjema {
+    display: grid;
+    gap: var(--ds-size-5);
+    max-width: 32rem;
+}
+.skjema > .rad { margin-block-start: var(--ds-size-2); }
+.smal { max-width: 32rem; }
+.bred { max-width: 40rem; }
+.felt-smal { max-width: 10rem; }
+.kort-rad {
+    display: grid;
+    gap: var(--ds-size-5);
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+a.ds-card { text-decoration: none; }
+a.ds-card .ds-heading { color: var(--ds-color-accent-text-default); }
+a.ds-card:hover .ds-heading { text-decoration: underline; }
+.ingress { color: var(--ds-color-neutral-text-subtle); max-width: 48rem; }
+
+/* ---- Tables ---------------------------------------------------------------------------- */
+
+table.ds-table { width: 100%; }
+.ds-table td { overflow-wrap: break-word; }
+.ds-table caption { text-align: start; }
+/* Numbers and row actions: end-aligned, equal-width digits so amounts line up. */
+.hoyre { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ds-table > tbody > tr.avvik > td { background: var(--ds-color-warning-surface-tinted); }
+.ds-table td.tom { color: var(--ds-color-neutral-text-subtle); padding-block: var(--ds-size-5); }
+@media (max-width: 40rem) {
+    /* Only wide tables scroll sideways on a phone; the page itself does not. */
+    table.ds-table { display: block; overflow-x: auto; }
+}
+
+/* Small helpers */
+.liten { font-size: var(--ds-body-sm-font-size); color: var(--ds-color-neutral-text-subtle); }
+pre.epost {
+    padding: var(--ds-size-4);
+    border-radius: var(--ds-border-radius-md);
+    background: var(--ds-color-neutral-surface-tinted);
+    white-space: pre-wrap;
+    font-family: inherit;
+}
+
+/* Alert content: the icon is aligned to the first line, so children carry no default margins. */
+.ds-alert > :is(p, ul, h2, h3) { margin: 0; }
+.ds-alert > * + * { margin-block-start: var(--ds-size-2); }
+
+/* Confirmation dialog (contracts/ui.md): heading, one sentence, buttons. */
+.ds-dialog > * + * { margin-block-start: var(--ds-size-4); }
+.ds-dialog .rad { margin-block-start: var(--ds-size-6); }
+
+/* ---- Print ----------------------------------------------------------------------------- */
+
+@media print {
+    .ikke-utskrift, .ds-skip-link, .ds-breadcrumbs, dialog, .side form { display: none !important; }
+    .side { max-width: none; padding: 0; }
+}

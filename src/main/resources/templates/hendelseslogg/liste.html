@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Hendelseslogg')}"></head>
-<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
-<header th:replace="~{layout :: topbar}"></header>
-<main class="side">
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('hendelseslogg')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
     <h1 class="ds-heading" data-size="lg">Hendelseslogg</h1>
-    <p class="ds-paragraph" data-size="sm">De 200 nyeste endringene. Hver registerendring logges automatisk.</p>
+    <p class="ds-paragraph ingress">De 200 nyeste endringene. Hver registerendring logges automatisk.</p>
 
-    <table class="ds-table" data-size="sm">
+    <table class="ds-table" data-size="sm" data-hover>
         <thead>
         <tr><th>Tidspunkt</th><th>Bruker</th><th>Handling</th><th>Entitet</th><th>Id</th><th>Detaljer</th></tr>
         </thead>
@@ -21,7 +21,7 @@
             <td><code th:text="${h.detaljer()} != null ? ${h.detaljer().json()} : ''"></code></td>
         </tr>
         <tr th:if="${hendelser.isEmpty()}">
-            <td colspan="6" class="ds-paragraph" data-size="sm">Ingen hendelser ennå.</td>
+            <td colspan="6" class="tom">Ingen hendelser ennå.</td>
         </tr>
         </tbody>
     </table>

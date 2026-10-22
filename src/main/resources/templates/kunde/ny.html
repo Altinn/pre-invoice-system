@@ -1,34 +1,50 @@
 <!DOCTYPE html>
-<html lang="no" xmlns:th="http://www.thymeleaf.org">
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Ny kunde')}"></head>
-<body data-color-scheme="light" data-size="md" data-color="neutral" hx-boost="true">
-<header th:replace="~{layout :: topbar}"></header>
-<main class="side">
-    <a class="ds-link" th:href="@{/kunder}">← Kunder</a>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('kunder')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <nav class="ds-breadcrumbs" aria-label="Du er her:">
+        <a class="ds-link" th:href="@{/kunder}" aria-label="Tilbake til Kunder">Kunder</a>
+        <ol>
+            <li><a class="ds-link" th:href="@{/}">Forside</a></li>
+            <li><a class="ds-link" th:href="@{/kunder}">Kunder</a></li>
+            <li><a class="ds-link" aria-current="page">Ny kunde</a></li>
+        </ol>
+    </nav>
     <h1 class="ds-heading" data-size="lg">Ny kunde</h1>
 
-    <form th:action="@{/kunder}" method="post" style="display:grid; gap:1rem; max-width:32rem;">
+    <form th:action="@{/kunder}" method="post" class="skjema">
         <th:block th:replace="~{layout :: csrf}"></th:block>
-        <div class="ds-field">
-            <label class="ds-label" for="organisasjonsnummer">Organisasjonsnummer (9 siffer)</label>
+        <ds-field class="ds-field">
+            <label class="ds-label" for="organisasjonsnummer">Organisasjonsnummer</label>
+            <p data-field="description">9 siffer</p>
             <input class="ds-input" id="organisasjonsnummer" name="organisasjonsnummer"
-                   pattern="[0-9]{9}" inputmode="numeric" required>
-        </div>
-        <div class="ds-field">
+                   pattern="[0-9]{9}" inputmode="numeric" required
+                   data-feilmelding="Organisasjonsnummeret må være 9 siffer.">
+            <p class="ds-validation-message" data-field="validation" hidden></p>
+        </ds-field>
+        <ds-field class="ds-field">
             <label class="ds-label" for="virksomhetsnavn">Virksomhetsnavn</label>
-            <input class="ds-input" id="virksomhetsnavn" name="virksomhetsnavn" required>
-        </div>
-        <div class="ds-field">
-            <label class="ds-label" for="fakturamottakerOrgnr">Fakturamottaker orgnr (valgfritt — avvikende mottaker)</label>
+            <input class="ds-input" id="virksomhetsnavn" name="virksomhetsnavn" required
+                   data-feilmelding="Skriv inn virksomhetsnavnet.">
+            <p class="ds-validation-message" data-field="validation" hidden></p>
+        </ds-field>
+        <ds-field class="ds-field">
+            <label class="ds-label" for="fakturamottakerOrgnr">Fakturamottaker orgnr
+                <span class="ds-tag" data-color="info" data-size="sm">Valgfritt</span></label>
+            <p data-field="description">Bare hvis fakturaen skal til en annen virksomhet. 9 siffer.</p>
             <input class="ds-input" id="fakturamottakerOrgnr" name="fakturamottakerOrgnr"
-                   pattern="[0-9]{9}" inputmode="numeric">
-        </div>
-        <div class="ds-field">
+                   pattern="[0-9]{9}" inputmode="numeric"
+                   data-feilmelding="Organisasjonsnummeret må være 9 siffer.">
+            <p class="ds-validation-message" data-field="validation" hidden></p>
+        </ds-field>
+        <ds-field class="ds-field">
             <label class="ds-label" for="avtalestatus">Avtalestatus</label>
             <select class="ds-input" id="avtalestatus" name="avtalestatus">
                 <option th:each="s : ${avtalestatuser}" th:value="${s}" th:text="${s}">AKTIV</option>
             </select>
-        </div>
+        </ds-field>
         <div class="rad">
             <button class="ds-button" data-color="accent" type="submit">Opprett</button>
             <a class="ds-button" data-variant="tertiary" th:href="@{/kunder}">Avbryt</a>
