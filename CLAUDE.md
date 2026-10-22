@@ -67,5 +67,5 @@ stop and ask; do not guess around a blocking unknown.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/003-bf1-quick-fixes/plan.md`
+`specs/004-designsystemet-ux/plan.md`
 <!-- SPECKIT END -->
