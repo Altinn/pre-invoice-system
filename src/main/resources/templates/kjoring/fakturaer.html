@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Fakturaer')}"></head>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('kjoringer')}"></th:block>
+<!-- Run Fakturaer tab (specs/006 FR-008/009): search, sort and paging; all of it in the address. -->
+<main id="hovedinnhold" class="side" tabindex="-1"
+      th:with="u=${utvalg}, base=@{/kjoringer/{id}/fakturaer(id=${kjoring.id()})}">
+    <th:block th:replace="~{kjoring/fragmenter :: hode('fakturaer')}"></th:block>
+
+    <h2 class="ds-heading ds-sr-only">Fakturaer</h2>
+    <!-- A plain GET form (boosted); typing also refreshes just the result area after a short pause. -->
+    <form id="fakturasok" class="rad ikke-utskrift" method="get" th:action="${base}" role="search">
+        <input type="hidden" name="sorter" th:value="${u.sorter()}">
+        <div class="ds-field felt-sok">
+            <label class="ds-label" for="q">Søk i fakturaene</label>
+            <p data-field="description" id="q-beskrivelse">Kunde, orgnr, kundenummer eller ordrenummer</p>
+            <input class="ds-input" type="search" id="q" name="q" th:value="${u.q()}" autocomplete="off"
+                   aria-describedby="q-beskrivelse" aria-controls="fakturaresultat"
+                   th:attr="hx-get=${base}" hx-trigger="input changed delay:400ms, search"
+                   hx-target="#fakturaresultat" hx-select="#fakturaresultat" hx-swap="outerHTML"
+                   hx-push-url="true" hx-include="#fakturasok">
+        </div>
+        <button class="ds-button" data-variant="secondary" type="submit">Søk</button>
+    </form>
+
+    <div id="fakturaresultat" class="seksjon" aria-live="polite">
+        <p class="ds-paragraph liten" th:unless="${u.soker()}"
+           th:text="|${u.antallTotalt()} fakturaer · sum ${#numbers.formatDecimal(u.sumTreff(), 1, 'WHITESPACE', 2, 'COMMA')} kr|">0 fakturaer</p>
+        <p class="ds-paragraph liten" th:if="${u.soker()}"
+           th:text="|${u.antallTreff()} av ${u.antallTotalt()} fakturaer treffer «${u.q()}» · sum ${#numbers.formatDecimal(u.sumTreff(), 1, 'WHITESPACE', 2, 'COMMA')} kr|">0 av 0</p>
+
+        <table class="ds-table" data-size="sm" data-hover th:unless="${u.rader().isEmpty()}">
+            <thead>
+            <tr>
+                <th th:attr="aria-sort=${u.sorter() == 'ordre'} ? 'ascending' : 'none'">
+                    <a th:href="@{${base}(q=${u.q()},sorter='ordre')}">Ordre</a></th>
+                <th th:attr="aria-sort=${u.sorter() == 'kunde'} ? 'ascending' : 'none'">
+                    <a th:href="@{${base}(q=${u.q()},sorter='kunde')}">Kunde</a></th>
+                <th>Kundenummer</th><th>Tilleggstekst</th><th>Mottaker (orgnr)</th>
+                <th class="hoyre" th:attr="aria-sort=${u.sorter() == 'belop'} ? 'descending' : 'none'">
+                    <a th:href="@{${base}(q=${u.q()},sorter='belop')}">Sum</a></th>
+                <th><span class="ds-sr-only">Handling</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${u.rader()}" th:with="f=${r.faktura()}">
+                <td th:text="${f.ordreNr()}">1</td>
+                <td th:text="${r.kundenavn()}">Kunde</td>
+                <td th:text="${f.kundenummer()}">100200</td>
+                <td th:text="${f.tilleggstekst()} ?: '—'">—</td>
+                <td th:text="${f.fakturamottakerOrgnr()}">123456789</td>
+                <td class="hoyre" th:text="${#numbers.formatDecimal(f.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+                <td class="hoyre">
+                    <a class="ds-button" data-variant="tertiary" data-size="sm"
+                       th:href="@{/kjoringer/{id}/faktura/{fid}(id=${kjoring.id()},fid=${f.id()})}">Linjer</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+        <p class="ds-paragraph tom-avsnitt" th:if="${u.rader().isEmpty() and !u.soker()}">Ingen fakturaer i denne kjøringen.</p>
+        <p class="ds-paragraph tom-avsnitt" th:if="${u.rader().isEmpty() and u.soker()}">
+            Ingen fakturaer treffer søket. <a class="ds-link" th:href="@{${base}(sorter=${u.sorter()})}">Vis alle fakturaer</a></p>
+
+        <!-- Designsystemet pagination. The links are rendered here so paging works without JS;
+             <ds-pagination> recomputes the same window from data-current/data-total/data-href. -->
+        <ds-pagination class="ds-pagination ikke-utskrift" aria-label="Sider med fakturaer"
+                       th:if="${u.antallSider() > 1}"
+                       th:with="lenke=${base + '?q=' + #uris.escapeQueryParam(u.q()) + '&sorter=' + u.sorter() + '&side='}"
+                       th:attr="data-current=${u.side()}, data-total=${u.antallSider()}, data-href=${lenke + '%d'}">
+            <ul>
+                <li><a class="ds-button" data-variant="tertiary" th:if="${u.side() > 1}"
+                       th:href="${lenke + (u.side() - 1)}">Forrige</a>
+                    <a class="ds-button" data-variant="tertiary" th:unless="${u.side() > 1}"
+                       role="none" tabindex="-1" aria-hidden="true">Forrige</a></li>
+                <li th:each="s : ${u.sider()}">
+                    <a class="ds-button" data-variant="tertiary" th:if="${s > 0}" th:href="${lenke + s}"
+                       th:attr="aria-label=${s}, aria-current=${s == u.side()} ? 'true'"></a>
+                    <a class="ds-button" data-variant="tertiary" th:unless="${s > 0}"
+                       aria-label="0" role="none" tabindex="-1"></a></li>
+                <li><a class="ds-button" data-variant="tertiary" th:if="${u.side() < u.antallSider()}"
+                       th:href="${lenke + (u.side() + 1)}">Neste</a>
+                    <a class="ds-button" data-variant="tertiary" th:unless="${u.side() < u.antallSider()}"
+                       role="none" tabindex="-1" aria-hidden="true">Neste</a></li>
+            </ul>
+        </ds-pagination>
+    </div>
+</main>
+</body>
+</html>

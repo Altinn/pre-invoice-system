@@ -25,7 +25,9 @@ class TemplateKonvensjonTest {
     static List<Path> sider() throws IOException {
         try (Stream<Path> filer = Files.walk(TEMPLATES)) {
             return filer.filter(p -> p.toString().endsWith(".html"))
+                    // Fragment-only files (shared layout, kjoring/fragmenter) are not pages.
                     .filter(p -> !p.getFileName().toString().equals("layout.html"))
+                    .filter(p -> !p.getFileName().toString().equals("fragmenter.html"))
                     .sorted()
                     .toList();
         }

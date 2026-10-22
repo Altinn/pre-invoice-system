@@ -5,12 +5,13 @@
 <th:block th:replace="~{layout :: topbar('kjoringer')}"></th:block>
 <main id="hovedinnhold" class="side" tabindex="-1" th:with="a=${kontroll}">
     <nav class="ds-breadcrumbs" aria-label="Du er her:">
-        <a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}"
-           th:attr="aria-label=|Tilbake til kjøring ${kjoring.periodeLabel()}|">Kjøring</a>
+        <a class="ds-link" th:href="@{/kjoringer/{id}/kontroller(id=${kjoring.id()})}"
+           aria-label="Tilbake til Kontroller">Kontroller</a>
         <ol>
             <li><a class="ds-link" th:href="@{/}">Forside</a></li>
             <li><a class="ds-link" th:href="@{/kjoringer}">Kjøringer</a></li>
             <li><a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.id()})}" th:text="|Kjøring ${kjoring.periodeLabel()}|">Kjøring</a></li>
+            <li><a class="ds-link" th:href="@{/kjoringer/{id}/kontroller(id=${kjoring.id()})}">Kontroller</a></li>
             <li><a class="ds-link" aria-current="page" >LG04-kontroll</a></li>
         </ol>
     </nav>

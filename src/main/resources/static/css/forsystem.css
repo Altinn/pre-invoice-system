@@ -198,6 +198,71 @@ pre.epost {
 .filliste { margin: 0; }
 .periode::first-letter { text-transform: uppercase; }
 
+/* ---- Run tabs (specs/006) -------------------------------------------------------------- */
+
+/* Tab bar: links to the run's pages, styled like the main menu. Scrolls within itself on a phone. */
+.faner { border-bottom: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle); overflow-x: auto; }
+.faner ul { display: flex; gap: var(--ds-size-6); margin: 0; padding: 0; list-style: none; }
+.faner a {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ds-size-2);
+    padding-block: var(--ds-size-3) calc(var(--ds-size-3) - var(--ds-border-width-focus));
+    border-bottom: var(--ds-border-width-focus) solid transparent;
+    color: var(--ds-color-neutral-text-subtle);
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.faner a:hover { color: var(--ds-color-neutral-text-default); border-bottom-color: var(--ds-color-neutral-border-default); }
+.faner a[aria-current="page"] { color: var(--ds-color-accent-text-default); border-bottom-color: var(--ds-color-accent-base-default); }
+.faner a:focus-visible { outline: var(--dsc-focus-outline); box-shadow: var(--dsc-focus-boxShadow); }
+.fane-antall {
+    padding: 0 var(--ds-size-2);
+    border-radius: var(--ds-border-radius-full);
+    background: var(--ds-color-neutral-surface-tinted);
+    color: var(--ds-color-neutral-text-subtle);
+    font-size: var(--ds-body-xs-font-size);
+    font-variant-numeric: tabular-nums;
+}
+.side > .faner { margin-block-start: var(--ds-size-3); }
+.side > .faner + * { margin-block-start: var(--ds-size-6); }
+
+/* Progress strip: done steps solid, the current step accented, later steps muted. */
+.fremdrift {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: var(--ds-size-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.fremdrift li {
+    padding-block-start: var(--ds-size-2);
+    border-top: var(--ds-size-1) solid var(--ds-color-neutral-border-subtle);
+    color: var(--ds-color-neutral-text-subtle);
+}
+.fremdrift li strong { display: block; font-weight: 500; }
+.fremdrift li .liten { display: block; }
+.fremdrift li.ferdig { border-top-color: var(--ds-color-success-base-default); color: var(--ds-color-neutral-text-default); }
+.fremdrift li.ferdig strong::before { content: "✓ " / ""; color: var(--ds-color-success-text-default); }
+.fremdrift li.naa { border-top-color: var(--ds-color-accent-base-default); color: var(--ds-color-accent-text-default); }
+.fremdrift li.forkastet { border-top-color: var(--ds-color-neutral-base-default); color: var(--ds-color-neutral-text-default); }
+
+/* Sortable headers as links (server-side sort), styled like Designsystemet's sort buttons. */
+.ds-table > thead > tr > th[aria-sort] > a {
+    display: block;
+    padding: var(--dsc-table-padding);
+    color: inherit;
+    text-decoration: none;
+}
+.ds-table > thead > tr > th[aria-sort] > a:hover { text-decoration: underline; }
+.ds-table > thead > tr > th[aria-sort] > a:focus-visible { outline: var(--dsc-focus-outline); box-shadow: var(--dsc-focus-boxShadow); }
+.ds-table > thead > tr > th[aria-sort="ascending"] > a::after { content: " ↑" / ""; }
+.ds-table > thead > tr > th[aria-sort="descending"] > a::after { content: " ↓" / ""; }
+.felt-sok { flex: 1 1 20rem; max-width: 32rem; }
+.tom-avsnitt { color: var(--ds-color-neutral-text-subtle); }
+
 /* Alert content: the icon is aligned to the first line, so children carry no default margins. */
 .ds-alert > :is(p, ul, h2, h3) { margin: 0; }
 .ds-alert > * + * { margin-block-start: var(--ds-size-2); }

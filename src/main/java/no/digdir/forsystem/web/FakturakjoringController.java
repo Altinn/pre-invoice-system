@@ -1,10 +1,15 @@
 package no.digdir.forsystem.web;
 
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import no.digdir.forsystem.billing.BruksdataavstemmingService;
+import no.digdir.forsystem.billing.Faktura;
+import no.digdir.forsystem.billing.Fakturakjoring;
 import no.digdir.forsystem.billing.FakturakjoringService;
+import no.digdir.forsystem.billing.Kontrollfunn;
+import no.digdir.forsystem.common.HendelsesloggRepository;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
 import no.digdir.forsystem.export.EksportService;
@@ -26,22 +31,34 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/kjoringer")
 class FakturakjoringController {
 
+    /** Audit-trail entity name of a run (FakturakjoringService, EksportService). */
+    private static final String ENTITET = "FAKTURAKJORING";
+
     private final FakturakjoringService kjoringer;
     private final ProduktService produkter;
     private final EksportService eksport;
     private final BruksdataavstemmingService avstemming;
+    private final HendelsesloggRepository hendelser;
 
     FakturakjoringController(FakturakjoringService kjoringer, ProduktService produkter,
-                             EksportService eksport, BruksdataavstemmingService avstemming) {
+                             EksportService eksport, BruksdataavstemmingService avstemming,
+                             HendelsesloggRepository hendelser) {
         this.kjoringer = kjoringer;
         this.produkter = produkter;
         this.eksport = eksport;
         this.avstemming = avstemming;
+        this.hendelser = hendelser;
     }
 
     @GetMapping
     String liste(Model model) {
-        model.addAttribute("kjoringer", kjoringer.alle());
+        // Size and problems per run, so the list says which run needs attention (specs/006 FR-012).
+        model.addAttribute("kjoringer", kjoringer.alle().stream().map(k -> {
+            var sammendrag = kjoringer.sammendrag(k.id());
+            var funn = kjoringer.funn(k.id());
+            return new Kjoringsrad(k, sammendrag.antallFakturaer(), sammendrag.sumBelop(),
+                    antall(funn, "BLOKKERENDE"), antall(funn, "ADVARSEL"));
+        }).toList());
         return "kjoring/liste";
     }
 
@@ -57,29 +74,83 @@ class FakturakjoringController {
         return "redirect:/kjoringer/" + kjoring.id();
     }
 
+    /** Oversikt (default tab): progress, the next step and the summary (specs/005, specs/006). */
     @GetMapping("/{id}")
     String detalj(@PathVariable Long id, Model model) {
-        var funn = kjoringer.funn(id);
-        var kjoring = kjoringer.hent(id);
-        model.addAttribute("kjoring", kjoring);
-        var fakturaer = kjoringer.fakturaer(id);
-        model.addAttribute("fakturaer", fakturaer);
-        model.addAttribute("kundenavn", kjoringer.kundenavn(fakturaer));
-        // Findings one row per code, and the counts the next-step checklist shows (specs/005).
-        model.addAttribute("funngrupper", Funngruppe.av(funn));
-        model.addAttribute("antallBlokkerende", funn.stream()
-                .filter(f -> "BLOKKERENDE".equals(f.alvorlighet())).count());
-        model.addAttribute("antallAdvarsler", funn.stream()
-                .filter(f -> "ADVARSEL".equals(f.alvorlighet())).count());
+        var fane = fane(id, model);
+        var kjoring = fane.kjoring();
+        model.addAttribute("fremdrift", Fremdrift.av(kjoring,
+                hendelser.findByEntitetAndEntitetIdOrderByTidspunktDescIdDesc(ENTITET, id)));
         // The usage check matters only before approval; other statuses skip the query.
         model.addAttribute("bruksdataavstemming",
                 "GENERERT".equals(kjoring.status()) ? avstemming.forKjoring(id) : null);
         model.addAttribute("harBlokkerende", kjoringer.harBlokkerende(id));
-        model.addAttribute("eksportfiler", kjoringer.eksportfiler(id));
         model.addAttribute("sammendrag", kjoringer.sammendrag(id));
         model.addAttribute("antallOrdrer", eksport.forventetAntallOrdrer(id));
         model.addAttribute("lg04Avstemming", eksport.avstemmingFor(id).orElse(null));
         return "kjoring/detalj";
+    }
+
+    /** Kontroller: findings per code, the usage reconciliation and the LG04 result (specs/006 FR-007). */
+    @GetMapping("/{id}/kontroller")
+    String kontroller(@PathVariable Long id, Model model) {
+        var fane = fane(id, model);
+        model.addAttribute("funngrupper", Funngruppe.av(fane.funn()));
+        model.addAttribute("avstemming", avstemming.forKjoring(id));
+        model.addAttribute("lg04Avstemming", eksport.avstemmingFor(id).orElse(null));
+        return "kjoring/kontroller";
+    }
+
+    /** The usage reconciliation moved into the Kontroller tab; old links land there (specs/006 FR-004). */
+    @GetMapping("/{id}/avstemming")
+    String avstemming(@PathVariable Long id) {
+        return "redirect:/kjoringer/" + id + "/kontroller#bruksdata";
+    }
+
+    /** Fakturaer: search, sort and paging (specs/006 FR-008/009). */
+    @GetMapping("/{id}/fakturaer")
+    String fakturaer(@PathVariable Long id, @RequestParam(required = false) String q,
+                     @RequestParam(required = false) String sorter,
+                     @RequestParam(required = false) Integer side, Model model) {
+        var fane = fane(id, model);
+        model.addAttribute("utvalg", Fakturautvalg.av(fane.fakturaer(), kjoringer.kundenavn(fane.fakturaer()),
+                q, sorter, side));
+        return "kjoring/fakturaer";
+    }
+
+    @GetMapping("/{id}/filer")
+    String filer(@PathVariable Long id, Model model) {
+        fane(id, model);
+        model.addAttribute("eksportfiler", kjoringer.eksportfiler(id));
+        model.addAttribute("lg04Avstemming", eksport.avstemmingFor(id).orElse(null));
+        return "kjoring/filer";
+    }
+
+    /** Historikk: the run's own audit trail, newest first (specs/006 FR-011). */
+    @GetMapping("/{id}/historikk")
+    String historikk(@PathVariable Long id, Model model) {
+        fane(id, model);
+        model.addAttribute("hendelser", hendelser.findByEntitetAndEntitetIdOrderByTidspunktDescIdDesc(ENTITET, id));
+        return "kjoring/historikk";
+    }
+
+    private record Fane(Fakturakjoring kjoring, List<Faktura> fakturaer, List<Kontrollfunn> funn) {
+    }
+
+    /** The run and the counts every tab's header shows: invoices, blocking findings, warnings. */
+    private Fane fane(Long id, Model model) {
+        var kjoring = kjoringer.hent(id);
+        var fakturaer = kjoringer.fakturaer(id);
+        var funn = kjoringer.funn(id);
+        model.addAttribute("kjoring", kjoring);
+        model.addAttribute("antallFakturaer", fakturaer.size());
+        model.addAttribute("antallBlokkerende", antall(funn, "BLOKKERENDE"));
+        model.addAttribute("antallAdvarsler", antall(funn, "ADVARSEL"));
+        return new Fane(kjoring, fakturaer, funn);
+    }
+
+    private static long antall(List<Kontrollfunn> funn, String alvorlighet) {
+        return funn.stream().filter(f -> alvorlighet.equals(f.alvorlighet())).count();
     }
 
     /**
@@ -105,13 +176,6 @@ class FakturakjoringController {
                 .contentType(MediaType.valueOf(n.mediatype()))
                 .header("Content-Disposition", ContentDisposition.attachment().filename(n.filnavn()).build().toString())
                 .body(n.innhold());
-    }
-
-    @GetMapping("/{id}/avstemming")
-    String avstemming(@PathVariable Long id, Model model) {
-        model.addAttribute("kjoring", kjoringer.hent(id));
-        model.addAttribute("avstemming", avstemming.forKjoring(id));
-        return "kjoring/avstemming";
     }
 
     @GetMapping("/{id}/lg04-kontroll")

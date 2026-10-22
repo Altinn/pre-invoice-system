@@ -23,15 +23,21 @@
     <h2 class="ds-heading" data-size="xs">Kjøringer</h2>
     <table class="ds-table" data-size="sm" data-hover>
         <thead>
-        <tr><th>Periode</th><th>Status</th><th>Generert av</th><th>Godkjent av</th><th></th></tr>
+        <tr><th>Periode</th><th>Status</th><th class="hoyre">Fakturaer</th><th class="hoyre">Sum</th>
+            <th>Kontrollfunn</th><th>Generert av</th><th>Godkjent av</th><th><span class="ds-sr-only">Handling</span></th></tr>
         </thead>
         <tbody>
-        <tr th:each="k : ${kjoringer}">
+        <tr th:each="r : ${kjoringer}" th:with="k=${r.kjoring()}">
             <td class="periode" th:text="${k.periodeLabel()}">januar 2027</td>
+            <td><th:block th:replace="~{kjoring/fragmenter :: status(${k.status()})}"></th:block></td>
+            <td class="hoyre" th:text="${r.antallFakturaer()}">0</td>
+            <td class="hoyre" th:text="${#numbers.formatDecimal(r.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
             <td>
-                <span class="ds-tag"
-                      th:data-color="${k.status() == 'GODKJENT' or k.status() == 'EKSPORTERT'} ? 'success' : (${k.status() == 'FORKASTET'} ? 'neutral' : 'warning')"
-                      th:text="${k.status()}">GENERERT</span>
+                <span class="ds-tag" data-color="danger" data-size="sm" th:if="${r.antallBlokkerende() > 0}"
+                      th:text="|${r.antallBlokkerende()} blokkerende|">2 blokkerende</span>
+                <span class="ds-tag" data-color="warning" data-size="sm" th:if="${r.antallAdvarsler() > 0}"
+                      th:text="|${r.antallAdvarsler()} advarsler|">3 advarsler</span>
+                <span class="liten" th:if="${r.antallBlokkerende() == 0 and r.antallAdvarsler() == 0}">Ingen</span>
             </td>
             <td th:text="${k.generertAv()}">dev</td>
             <td th:text="${k.godkjentAv()} ?: '—'">—</td>
@@ -41,7 +47,7 @@
             </td>
         </tr>
         <tr th:if="${kjoringer.isEmpty()}">
-            <td colspan="5" class="tom">Ingen kjøringer ennå. Velg en periode over og trykk Generer.</td>
+            <td colspan="8" class="tom">Ingen kjøringer ennå. Velg en periode over og trykk Generer.</td>
         </tr>
         </tbody>
     </table>

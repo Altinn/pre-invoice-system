@@ -63,17 +63,21 @@ class KjoringNesteStegIT extends BillingFixture {
         assertThat(panel).contains("Neste steg: kontroller og godkjenn", "Ingen blokkerende funn", "Ingen advarsler",
                 "All bruksdata er med i fakturagrunnlaget");
         assertThat(godkjennKnapp(panel)).doesNotContain("disabled");
-        assertThat(html).contains("<h1 class=\"ds-heading\" data-size=\"lg\">Kjøring januar 2027</h1>", "Ingen kontrollfunn.");
+        assertThat(html).contains("<h1 class=\"ds-heading\" data-size=\"lg\">Kjøring januar 2027</h1>");
     }
 
     @Test
     void blokkerendeFunnGrupperesOgLaaserGodkjenning() throws Exception {
-        var html = side(kjoring(3).id());
+        var kj = kjoring(3);
+        var html = side(kj.id());
         var panel = panel(html);
         assertThat(panel).contains("3 blokkerende funn må løses før godkjenning.");
         assertThat(godkjennKnapp(panel)).contains("disabled");
 
-        String funn = html.substring(html.indexOf("id=\"kontrollfunn\""), html.indexOf("id=\"filer\""));
+        // Grouped findings live on the Kontroller tab since specs/006.
+        String kontroller = mvc.perform(get("/kjoringer/{id}/kontroller", kj.id())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        String funn = kontroller.substring(kontroller.indexOf("id=\"kontrollfunn\""), kontroller.indexOf("id=\"bruksdata\""));
         assertThat(funn.split("<code>MANGLER_KUNDE</code>", -1)).as("one row for the code").hasSize(2);
         assertThat(funn).contains("<td class=\"hoyre\">3</td>", "Vis alle 3 MANGLER_KUNDE");
     }
@@ -98,8 +102,11 @@ class KjoringNesteStegIT extends BillingFixture {
 
     @Test
     void filerErSamletEttSted() throws Exception {
-        var html = side(kjoring(0).id());
-        String filer = html.substring(html.indexOf("id=\"filer\""), html.indexOf(">Fakturaer<"));
+        var kj = kjoring(0);
+        // Files live on the Filer tab since specs/006.
+        String filer = mvc.perform(get("/kjoringer/{id}/filer", kj.id())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        filer = filer.substring(filer.indexOf("id=\"filer\""));
         assertThat(filer).contains("fakturagrunnlag.xlsx", "fakturagrunnlag.csv", "Avstemming bruksdata");
     }
 

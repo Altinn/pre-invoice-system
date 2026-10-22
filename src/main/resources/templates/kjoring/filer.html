@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Filer')}"></head>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('kjoringer')}"></th:block>
+<!-- Run Filer tab (specs/006 FR-010): every download and archived file for the run. -->
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <th:block th:replace="~{kjoring/fragmenter :: hode('filer')}"></th:block>
+
+    <!-- Everything to download or check for the run, in one place (specs/005 FR-008). -->
+    <section class="seksjon" id="filer" aria-labelledby="filer-tittel">
+        <h2 class="ds-heading" data-size="xs" id="filer-tittel">Filer</h2>
+        <ul class="ds-list filliste">
+            <th:block th:if="${kjoring.status() != 'FORKASTET'}">
+                <!-- hx-boost off + download: a real file download, not an htmx page swap. -->
+                <li><a class="ds-link" hx-boost="false" download
+                       th:href="@{/kjoringer/{id}/fakturagrunnlag.xlsx(id=${kjoring.id()})}">Fakturagrunnlag (XLSX, for Excel)</a></li>
+                <li><a class="ds-link" hx-boost="false" download
+                       th:href="@{/kjoringer/{id}/fakturagrunnlag.csv(id=${kjoring.id()})}">Fakturagrunnlag (CSV)</a></li>
+            </th:block>
+            <li th:if="${kjoring.status() == 'FORKASTET'}" class="liten">Fakturagrunnlaget for en forkastet kjøring kan ikke lastes ned.</li>
+            <li><a class="ds-link" th:href="@{/kjoringer/{id}/kontroller(id=${kjoring.id()})} + '#bruksdata'">Avstemming bruksdata</a>
+                <span class="liten">— importert bruk mot fakturert, per produkt</span></li>
+            <li th:if="${lg04Avstemming != null}"><a class="ds-link" th:href="@{/kjoringer/{id}/lg04-kontroll(id=${kjoring.id()})}">Kontroller arkivert LG04 på nytt</a></li>
+        </ul>
+        <table class="ds-table" data-size="sm" data-hover th:unless="${eksportfiler.isEmpty()}">
+            <caption>Eksportfiler</caption>
+            <thead><tr><th>Type</th><th>Filnavn</th><th>SHA-256</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="e : ${eksportfiler}">
+                <td><span class="ds-tag" data-color="neutral" th:text="${e.type()}">LG04</span></td>
+                <td th:text="${e.filnavn()}">lg04-2027-01.txt</td>
+                <td><code th:text="${#strings.abbreviate(e.sha256(), 16)}">…</code></td>
+                <td class="hoyre">
+                    <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false" download
+                       th:href="@{/kjoringer/{id}/eksportfil/{fid}(id=${kjoring.id()},fid=${e.id()})}">Last ned</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+</main>
+</body>
+</html>

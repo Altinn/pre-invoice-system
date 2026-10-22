@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Kontroller')}"></head>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('kjoringer')}"></th:block>
+<!-- Run Kontroller tab (specs/006 FR-007): what a reviewer reads before approving. -->
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <th:block th:replace="~{kjoring/fragmenter :: hode('kontroller')}"></th:block>
+
+    <!-- Findings, one row per code (specs/005 FR-006/007): blocking first, then the largest group. -->
+    <h2 class="ds-heading" data-size="xs" id="kontrollfunn">Kontrollfunn</h2>
+    <p class="ds-paragraph liten" th:if="${funngrupper.isEmpty()}">Ingen kontrollfunn.</p>
+    <table class="ds-table funn" data-size="sm" th:unless="${funngrupper.isEmpty()}">
+        <thead>
+        <tr><th>Alvorlighet</th><th>Kode</th><th class="hoyre">Antall</th><th>Eksempel</th></tr>
+        </thead>
+        <tbody th:each="g : ${funngrupper}">
+        <tr>
+            <td><span class="ds-tag" data-size="sm" th:data-color="${g.blokkerende()} ? 'danger' : 'warning'"
+                      th:text="${g.blokkerende()} ? 'Blokkerende' : 'Advarsel'">Blokkerende</span></td>
+            <td><code th:text="${g.kode()}">MANGLER_KUNDE</code></td>
+            <td class="hoyre" th:text="${g.antall()}">1</td>
+            <td th:text="${g.eksempel()}">melding</td>
+        </tr>
+        <tr class="funn-alle" th:if="${g.antall() > 1}">
+            <td colspan="4">
+                <details class="ds-details">
+                    <summary th:text="|Vis alle ${g.antall()} ${g.kode()}|">Vis alle</summary>
+                    <ul class="ds-list"><li th:each="m : ${g.meldinger()}" th:text="${m}">melding</li></ul>
+                </details>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+
+    <!-- Imported usage against invoiced usage (specs/002 US2); was its own page before specs/006. -->
+    <section class="seksjon" id="bruksdata" th:with="a=${avstemming}" aria-labelledby="bruksdata-tittel">
+        <h2 class="ds-heading" data-size="xs" id="bruksdata-tittel">Avstemming bruksdata</h2>
+        <p class="ds-paragraph liten" th:if="${a.kilde() != null}"
+           th:text="|Bruksdata fra import ${a.kilde().id()} (${a.kilde().kilde()}, ${a.kilde().filnavn()}), lastet ${#temporals.format(a.kilde().lastetAt(), 'dd.MM.yyyy HH:mm')} av ${a.kilde().lastetAv()}.|">
+            Bruksdata fra import …</p>
+        <p class="ds-paragraph liten" th:if="${a.kilde() == null}">
+            Ukjent import (kjøring generert før avstemming fantes).</p>
+
+        <div class="ds-alert" data-color="info"><p>Viser bare bruk som kom inn i forsystemet. Bruk som datavarehuset filtrerer bort (f.eks. inaktive avtaler)
+            er ikke med.</p></div>
+
+        <div class="ds-alert" data-color="danger" th:if="${a.invariantBrudd()}"><p>Avstemmingen går ikke opp: noen bruksdata er verken fakturert eller forklart, eller fakturalinjer peker
+            utenfor importen. Dette er en feil i forsystemet — kontakt forsystem-teamet.</p></div>
+        <div class="ds-alert" data-color="success" th:if="${a.allFakturert()}"><p>All bruksdata er med i fakturagrunnlaget.</p></div>
+
+        <h3 class="ds-heading" data-size="2xs">Per produkt og type</h3>
+        <table class="ds-table" data-size="sm" data-hover>
+            <thead>
+            <tr><th>Produkt</th><th>Type</th>
+                <th class="hoyre">Importert rader</th><th class="hoyre">Importert sum</th>
+                <th class="hoyre">Fakturert linjer</th><th class="hoyre">Fakturert sum</th>
+                <th class="hoyre">Ikke fakturert</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${a.rader()}" th:classappend="${r.harDifferanse()} ? 'avvik'">
+                <td th:text="${r.produktNavn()}">Melding</td>
+                <td th:text="${r.type()} ?: 'ingen bruk'">BRUKSVOLUM</td>
+                <td class="hoyre" th:text="${r.importertRader()}">0</td>
+                <td class="hoyre" th:text="${#numbers.formatDecimal(r.importertSum(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+                <td class="hoyre" th:text="${r.fakturertLinjer()}">0</td>
+                <td class="hoyre" th:text="${#numbers.formatDecimal(r.fakturertSum(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+                <td class="hoyre" th:text="${r.ikkeFakturertRader()}">0</td>
+            </tr>
+            </tbody>
+        </table>
+        <p class="ds-paragraph liten">Volumtyper summeres på antall, kostnadstyper (Azure, SMS) på beløp.</p>
+
+        <div class="seksjon" th:if="${!a.ikkeFakturert().isEmpty()}">
+            <h3 class="ds-heading" data-size="2xs">Ikke fakturert</h3>
+            <table class="ds-table" data-size="sm" data-hover>
+                <thead>
+                <tr><th>Organisasjonsnummer</th><th>Produkt</th><th>Type</th>
+                    <th class="hoyre">Antall</th><th class="hoyre">Beløp</th><th>Årsak</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="u : ${a.ikkeFakturert()}">
+                    <td th:text="${u.organisasjonsnummer()}">999999999</td>
+                    <td th:text="${u.produktKode()}">melding</td>
+                    <td th:text="${u.type()}">BRUKSVOLUM</td>
+                    <td class="hoyre" th:text="${u.antall()} ?: '—'">—</td>
+                    <td class="hoyre" th:text="${u.belop()} ?: '—'">—</td>
+                    <td><strong th:if="${u.kode() != null}" th:text="|${u.kode()}: |">KODE: </strong><span th:text="${u.melding()}">melding</span></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- LG04 reconciliation details (specs/002 FR-006/007). A failure is shown as an error, never as a match. -->
+    <section class="seksjon" id="lg04" th:if="${lg04Avstemming != null}" th:with="a=${lg04Avstemming}">
+        <h2 class="ds-heading" data-size="xs">LG04-avstemming</h2>
+        <div class="ds-alert" data-color="danger" th:if="${a.kilde().name() == 'FEIL'}">
+            <p th:text="|LG04-filen kunne ikke avstemmes: ${a.feil()}|">Kunne ikke avstemmes</p></div>
+        <div class="seksjon" th:unless="${a.kilde().name() == 'FEIL'}">
+            <div class="ds-alert" th:data-color="${a.stemmer()} ? 'success' : 'danger'">
+                <p th:text="${a.stemmer()} ? 'LG04 stemmer med fakturagrunnlaget' : 'LG04 stemmer IKKE med fakturagrunnlaget'">LG04 stemmer med fakturagrunnlaget</p></div>
+            <table class="ds-table smal" data-size="sm">
+                <thead><tr><th></th><th class="hoyre">LG04-fil</th><th class="hoyre">Kjøring</th></tr></thead>
+                <tbody>
+                <tr><th scope="row">Ordrer</th>
+                    <td class="hoyre" th:text="${a.antallOrdrerFil()}">0</td>
+                    <td class="hoyre" th:text="${a.antallOrdrerKjoring()}">0</td></tr>
+                <tr><th scope="row">Beløp</th>
+                    <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopFil(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+                    <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopKjoring(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
+                </tbody>
+            </table>
+            <p class="ds-paragraph liten" th:if="${a.kilde().name() == 'LAGRET'}"
+               th:text="|Avstemt ved eksport av ${a.avstemtAv()}, ${#temporals.format(a.avstemtAt(), 'dd.MM.yyyy HH:mm')}.|">Avstemt ved eksport.</p>
+            <p class="ds-paragraph liten" th:if="${a.kilde().name() == 'BEREGNET_FRA_ARKIV'}">
+                Avstemt mot arkivert fil nå (kjøringen ble eksportert før automatisk avstemming).</p>
+        </div>
+        <p><a class="ds-link" th:href="@{/kjoringer/{id}/lg04-kontroll(id=${kjoring.id()})}">Kontroller arkivert LG04 på nytt</a></p>
+    </section>
+
+</main>
+</body>
+</html>

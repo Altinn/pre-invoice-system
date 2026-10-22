@@ -139,7 +139,8 @@ class BruksdataavstemmingIT extends BillingFixture {
         bruk(imp, JAN, KUNDE, "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
         var kj = tjeneste.generer(JAN);
 
-        mvc.perform(get("/kjoringer/{id}/avstemming", kj.id()))
+        // The reconciliation lives on the run's Kontroller tab since specs/006.
+        mvc.perform(get("/kjoringer/{id}/kontroller", kj.id()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Avstemming bruksdata")))
                 .andExpect(content().string(Matchers.containsString("datavarehuset filtrerer bort")))

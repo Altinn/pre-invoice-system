@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<!--
+  Fragments shared by the run pages (specs/006 contracts/ui.md). Not a page itself.
+  hode(fane)   breadcrumbs, title, status and the tab bar; fane is oversikt|kontroller|fakturaer|filer|historikk.
+               Needs kjoring, antallFakturaer, antallBlokkerende, antallAdvarsler in the model (controller fane()).
+  status(s)    the run status as a plain-language tag.
+  fremdrift(f) the progress strip.
+-->
+<body>
+
+<th:block th:fragment="hode(fane)">
+    <nav class="ds-breadcrumbs" aria-label="Du er her:">
+        <a class="ds-link" th:href="@{/kjoringer}" aria-label="Tilbake til Kjøringer">Kjøringer</a>
+        <ol>
+            <li><a class="ds-link" th:href="@{/}">Forside</a></li>
+            <li><a class="ds-link" th:href="@{/kjoringer}">Kjøringer</a></li>
+            <li><a class="ds-link" aria-current="page" th:text="|Kjøring ${kjoring.periodeLabel()}|">Kjøring</a></li>
+        </ol>
+    </nav>
+    <div class="topprad">
+        <h1 class="ds-heading" data-size="lg" th:text="|Kjøring ${kjoring.periodeLabel()}|">Kjøring</h1>
+        <th:block th:replace="~{kjoring/fragmenter :: status(${kjoring.status()})}"></th:block>
+    </div>
+    <nav class="faner ikke-utskrift" aria-label="Kjøring">
+        <ul>
+            <li><a th:href="@{/kjoringer/{id}(id=${kjoring.id()})}"
+                   th:attr="aria-current=${fane == 'oversikt'} ? 'page'">Oversikt</a></li>
+            <li><a th:href="@{/kjoringer/{id}/kontroller(id=${kjoring.id()})}"
+                   th:attr="aria-current=${fane == 'kontroller'} ? 'page'">Kontroller
+                <th:block th:if="${antallBlokkerende > 0}">
+                    <span class="ds-badge" data-color="danger" data-variant="base" aria-hidden="true"
+                          th:attr="data-count=${antallBlokkerende}"></span>
+                    <span class="ds-sr-only" th:text="|(${antallBlokkerende} blokkerende funn)|">(blokkerende funn)</span>
+                </th:block>
+                <th:block th:if="${antallBlokkerende == 0 and antallAdvarsler > 0}">
+                    <span class="ds-badge" data-color="warning" data-variant="base" aria-hidden="true"
+                          th:attr="data-count=${antallAdvarsler}"></span>
+                    <span class="ds-sr-only" th:text="|(${antallAdvarsler} advarsler)|">(advarsler)</span>
+                </th:block></a></li>
+            <li><a th:href="@{/kjoringer/{id}/fakturaer(id=${kjoring.id()})}"
+                   th:attr="aria-current=${fane == 'fakturaer'} ? 'page'">Fakturaer
+                <span class="fane-antall" th:text="${antallFakturaer}">0</span></a></li>
+            <li><a th:href="@{/kjoringer/{id}/filer(id=${kjoring.id()})}"
+                   th:attr="aria-current=${fane == 'filer'} ? 'page'">Filer</a></li>
+            <li><a th:href="@{/kjoringer/{id}/historikk(id=${kjoring.id()})}"
+                   th:attr="aria-current=${fane == 'historikk'} ? 'page'">Historikk</a></li>
+        </ul>
+    </nav>
+</th:block>
+
+<!-- Plain-language status (display only; the stored status is unchanged). -->
+<th:block th:fragment="status(s)" th:switch="${s}">
+    <span th:case="'GENERERT'" class="ds-tag" data-color="warning">Venter på godkjenning</span>
+    <span th:case="'GODKJENT'" class="ds-tag" data-color="info">Klar til eksport</span>
+    <span th:case="'EKSPORTERT'" class="ds-tag" data-color="success">Eksportert</span>
+    <span th:case="'FORKASTET'" class="ds-tag" data-color="neutral">Forkastet</span>
+    <span th:case="*" class="ds-tag" data-color="neutral" th:text="${s}">Ukjent</span>
+</th:block>
+
+<!-- Progress strip (specs/006 FR-006). A discarded run stops at the discard. -->
+<ol th:fragment="fremdrift(f)" class="fremdrift" aria-label="Fremdrift">
+    <th:block th:each="s : ${f.steg()}">
+        <li th:unless="${f.forkastet() != null and !s.ferdig()}"
+            th:class="${s.ferdig()} ? 'ferdig' : (${s.naa()} ? 'naa' : 'senere')"
+            th:attr="aria-current=${s.naa()} ? 'step'">
+            <span class="ds-sr-only" th:text="${s.ferdig()} ? 'Ferdig: ' : (${s.naa()} ? 'Neste: ' : 'Senere: ')">Ferdig: </span>
+            <strong th:text="${s.navn()}">Generert</strong>
+            <span class="liten" th:if="${s.hvem() != null or s.naar() != null}"
+                  th:text="${(s.hvem() ?: '') + (s.hvem() != null and s.naar() != null ? ', ' : '') + (s.naar() != null ? #temporals.format(s.naar(), 'dd.MM.yyyy HH:mm') : '')}">dev, 22.10.2026 16:05</span>
+        </li>
+    </th:block>
+    <li class="forkastet" th:if="${f.forkastet() != null}">
+        <span class="ds-sr-only">Avsluttet: </span>
+        <strong>Forkastet</strong>
+        <span class="liten" th:if="${f.forkastet().hvem() != null or f.forkastet().naar() != null}"
+              th:text="${(f.forkastet().hvem() ?: '') + (f.forkastet().hvem() != null and f.forkastet().naar() != null ? ', ' : '') + (f.forkastet().naar() != null ? #temporals.format(f.forkastet().naar(), 'dd.MM.yyyy HH:mm') : '')}">dev</span>
+    </li>
+</ol>
+
+</body>
+</html>
