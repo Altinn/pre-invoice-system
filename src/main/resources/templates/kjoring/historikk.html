@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Historikk')}"></head>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('kjoringer')}"></th:block>
+<!-- Run Historikk tab (specs/006 FR-011): the run's own audit trail. -->
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <th:block th:replace="~{kjoring/fragmenter :: hode('historikk')}"></th:block>
+
+    <h2 class="ds-heading" data-size="xs">Historikk</h2>
+    <p class="ds-paragraph liten">Alt som er logget for denne kjøringen, nyeste først.</p>
+    <table class="ds-table" data-size="sm" data-hover>
+        <thead>
+        <tr><th>Tidspunkt</th><th>Bruker</th><th>Handling</th><th>Detaljer</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="h : ${hendelser}">
+            <td th:text="${#temporals.format(h.tidspunkt(), 'dd.MM.yyyy HH:mm:ss')}">07.02.2027 09:00:00</td>
+            <td th:text="${h.bruker()}">dev</td>
+            <td><span class="ds-tag" data-color="neutral" th:text="${h.handling()}">GENERERTE</span></td>
+            <td><code th:text="${h.detaljer()} != null ? ${h.detaljer().json()} : ''"></code></td>
+        </tr>
+        <tr th:if="${hendelser.isEmpty()}">
+            <td colspan="4" class="tom">Ingen hendelser er logget for denne kjøringen.</td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>
