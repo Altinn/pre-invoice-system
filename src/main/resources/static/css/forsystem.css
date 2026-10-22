@@ -158,6 +158,46 @@ pre.epost {
     font-family: inherit;
 }
 
+/* ---- Run page (specs/005) -------------------------------------------------------------- */
+
+/* Next-step panel: what the run waits for, the checks that matter, the one action. */
+.neste-steg > * + * { margin-block-start: var(--ds-size-4); }
+.neste-steg > .ds-heading:first-child { margin: 0; }
+.sjekkliste {
+    display: grid;
+    gap: var(--ds-size-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.sjekkliste li { position: relative; padding-inline-start: var(--ds-size-8); }
+/* The state is also written as hidden text in each item, so colour is never the only signal. */
+.sjekkliste li::before {
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0.1em;
+    display: grid;
+    place-items: center;
+    width: 1.35em;
+    height: 1.35em;
+    border-radius: var(--ds-border-radius-full);
+    font-size: var(--ds-body-sm-font-size);
+    font-weight: 600;
+    line-height: 1;
+}
+.sjekkliste li.ok::before { content: "✓" / ""; background: var(--ds-color-success-base-default); color: var(--ds-color-success-base-contrast-default); }
+.sjekkliste li.feil::before { content: "✕" / ""; background: var(--ds-color-danger-base-default); color: var(--ds-color-danger-base-contrast-default); }
+.sjekkliste li.advarsel::before { content: "!" / ""; background: var(--ds-color-warning-base-default); color: var(--ds-color-warning-base-contrast-default); }
+.sjekkliste li.ukjent::before { content: "?" / ""; background: var(--ds-color-neutral-base-default); color: var(--ds-color-neutral-base-contrast-default); }
+.sjekkliste .ds-link { margin-inline-start: var(--ds-size-1); }
+.neste-steg pre.epost { background: var(--ds-color-neutral-background-default); }
+
+/* Findings: one row per code; the "show all" row sits under its group. */
+.ds-table.funn > tbody > tr.funn-alle > td { padding-block-start: 0; }
+.ds-table.funn > tbody + tbody { border-top: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle); }
+.filliste { margin: 0; }
+.periode::first-letter { text-transform: uppercase; }
+
 /* Alert content: the icon is aligned to the first line, so children carry no default margins. */
 .ds-alert > :is(p, ul, h2, h3) { margin: 0; }
 .ds-alert > * + * { margin-block-start: var(--ds-size-2); }

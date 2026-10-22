@@ -3,24 +3,141 @@
 <head th:replace="~{layout :: head('Kjøring')}"></head>
 <body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
 <th:block th:replace="~{layout :: topbar('kjoringer')}"></th:block>
-<main id="hovedinnhold" class="side" tabindex="-1" th:with="generert=${kjoring.status() == 'GENERERT'}">
+<!-- Run page (specs/005 contracts/ui.md): the next step first, then summary, findings, files, invoices. -->
+<main id="hovedinnhold" class="side" tabindex="-1"
+      th:with="status=${kjoring.status()}, generert=${status == 'GENERERT'}, maaned=${kjoring.periodeLabel()}">
     <nav class="ds-breadcrumbs" aria-label="Du er her:">
         <a class="ds-link" th:href="@{/kjoringer}" aria-label="Tilbake til Kjøringer">Kjøringer</a>
         <ol>
             <li><a class="ds-link" th:href="@{/}">Forside</a></li>
             <li><a class="ds-link" th:href="@{/kjoringer}">Kjøringer</a></li>
-            <li><a class="ds-link" aria-current="page" th:text="|Kjøring ${kjoring.periode()}|">Kjøring</a></li>
+            <li><a class="ds-link" aria-current="page" th:text="|Kjøring ${maaned}|">Kjøring</a></li>
         </ol>
     </nav>
     <div class="topprad">
-        <h1 class="ds-heading" data-size="lg" th:text="|Kjøring ${kjoring.periode()}|">Kjøring</h1>
+        <h1 class="ds-heading" data-size="lg" th:text="|Kjøring ${maaned}|">Kjøring</h1>
         <span class="ds-tag"
-              th:data-color="${kjoring.status() == 'GODKJENT' or kjoring.status() == 'EKSPORTERT'} ? 'success' : (${kjoring.status() == 'FORKASTET'} ? 'neutral' : 'warning')"
-              th:text="${kjoring.status()}">GENERERT</span>
+              th:data-color="${status == 'GODKJENT' or status == 'EKSPORTERT'} ? 'success' : (${status == 'FORKASTET'} ? 'neutral' : 'warning')"
+              th:text="${status}">GENERERT</span>
     </div>
 
     <!-- Stopped export (specs/002 FR-005a): the run is untouched, say so and whom to contact. -->
     <div class="ds-alert" data-color="danger" th:if="${eksportStoppet}"><p th:text="${eksportStoppet}">Eksport stoppet</p></div>
+
+    <!-- Next step (specs/005 FR-001..005): what the run waits for, the checks that matter, the one action. -->
+    <section class="neste-steg ds-card" data-variant="tinted" aria-labelledby="neste-steg-tittel"
+             th:data-color="${generert or status == 'GODKJENT'} ? 'accent' : 'neutral'">
+
+        <th:block th:if="${generert}">
+            <h2 class="ds-heading" data-size="xs" id="neste-steg-tittel">Neste steg: kontroller og godkjenn</h2>
+            <ul class="sjekkliste" th:with="b=${bruksdataavstemming}">
+                <li class="feil" th:if="${b.invariantBrudd()}"><span class="ds-sr-only">Feil: </span>
+                    Bruksdata går ikke opp mot fakturagrunnlaget. Dette er en feil i forsystemet — kontakt forsystem-teamet.
+                    <a class="ds-link" th:href="@{/kjoringer/{id}/avstemming(id=${kjoring.id()})}">Se avstemming</a></li>
+                <li class="ukjent" th:if="${!b.invariantBrudd() and b.kilde() == null}"><span class="ds-sr-only">Ukjent: </span>
+                    Bruksdata kan ikke avstemmes (kjøringen er eldre enn avstemmingen).
+                    <a class="ds-link" th:href="@{/kjoringer/{id}/avstemming(id=${kjoring.id()})}">Se avstemming</a></li>
+                <li class="ok" th:if="${b.kilde() != null and b.allFakturert()}"><span class="ds-sr-only">OK: </span>
+                    All bruksdata er med i fakturagrunnlaget.
+                    <a class="ds-link" th:href="@{/kjoringer/{id}/avstemming(id=${kjoring.id()})}">Se avstemming</a></li>
+                <li class="advarsel" th:if="${b.kilde() != null and !b.invariantBrudd() and !b.allFakturert()}"><span class="ds-sr-only">Advarsel: </span>
+                    <span th:text="|${b.ikkeFakturert().size()} rader med bruk er ikke fakturert. Alle er forklart av kontrollfunn.|">Rader ikke fakturert.</span>
+                    <a class="ds-link" th:href="@{/kjoringer/{id}/avstemming(id=${kjoring.id()})}">Se avstemming</a></li>
+
+                <li class="ok" th:if="${antallBlokkerende == 0}"><span class="ds-sr-only">OK: </span>Ingen blokkerende funn.</li>
+                <li class="feil" th:if="${antallBlokkerende > 0}"><span class="ds-sr-only">Feil: </span>
+                    <span th:text="|${antallBlokkerende} blokkerende funn må løses før godkjenning.|">Blokkerende funn.</span>
+                    <a class="ds-link" href="#kontrollfunn">Se kontrollfunn</a></li>
+
+                <li class="ok" th:if="${antallAdvarsler == 0}"><span class="ds-sr-only">OK: </span>Ingen advarsler.</li>
+                <li class="advarsel" th:if="${antallAdvarsler > 0}"><span class="ds-sr-only">Advarsel: </span>
+                    <span th:text="|${antallAdvarsler} advarsler å se gjennom. De hindrer ikke godkjenning.|">Advarsler.</span>
+                    <a class="ds-link" href="#kontrollfunn">Se kontrollfunn</a></li>
+            </ul>
+            <!-- Each action opens a confirmation dialog first (specs/004 FR-012); without JS it submits directly. -->
+            <div class="rad ikke-utskrift">
+                <form th:action="@{/kjoringer/{id}/godkjenn(id=${kjoring.id()})}" method="post">
+                    <th:block th:replace="~{layout :: csrf}"></th:block>
+                    <button class="ds-button" data-color="accent" type="submit" data-bekreft="bekreft-godkjenn"
+                            th:disabled="${harBlokkerende}">Godkjenn</button>
+                    <dialog class="ds-dialog" id="bekreft-godkjenn" closedby="any" aria-labelledby="bekreft-godkjenn-tittel">
+                        <h2 class="ds-heading" data-size="xs" id="bekreft-godkjenn-tittel" th:text="|Godkjenne kjøringen for ${maaned}?|">Bekreft</h2>
+                        <p class="ds-paragraph">Etter godkjenning kan kjøringen eksporteres til regnskap. Den kan fortsatt forkastes før eksport.</p>
+                        <div class="rad">
+                            <button class="ds-button" data-color="accent" type="submit">Ja, godkjenn</button>
+                            <button class="ds-button" data-variant="secondary" type="button" autofocus
+                                    command="close" commandfor="bekreft-godkjenn">Avbryt</button>
+                        </div>
+                    </dialog>
+                </form>
+                <th:block th:replace="~{:: forkast}"></th:block>
+            </div>
+            <p th:if="${harBlokkerende}" class="ds-paragraph liten">
+                Godkjenning er låst til de blokkerende funnene er løst (forkast, rett data, generer på nytt).</p>
+        </th:block>
+
+        <th:block th:if="${status == 'GODKJENT'}">
+            <h2 class="ds-heading" data-size="xs" id="neste-steg-tittel">Neste steg: eksporter til regnskap</h2>
+            <ul class="sjekkliste">
+                <li class="ok"><span class="ds-sr-only">OK: </span>
+                    <span th:text="|Godkjent av ${kjoring.godkjentAv()}${kjoring.godkjentAt() != null ? ', ' + #temporals.format(kjoring.godkjentAt(), 'dd.MM.yyyy HH:mm') : ''}.|">Godkjent.</span></li>
+            </ul>
+            <div class="rad ikke-utskrift">
+                <form th:action="@{/kjoringer/{id}/eksporter(id=${kjoring.id()})}" method="post">
+                    <th:block th:replace="~{layout :: csrf}"></th:block>
+                    <button class="ds-button" data-color="accent" type="submit" data-bekreft="bekreft-eksporter">Eksporter</button>
+                    <dialog class="ds-dialog" id="bekreft-eksporter" closedby="any" aria-labelledby="bekreft-eksporter-tittel">
+                        <h2 class="ds-heading" data-size="xs" id="bekreft-eksporter-tittel" th:text="|Eksportere kjøringen for ${maaned}?|">Bekreft</h2>
+                        <p class="ds-paragraph">LG04-filen og vedleggene lages og arkiveres, og kjøringen kan ikke forkastes etterpå.</p>
+                        <div class="rad">
+                            <button class="ds-button" data-color="accent" type="submit">Ja, eksporter</button>
+                            <button class="ds-button" data-variant="secondary" type="button" autofocus
+                                    command="close" commandfor="bekreft-eksporter">Avbryt</button>
+                        </div>
+                    </dialog>
+                </form>
+                <th:block th:replace="~{:: forkast}"></th:block>
+            </div>
+        </th:block>
+
+        <th:block th:if="${status == 'EKSPORTERT'}">
+            <h2 class="ds-heading" data-size="xs" id="neste-steg-tittel">Neste steg: send tallene til regnskap</h2>
+            <ul class="sjekkliste" th:with="a=${lg04Avstemming}">
+                <li class="ukjent" th:if="${a == null}"><span class="ds-sr-only">Ukjent: </span>LG04 er ikke avstemt.</li>
+                <li class="feil" th:if="${a != null and a.kilde().name() == 'FEIL'}"><span class="ds-sr-only">Feil: </span>
+                    LG04-filen kunne ikke avstemmes. <a class="ds-link" href="#lg04">Se LG04-avstemming</a></li>
+                <li th:if="${a != null and a.kilde().name() != 'FEIL'}" th:class="${a.stemmer()} ? 'ok' : 'feil'">
+                    <span class="ds-sr-only" th:text="${a.stemmer()} ? 'OK: ' : 'Feil: '">OK: </span>
+                    <span th:text="${a.stemmer()} ? 'LG04 stemmer med fakturagrunnlaget.' : 'LG04 stemmer IKKE med fakturagrunnlaget.'">LG04 stemmer.</span>
+                    <a class="ds-link" href="#lg04">Se LG04-avstemming</a></li>
+                <li class="ok" th:if="${a != null and a.kilde().name() == 'LAGRET'}"><span class="ds-sr-only">OK: </span>
+                    <span th:text="|Eksportert av ${a.avstemtAv()}, ${#temporals.format(a.avstemtAt(), 'dd.MM.yyyy HH:mm')}.|">Eksportert.</span></li>
+            </ul>
+            <!-- Figures for the covering e-mail to regnskap (OQ-8). Shown once exported: the e-mail goes with the files. -->
+            <h3 class="ds-heading" data-size="2xs">Til e-post til regnskap</h3>
+            <pre id="epost" class="ds-paragraph epost bred" data-size="sm"
+                 th:text="|Periode: ${sammendrag.periode()} (${sammendrag.periode().norskLabel()})
+Antall fakturaer: ${sammendrag.antallFakturaer()}
+Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')} kr (eksl./inkl. mva uavklart)|">…</pre>
+            <div class="rad ikke-utskrift">
+                <button class="ds-button" data-color="accent" type="button"
+                        onclick="navigator.clipboard.writeText(document.getElementById('epost').innerText); this.textContent='Kopiert';">Kopier tallene</button>
+            </div>
+        </th:block>
+
+        <th:block th:if="${status == 'FORKASTET'}">
+            <h2 class="ds-heading" data-size="xs" id="neste-steg-tittel">Kjøringen er forkastet</h2>
+            <p class="ds-paragraph">En forkastet kjøring kan ikke godkjennes eller eksporteres. Rett det som trengs i
+                registrene eller bruksdata, og generer perioden på nytt.</p>
+            <!-- Explicit period: the run's own month, never derived from today (Constitution IV). -->
+            <form th:action="@{/kjoringer}" method="post" class="rad ikke-utskrift">
+                <th:block th:replace="~{layout :: csrf}"></th:block>
+                <input type="hidden" name="periode" th:value="${sammendrag.periode()}">
+                <button class="ds-button" data-color="accent" type="submit"
+                        th:text="|Generer ${maaned} på nytt|">Generer på nytt</button>
+            </form>
+        </th:block>
+    </section>
 
     <!-- Summary (specs/002 FR-001..003). VAT treatment is open (OQ-11): no VAT figure, only the label. -->
     <h2 class="ds-heading" data-size="xs">Sammendrag</h2>
@@ -36,68 +153,66 @@
         </tbody>
     </table>
     <div class="ds-alert" data-color="danger" th:unless="${sammendrag.konsistent()}">
-            <p th:text="|Summen av fakturaene (${sammendrag.sumFakturaer()}) er ikke lik summen av linjene (${sammendrag.sumBelop()}). Dette er en feil i forsystemet — kontakt forsystem-teamet.|">Summene stemmer ikke.</p></div>
+        <p th:text="|Summen av fakturaene (${sammendrag.sumFakturaer()}) er ikke lik summen av linjene (${sammendrag.sumBelop()}). Dette er en feil i forsystemet — kontakt forsystem-teamet.|">Summene stemmer ikke.</p></div>
 
-    <!-- Figures for the covering email to regnskap (OQ-8). -->
-    <div class="seksjon" th:if="${kjoring.status() == 'GODKJENT' or kjoring.status() == 'EKSPORTERT'}">
-        <h2 class="ds-heading" data-size="xs">Til e-post til regnskap</h2>
-        <pre id="epost" class="ds-paragraph epost bred" data-size="sm"
-             th:text="|Periode: ${sammendrag.periode()} (${sammendrag.periode().norskLabel()})
-Antall fakturaer: ${sammendrag.antallFakturaer()}
-Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')} kr (eksl./inkl. mva uavklart)|">…</pre>
-        <button class="ds-button ikke-utskrift" data-variant="secondary" data-size="sm" type="button"
-                onclick="navigator.clipboard.writeText(document.getElementById('epost').innerText); this.textContent='Kopiert';">Kopier</button>
-    </div>
+    <!-- Findings, one row per code (specs/005 FR-006/007): blocking first, then the largest group. -->
+    <h2 class="ds-heading" data-size="xs" id="kontrollfunn">Kontrollfunn</h2>
+    <p class="ds-paragraph liten" th:if="${funngrupper.isEmpty()}">Ingen kontrollfunn.</p>
+    <table class="ds-table funn" data-size="sm" th:unless="${funngrupper.isEmpty()}">
+        <thead>
+        <tr><th>Alvorlighet</th><th>Kode</th><th class="hoyre">Antall</th><th>Eksempel</th></tr>
+        </thead>
+        <tbody th:each="g : ${funngrupper}">
+        <tr>
+            <td><span class="ds-tag" data-size="sm" th:data-color="${g.blokkerende()} ? 'danger' : 'warning'"
+                      th:text="${g.blokkerende()} ? 'Blokkerende' : 'Advarsel'">Blokkerende</span></td>
+            <td><code th:text="${g.kode()}">MANGLER_KUNDE</code></td>
+            <td class="hoyre" th:text="${g.antall()}">1</td>
+            <td th:text="${g.eksempel()}">melding</td>
+        </tr>
+        <tr class="funn-alle" th:if="${g.antall() > 1}">
+            <td colspan="4">
+                <details class="ds-details">
+                    <summary th:text="|Vis alle ${g.antall()} ${g.kode()}|">Vis alle</summary>
+                    <ul class="ds-list"><li th:each="m : ${g.meldinger()}" th:text="${m}">melding</li></ul>
+                </details>
+            </td>
+        </tr>
+        </tbody>
+    </table>
 
-    <!-- LG04 reconciliation (specs/002 FR-006/007). A failure is shown as an error, never as a match. -->
-    <div class="seksjon" th:if="${lg04Avstemming != null}" th:with="a=${lg04Avstemming}">
-        <h2 class="ds-heading" data-size="xs">LG04-avstemming</h2>
-        <div class="ds-alert" data-color="danger" th:if="${a.kilde().name() == 'FEIL'}">
-            <p th:text="|LG04-filen kunne ikke avstemmes: ${a.feil()}|">Kunne ikke avstemmes</p></div>
-        <div class="seksjon" th:unless="${a.kilde().name() == 'FEIL'}">
-            <div class="ds-alert" th:data-color="${a.stemmer()} ? 'success' : 'danger'">
-            <p th:text="${a.stemmer()} ? 'LG04 stemmer med fakturagrunnlaget' : 'LG04 stemmer IKKE med fakturagrunnlaget'">LG04 stemmer med fakturagrunnlaget</p></div>
-            <table class="ds-table smal" data-size="sm">
-                <thead><tr><th></th><th class="hoyre">LG04-fil</th><th class="hoyre">Kjøring</th></tr></thead>
-                <tbody>
-                <tr><th scope="row">Ordrer</th>
-                    <td class="hoyre" th:text="${a.antallOrdrerFil()}">0</td>
-                    <td class="hoyre" th:text="${a.antallOrdrerKjoring()}">0</td></tr>
-                <tr><th scope="row">Beløp</th>
-                    <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopFil(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
-                    <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopKjoring(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
-                </tbody>
-            </table>
-            <p class="ds-paragraph liten" th:if="${a.kilde().name() == 'LAGRET'}"
-               th:text="|Avstemt ved eksport av ${a.avstemtAv()}, ${#temporals.format(a.avstemtAt(), 'dd.MM.yyyy HH:mm')}.|">Avstemt ved eksport.</p>
-            <p class="ds-paragraph liten" th:if="${a.kilde().name() == 'BEREGNET_FRA_ARKIV'}">
-                Avstemt mot arkivert fil nå (kjøringen ble eksportert før automatisk avstemming).</p>
-        </div>
-        <a class="ds-link" th:href="@{/kjoringer/{id}/lg04-kontroll(id=${kjoring.id()})}">Kontroller arkivert LG04 på nytt</a>
-    </div>
-
-    <!-- Findings -->
-    <div class="seksjon" th:if="${!blokkerende.isEmpty()}">
-        <h2 class="ds-heading" data-size="xs">Blokkerende kontrollfunn</h2>
-        <div class="ds-alert" data-color="danger" th:each="f : ${blokkerende}"><h3 class="ds-heading" data-size="2xs" th:text="${f.kode()}">KODE</h3><p th:text="${f.melding()}">melding</p></div>
-    </div>
-    <div class="seksjon" th:if="${!advarsler.isEmpty()}">
-        <h2 class="ds-heading" data-size="xs">Advarsler</h2>
-        <div class="ds-alert" data-color="warning" th:each="f : ${advarsler}"><h3 class="ds-heading" data-size="2xs" th:text="${f.kode()}">KODE</h3><p th:text="${f.melding()}">melding</p></div>
-    </div>
-
-    <!-- Controls before approval (specs/002). -->
-    <div class="rad ikke-utskrift">
-        <a class="ds-button" data-variant="secondary" data-size="sm"
-           th:href="@{/kjoringer/{id}/avstemming(id=${kjoring.id()})}">Avstemming bruksdata</a>
-        <th:block th:if="${kjoring.status() != 'FORKASTET'}">
-            <!-- hx-boost off + download: a real file download, not an htmx page swap. -->
-            <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false" download
-               th:href="@{/kjoringer/{id}/fakturagrunnlag.xlsx(id=${kjoring.id()})}">Last ned fakturagrunnlag (XLSX, for Excel)</a>
-            <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false" download
-               th:href="@{/kjoringer/{id}/fakturagrunnlag.csv(id=${kjoring.id()})}">(CSV)</a>
-        </th:block>
-    </div>
+    <!-- Everything to download or check for the run, in one place (specs/005 FR-008). -->
+    <section class="seksjon" id="filer" aria-labelledby="filer-tittel">
+        <h2 class="ds-heading" data-size="xs" id="filer-tittel">Filer</h2>
+        <ul class="ds-list filliste">
+            <th:block th:if="${status != 'FORKASTET'}">
+                <!-- hx-boost off + download: a real file download, not an htmx page swap. -->
+                <li><a class="ds-link" hx-boost="false" download
+                       th:href="@{/kjoringer/{id}/fakturagrunnlag.xlsx(id=${kjoring.id()})}">Fakturagrunnlag (XLSX, for Excel)</a></li>
+                <li><a class="ds-link" hx-boost="false" download
+                       th:href="@{/kjoringer/{id}/fakturagrunnlag.csv(id=${kjoring.id()})}">Fakturagrunnlag (CSV)</a></li>
+            </th:block>
+            <li th:if="${status == 'FORKASTET'}" class="liten">Fakturagrunnlaget for en forkastet kjøring kan ikke lastes ned.</li>
+            <li><a class="ds-link" th:href="@{/kjoringer/{id}/avstemming(id=${kjoring.id()})}">Avstemming bruksdata</a>
+                <span class="liten">— importert bruk mot fakturert, per produkt</span></li>
+            <li th:if="${lg04Avstemming != null}"><a class="ds-link" th:href="@{/kjoringer/{id}/lg04-kontroll(id=${kjoring.id()})}">Kontroller arkivert LG04 på nytt</a></li>
+        </ul>
+        <table class="ds-table" data-size="sm" data-hover th:unless="${eksportfiler.isEmpty()}">
+            <caption>Eksportfiler</caption>
+            <thead><tr><th>Type</th><th>Filnavn</th><th>SHA-256</th><th></th></tr></thead>
+            <tbody>
+            <tr th:each="e : ${eksportfiler}">
+                <td><span class="ds-tag" data-color="neutral" th:text="${e.type()}">LG04</span></td>
+                <td th:text="${e.filnavn()}">lg04-2027-01.txt</td>
+                <td><code th:text="${#strings.abbreviate(e.sha256(), 16)}">…</code></td>
+                <td class="hoyre">
+                    <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false" download
+                       th:href="@{/kjoringer/{id}/eksportfil/{fid}(id=${kjoring.id()},fid=${e.id()})}">Last ned</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
 
     <!-- Invoices -->
     <h2 class="ds-heading" data-size="xs">Fakturaer</h2>
@@ -124,89 +239,49 @@ Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 
         </tbody>
     </table>
 
-    <!-- Actions. Each opens a confirmation dialog first (specs/004 FR-012); without JS they submit directly. -->
-    <div class="rad ikke-utskrift" th:if="${generert}">
-        <form th:action="@{/kjoringer/{id}/godkjenn(id=${kjoring.id()})}" method="post">
-            <th:block th:replace="~{layout :: csrf}"></th:block>
-            <button class="ds-button" data-color="accent" type="submit" data-bekreft="bekreft-godkjenn"
-                    th:disabled="${harBlokkerende}">Godkjenn</button>
-            <dialog class="ds-dialog" id="bekreft-godkjenn" closedby="any" aria-labelledby="bekreft-godkjenn-tittel">
-                <h2 class="ds-heading" data-size="xs" id="bekreft-godkjenn-tittel" th:text="|Godkjenne kjøringen for ${sammendrag.periode().norskLabel()}?|">Bekreft</h2>
-                <p class="ds-paragraph">Etter godkjenning kan kjøringen eksporteres til regnskap. Den kan fortsatt forkastes før eksport.</p>
-                <div class="rad">
-                    <button class="ds-button" data-color="accent" type="submit">Ja, godkjenn</button>
-                    <button class="ds-button" data-variant="secondary" type="button" autofocus
-                            command="close" commandfor="bekreft-godkjenn">Avbryt</button>
-                </div>
-            </dialog>
-        </form>
-        <form th:action="@{/kjoringer/{id}/forkast(id=${kjoring.id()})}" method="post">
-            <th:block th:replace="~{layout :: csrf}"></th:block>
-            <button class="ds-button" data-variant="secondary" data-color="danger" type="submit"
-                    data-bekreft="bekreft-forkast">Forkast</button>
-            <dialog class="ds-dialog" id="bekreft-forkast" closedby="any" aria-labelledby="bekreft-forkast-tittel">
-                <h2 class="ds-heading" data-size="xs" id="bekreft-forkast-tittel" th:text="|Forkaste kjøringen for ${sammendrag.periode().norskLabel()}?|">Bekreft</h2>
-                <p class="ds-paragraph">En forkastet kjøring kan ikke godkjennes eller eksporteres. Perioden kan genereres på nytt etterpå.</p>
-                <div class="rad">
-                    <button class="ds-button" data-color="danger" type="submit">Ja, forkast</button>
-                    <button class="ds-button" data-variant="secondary" type="button" autofocus
-                            command="close" commandfor="bekreft-forkast">Avbryt</button>
-                </div>
-            </dialog>
-        </form>
-        <p th:if="${harBlokkerende}" class="ds-paragraph liten">
-            Godkjenning er blokkert til de blokkerende funnene er løst (forkast, rett data, generer på nytt).
-        </p>
-    </div>
-    <div class="rad ikke-utskrift" th:if="${kjoring.status() == 'GODKJENT'}">
-        <form th:action="@{/kjoringer/{id}/eksporter(id=${kjoring.id()})}" method="post">
-            <th:block th:replace="~{layout :: csrf}"></th:block>
-            <button class="ds-button" data-color="accent" type="submit" data-bekreft="bekreft-eksporter">Eksporter</button>
-            <dialog class="ds-dialog" id="bekreft-eksporter" closedby="any" aria-labelledby="bekreft-eksporter-tittel">
-                <h2 class="ds-heading" data-size="xs" id="bekreft-eksporter-tittel" th:text="|Eksportere kjøringen for ${sammendrag.periode().norskLabel()}?|">Bekreft</h2>
-                <p class="ds-paragraph">LG04-filen og vedleggene lages og arkiveres, og kjøringen kan ikke forkastes etterpå.</p>
-                <div class="rad">
-                    <button class="ds-button" data-color="accent" type="submit">Ja, eksporter</button>
-                    <button class="ds-button" data-variant="secondary" type="button" autofocus
-                            command="close" commandfor="bekreft-eksporter">Avbryt</button>
-                </div>
-            </dialog>
-        </form>
-        <form th:action="@{/kjoringer/{id}/forkast(id=${kjoring.id()})}" method="post">
-            <th:block th:replace="~{layout :: csrf}"></th:block>
-            <button class="ds-button" data-variant="secondary" data-color="danger" type="submit"
-                    data-bekreft="bekreft-forkast">Forkast</button>
-            <dialog class="ds-dialog" id="bekreft-forkast" closedby="any" aria-labelledby="bekreft-forkast-tittel">
-                <h2 class="ds-heading" data-size="xs" id="bekreft-forkast-tittel" th:text="|Forkaste kjøringen for ${sammendrag.periode().norskLabel()}?|">Bekreft</h2>
-                <p class="ds-paragraph">En forkastet kjøring kan ikke godkjennes eller eksporteres. Perioden kan genereres på nytt etterpå.</p>
-                <div class="rad">
-                    <button class="ds-button" data-color="danger" type="submit">Ja, forkast</button>
-                    <button class="ds-button" data-variant="secondary" type="button" autofocus
-                            command="close" commandfor="bekreft-forkast">Avbryt</button>
-                </div>
-            </dialog>
-        </form>
-    </div>
+    <!-- LG04 reconciliation details (specs/002 FR-006/007). A failure is shown as an error, never as a match. -->
+    <section class="seksjon" id="lg04" th:if="${lg04Avstemming != null}" th:with="a=${lg04Avstemming}">
+        <h2 class="ds-heading" data-size="xs">LG04-avstemming</h2>
+        <div class="ds-alert" data-color="danger" th:if="${a.kilde().name() == 'FEIL'}">
+            <p th:text="|LG04-filen kunne ikke avstemmes: ${a.feil()}|">Kunne ikke avstemmes</p></div>
+        <div class="seksjon" th:unless="${a.kilde().name() == 'FEIL'}">
+            <div class="ds-alert" th:data-color="${a.stemmer()} ? 'success' : 'danger'">
+                <p th:text="${a.stemmer()} ? 'LG04 stemmer med fakturagrunnlaget' : 'LG04 stemmer IKKE med fakturagrunnlaget'">LG04 stemmer med fakturagrunnlaget</p></div>
+            <table class="ds-table smal" data-size="sm">
+                <thead><tr><th></th><th class="hoyre">LG04-fil</th><th class="hoyre">Kjøring</th></tr></thead>
+                <tbody>
+                <tr><th scope="row">Ordrer</th>
+                    <td class="hoyre" th:text="${a.antallOrdrerFil()}">0</td>
+                    <td class="hoyre" th:text="${a.antallOrdrerKjoring()}">0</td></tr>
+                <tr><th scope="row">Beløp</th>
+                    <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopFil(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+                    <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopKjoring(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
+                </tbody>
+            </table>
+            <p class="ds-paragraph liten" th:if="${a.kilde().name() == 'LAGRET'}"
+               th:text="|Avstemt ved eksport av ${a.avstemtAv()}, ${#temporals.format(a.avstemtAt(), 'dd.MM.yyyy HH:mm')}.|">Avstemt ved eksport.</p>
+            <p class="ds-paragraph liten" th:if="${a.kilde().name() == 'BEREGNET_FRA_ARKIV'}">
+                Avstemt mot arkivert fil nå (kjøringen ble eksportert før automatisk avstemming).</p>
+        </div>
+    </section>
 
-    <!-- Export files -->
-    <div class="seksjon" th:if="${!eksportfiler.isEmpty()}">
-        <h2 class="ds-heading" data-size="xs">Eksportfiler</h2>
-        <table class="ds-table" data-size="sm" data-hover>
-            <thead><tr><th>Type</th><th>Filnavn</th><th>SHA-256</th><th></th></tr></thead>
-            <tbody>
-            <tr th:each="e : ${eksportfiler}">
-                <td><span class="ds-tag" data-color="neutral" th:text="${e.type()}">LG04</span></td>
-                <td th:text="${e.filnavn()}">lg04-2027-01.txt</td>
-                <td><code th:text="${#strings.abbreviate(e.sha256(), 16)}">…</code></td>
-                <td class="hoyre">
-                    <!-- hx-boost off + download: a real file download, not an htmx page swap. -->
-                    <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false" download
-                       th:href="@{/kjoringer/{id}/eksportfil/{fid}(id=${kjoring.id()},fid=${e.id()})}">Last ned</a>
-                </td>
-            </tr>
-            </tbody>
-        </table>
-    </div>
+    <!-- Forkast form + dialog, shared by the GENERERT and GODKJENT panels (only one is ever rendered). -->
+    <th:block th:if="false">
+        <form th:fragment="forkast" th:action="@{/kjoringer/{id}/forkast(id=${kjoring.id()})}" method="post">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <button class="ds-button" data-variant="secondary" data-color="danger" type="submit"
+                    data-bekreft="bekreft-forkast">Forkast</button>
+            <dialog class="ds-dialog" id="bekreft-forkast" closedby="any" aria-labelledby="bekreft-forkast-tittel">
+                <h2 class="ds-heading" data-size="xs" id="bekreft-forkast-tittel" th:text="|Forkaste kjøringen for ${maaned}?|">Bekreft</h2>
+                <p class="ds-paragraph">En forkastet kjøring kan ikke godkjennes eller eksporteres. Perioden kan genereres på nytt etterpå.</p>
+                <div class="rad">
+                    <button class="ds-button" data-color="danger" type="submit">Ja, forkast</button>
+                    <button class="ds-button" data-variant="secondary" type="button" autofocus
+                            command="close" commandfor="bekreft-forkast">Avbryt</button>
+                </div>
+            </dialog>
+        </form>
+    </th:block>
 </main>
 </body>
 </html>

@@ -3,6 +3,8 @@ package no.digdir.forsystem.billing;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
+import no.digdir.forsystem.common.Periode;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -22,4 +24,9 @@ public record Fakturakjoring(
         String godkjentAv,
         OffsetDateTime godkjentAt,
         String kommentar) {
+
+    /** The billing period as Norwegian month and year, e.g. "januar 2027" (specs/005 FR-009). */
+    public String periodeLabel() {
+        return new Periode(periode).norskLabel();
+    }
 }
