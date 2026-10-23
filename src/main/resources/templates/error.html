@@ -1,22 +1,46 @@
 <!DOCTYPE html>
 <html lang="nb" xmlns:th="http://www.thymeleaf.org">
-<!-- Spring Boot's error view for unexpected failures (business-rule errors use feil.html). -->
+<!-- Error view for unexpected failures and 403s (business-rule errors use feil.html). -->
 <head th:replace="~{layout :: head('Feil')}"></head>
 <body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
 <th:block th:replace="~{layout :: topbar('')}"></th:block>
 <main id="hovedinnhold" class="side" tabindex="-1">
-    <h1 class="ds-heading" data-size="lg">Noe gikk galt</h1>
-    <div class="ds-alert bred" data-color="danger" role="alert">
-        <p>Handlingen kunne ikke fullføres på grunn av en teknisk feil
-            (<span th:text="${status} ?: 500">500</span>).
-            Prøv igjen, og kontakt forvaltningen hvis feilen vedvarer.</p>
-    </div>
-    <p class="ds-paragraph liten">Tidspunkt:
-        <span th:text="${timestamp != null} ? ${#dates.format(timestamp, 'yyyy-MM-dd HH:mm:ss')} : ''"></span></p>
-    <div class="rad">
-        <button class="ds-button" data-variant="secondary" type="button" onclick="history.back()">Tilbake</button>
-        <a class="ds-button" data-variant="tertiary" th:href="@{/}">Til forsiden</a>
-    </div>
+    <!-- 403 from TilgangNektetHandler: a stale form (CSRF) or a missing role. -->
+    <th:block th:if="${oktUtlopt}">
+        <h1 class="ds-heading" data-size="lg">Siden er utløpt</h1>
+        <div class="ds-alert bred" data-color="warning" role="alert">
+            <p>Skjemaet ble sendt fra en side som er for gammel. Du kan ha blitt logget ut, eller forsystem kan
+                ha blitt oppdatert etter at du åpnet siden. Ingenting er lagret. Last inn siden på nytt og prøv
+                igjen.</p>
+        </div>
+        <div class="rad">
+            <a class="ds-button" data-variant="primary" th:href="${tilbakeTil}" hx-boost="false">Last inn siden på nytt</a>
+            <a class="ds-button" data-variant="tertiary" th:href="@{/}">Til forsiden</a>
+        </div>
+    </th:block>
+    <th:block th:if="${oktUtlopt != true and status == 403}">
+        <h1 class="ds-heading" data-size="lg">Ingen tilgang</h1>
+        <div class="ds-alert bred" data-color="danger" role="alert">
+            <p>Du har ikke tilgang til å gjøre dette. Endringer krever rollen forvalter, og godkjenning og
+                eksport krever rollen godkjenner. Kontakt forvaltningen hvis du mener du skal ha tilgang.</p>
+        </div>
+    </th:block>
+    <th:block th:if="${oktUtlopt != true and status != 403}">
+        <h1 class="ds-heading" data-size="lg">Noe gikk galt</h1>
+        <div class="ds-alert bred" data-color="danger" role="alert">
+            <p>Handlingen kunne ikke fullføres på grunn av en teknisk feil
+                (<span th:text="${status} ?: 500">500</span>).
+                Prøv igjen, og kontakt forvaltningen hvis feilen vedvarer.</p>
+        </div>
+    </th:block>
+    <th:block th:unless="${oktUtlopt}">
+        <p class="ds-paragraph liten">Tidspunkt:
+            <span th:text="${timestamp != null} ? ${#dates.format(timestamp, 'yyyy-MM-dd HH:mm:ss')} : ''"></span></p>
+        <div class="rad">
+            <button class="ds-button" data-variant="secondary" type="button" onclick="history.back()">Tilbake</button>
+            <a class="ds-button" data-variant="tertiary" th:href="@{/}">Til forsiden</a>
+        </div>
+    </th:block>
 </main>
 </body>
 </html>

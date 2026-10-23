@@ -64,7 +64,10 @@ som brukeren **dev** med alle roller.
 | **FORVALTER** | Alt LESER kan, pluss: vedlikeholde registre, importere bruksdata, generere kjøringer. |
 | **GODKJENNER** | Godkjenne og eksportere kjøringer. |
 
-> Prøver du en handling du ikke har rolle for, får du «tilgang nektet» (403). I demoen har du alt.
+> Prøver du en handling du ikke har rolle for, får du siden «Ingen tilgang». I demoen har du alt.
+>
+> Får du **«Siden er utløpt»**, ble skjemaet sendt fra en side som var åpen da du ble logget ut eller
+> forsystem ble oppdatert. Ingenting er lagret: trykk **Last inn siden på nytt** og prøv igjen.
 
 ---
 
@@ -215,10 +218,13 @@ Normalt hentes den fra datavarehuset; CSV-opplasting er reserveløsningen.
   Datavarehuset leverer bruk per dag; forsystemet summerer til én rad per organisasjon, produkt og type
   og viser samme forhåndsvisning som for CSV. Produktnavn fra datavarehuset må være koblet til et
   produkt under **Produkter → Kildenavn** — et ukjent navn avviser importen.
-- **Last opp CSV**: velg **Periode** (måned) og **CSV-fil** i forsystemets eget format, trykk **Forhåndsvis**.
-- **Last opp eksport fra datavarehuset**: når API-et ikke kan brukes, last opp datavarehusets egen
-  CSV-eksport (`mv_altinn_usage_monthly`). Den kontrolleres akkurat som en henting fra datavarehuset
-  (produktnavn kobles under **Kildenavn**). I forhåndsvisningen ser du hvor mange organisasjoner i fila
+- **Last opp fil**: velg **Periode** (måned) og **Fil**, trykk **Forhåndsvis**. Fila kan være forsystemets
+  eget CSV-format eller datavarehusets egen eksport (`mv_altinn_usage_monthly`); formatet gjenkjennes
+  automatisk, og forhåndsvisningen sier hvilket det ble. Last opp fila slik du fikk den, uten å åpne og
+  lagre den i Excel først (Excel lagrer med semikolon, og da kjennes den ikke igjen). Kjenner forsystemet
+  ikke igjen fila, viser feilmeldingen hvilke kolonner fila har og hvilke som var forventet.
+- **Eksport fra datavarehuset** (når API-et ikke kan brukes): kontrolleres akkurat som en henting fra
+  datavarehuset (produktnavn kobles under **Kildenavn**). I forhåndsvisningen ser du hvor mange organisasjoner i fila
   som ikke er kunder ennå; **Opprett kunder fra fila** registrerer dem med navn, kundenummer og
   fakturareferanse slik datavarehuset har dem, og avtalestatus AKTIV. Deretter **Bekreft import**.
 - Tabell over tidligere importer med status. En import med status **MOTTATT** er hentet automatisk og
@@ -361,7 +367,7 @@ Den komplette rutinen for å fakturere forrige måned (roller i parentes):
    - Årets prisversjon er **AKTIV** og dekker perioden.
    - Alle produkter som skal faktureres har **kontering** (ellers stopper kontrollen deg).
    - Kunder, referanser og kundenummerregler er oppdatert.
-2. **Importer bruk** (FORVALTER): *Bruksdata* → velg periode, last opp CSV, sjekk forhåndsvisningen,
+2. **Importer bruk** (FORVALTER): *Bruksdata* → velg periode, last opp fila, sjekk forhåndsvisningen,
    **Bekreft import**.
 3. **Generer** (FORVALTER): *Kjøringer* → velg periode → **Generer**. Åpne kjøringen og gå gjennom
    sammendrag, fakturaer og funn. Kontroller med **Avstemming bruksdata** og **Last ned

@@ -31,7 +31,8 @@ class SecurityConfig {
     SecurityFilterChain filterChain(HttpSecurity http,
                                     Optional<ClientRegistrationRepository> clientRegistrations,
                                     Optional<StubAuthenticationFilter> stubAuth,
-                                    GruppeRolleProperties grupper)
+                                    GruppeRolleProperties grupper,
+                                    TilgangNektetHandler tilgangNektet)
             throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
@@ -49,7 +50,9 @@ class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/**").hasRole(Rolle.FORVALTER)
                         .anyRequest().authenticated())
                 // Thymeleaf forms carry the CSRF token; the REST surface (future) is exempt.
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"));
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
+                // Also used by the CSRF filter: an expired page says "reload", a missing role says so.
+                .exceptionHandling(e -> e.accessDeniedHandler(tilgangNektet));
 
         // Only wire OIDC login when an issuer is configured (prod). Local/test authenticate otherwise.
         if (clientRegistrations.isPresent()) {

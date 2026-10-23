@@ -5,9 +5,8 @@
 <th:block th:replace="~{layout :: topbar('bruksdata')}"></th:block>
 <main id="hovedinnhold" class="side" tabindex="-1">
     <h1 class="ds-heading" data-size="lg">Bruksdata</h1>
-    <p class="ds-paragraph ingress">Hent bruk fra datavarehuset, eller last opp en CSV-fil per periode. Du får en forhåndsvisning
-        med summer og eventuelle avvik før noe lagres. Formatet er beskrevet i
-        <code>docs/csv-format.md</code>.</p>
+    <p class="ds-paragraph ingress">Hent bruk fra datavarehuset, eller last opp en fil per periode. Du får en forhåndsvisning
+        med summer og eventuelle avvik før noe lagres.</p>
 
     <div class="ds-alert bred" data-color="info" role="status" th:if="${venter > 0}">
         <p><span th:text="${venter}">1</span> import(er) fra datavarehuset venter på bekreftelse — åpne den med
@@ -31,12 +30,30 @@
         </form>
     </th:block>
 
-    <h2 class="ds-heading" data-size="xs">Last opp CSV</h2>
+    <h2 class="ds-heading" data-size="xs">Last opp fil</h2>
+    <p class="ds-paragraph liten bred">Last opp forsystemets eget CSV-format eller datavarehusets eksport av
+        <code>mv_altinn_usage_monthly</code>. Formatet gjenkjennes automatisk. Last opp fila slik du fikk den,
+        uten å åpne og lagre den i Excel først.</p>
+    <details class="ds-details bred" data-variant="tinted">
+        <summary>Hvilke filer fungerer?</summary>
+        <div>
+            <p class="ds-paragraph" data-size="sm"><strong>Forsystemets format:</strong> kolonnene
+                <code>periode</code>, <code>organisasjonsnummer</code>, <code>produktkode</code>, <code>type</code>,
+                <code>antall</code> og <code>belop</code> (se <code>docs/csv-format.md</code>).</p>
+            <p class="ds-paragraph" data-size="sm"><strong>Eksport fra datavarehuset:</strong> brukes når API-et ikke
+                kan brukes. Kolonnene <code>organisation_number</code>, <code>product_name</code>, <code>quantity</code>,
+                <code>amount_nok</code> og en datokolonne (<code>maaned</code>, <code>transaction_month</code> eller
+                <code>transaction_date</code>). Den går gjennom samme kontroll som henting fra datavarehuset, og
+                produktnavnene kobles under <a class="ds-link" th:href="@{/produkter/kildenavn}">Kildenavn</a>.
+                Organisasjoner som ikke er kunder ennå, kan opprettes fra fila i forhåndsvisningen.</p>
+        </div>
+    </details>
     <!--
       Native (non-boosted) multipart submit; the CSRF token rides in the query string because the
-      multipart body is not parsed when the CSRF filter runs.
+      multipart body is not parsed when the CSRF filter runs. No accept filter: the datavarehus export
+      often has no .csv extension.
     -->
-    <form th:action="@{/bruksdata/forhandsvis(_csrf=${_csrf.token})}" method="post"
+    <form th:action="@{/bruksdata/last-opp(_csrf=${_csrf.token})}" method="post"
           enctype="multipart/form-data" hx-boost="false" class="rad">
         <ds-field class="ds-field">
             <label class="ds-label" for="periode">Periode</label>
@@ -45,34 +62,8 @@
             <p class="ds-validation-message" data-field="validation" hidden></p>
         </ds-field>
         <ds-field class="ds-field">
-            <label class="ds-label" for="fil">CSV-fil</label>
-            <input class="ds-input" id="fil" name="fil" type="file" accept=".csv,text/csv" required
-                   data-feilmelding="Velg filen som skal lastes opp.">
-            <p class="ds-validation-message" data-field="validation" hidden></p>
-        </ds-field>
-        <button class="ds-button" data-color="accent" type="submit">Forhåndsvis</button>
-    </form>
-
-    <h2 class="ds-heading" data-size="xs">Last opp eksport fra datavarehuset</h2>
-    <details class="ds-details bred" data-variant="tinted">
-        <summary>Når og hvordan brukes eksportfilen?</summary>
-        <div><p class="ds-paragraph" data-size="sm">Når API-et ikke kan brukes: last opp datavarehusets egen CSV-eksport av <code>mv_altinn_usage_monthly</code>
-        (kolonnene <code>organisation_number</code>, <code>product_name</code>, <code>quantity</code> …). Den går gjennom
-        samme kontroll som henting fra datavarehuset, og produktnavnene kobles under
-        <a class="ds-link" th:href="@{/produkter/kildenavn}">Kildenavn</a>. Organisasjoner som ikke er kunder ennå, kan
-        opprettes fra fila i forhåndsvisningen.</p></div>
-    </details>
-    <form th:action="@{/bruksdata/last-opp-dwh(_csrf=${_csrf.token})}" method="post"
-          enctype="multipart/form-data" hx-boost="false" class="rad">
-        <ds-field class="ds-field">
-            <label class="ds-label" for="dwhPeriode">Periode</label>
-            <input class="ds-input" id="dwhPeriode" name="periode" type="month" required
-                   data-feilmelding="Velg perioden (måned og år).">
-            <p class="ds-validation-message" data-field="validation" hidden></p>
-        </ds-field>
-        <ds-field class="ds-field">
-            <label class="ds-label" for="dwhFil">Eksportfil</label>
-            <input class="ds-input" id="dwhFil" name="fil" type="file" required
+            <label class="ds-label" for="fil">Fil</label>
+            <input class="ds-input" id="fil" name="fil" type="file" required
                    data-feilmelding="Velg filen som skal lastes opp.">
             <p class="ds-validation-message" data-field="validation" hidden></p>
         </ds-field>

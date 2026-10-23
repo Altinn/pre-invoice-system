@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,7 +74,8 @@ class CsvUploadUsageSource implements UsageDataSource {
         }
         List<String> mangler = KOLONNER.stream().filter(k -> !indeks.containsKey(k)).toList();
         if (!mangler.isEmpty()) {
-            throw new Regelbrudd("CSV mangler kolonner: " + String.join(", ", mangler));
+            throw new Regelbrudd("CSV mangler kolonner: " + String.join(", ", mangler) + ". "
+                    + Bruksdatafil.funnet(Arrays.stream(felt).map(f -> f.trim().toLowerCase()).toList()));
         }
         return indeks;
     }

@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 
 import no.digdir.forsystem.IntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -45,10 +47,32 @@ class WebRoleIT extends IntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = "LESER")
+    void leserIsToldItLacksTheRole() throws Exception {
+        mvc.perform(post("/produkter").with(csrf()).param("kode", "leser-forsok").param("navn", "Nei"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().string(containsString("Ingen tilgang")));
+    }
+
+    @Test
     @WithMockUser(roles = "FORVALTER")
-    void postWithoutCsrfIsForbidden() throws Exception {
-        mvc.perform(post("/produkter").param("kode", "ingen-csrf").param("navn", "Nei"))
-                .andExpect(status().isForbidden());
+    void postWithoutCsrfIsForbiddenAndExplainedAsAnExpiredPage() throws Exception {
+        // A form opened before a redeploy or logout carries a stale token: say so, and reload that page.
+        mvc.perform(post("/produkter").param("kode", "ingen-csrf").param("navn", "Nei")
+                        .header("Referer", "https://forsystem.example/bruksdata?x=1"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().string(containsString("Siden er utløpt")))
+                .andExpect(content().string(containsString("href=\"/bruksdata?x=1\"")))
+                .andExpect(content().string(not(containsString("teknisk feil"))));
+    }
+
+    @Test
+    @WithMockUser(roles = "FORVALTER")
+    void expiredPageNeverLinksOffSite() throws Exception {
+        mvc.perform(post("/produkter").header("Referer", "https://evil.example//evil.example/x"))
+                .andExpect(status().isForbidden())
+                .andExpect(content().string(containsString("Last inn siden på nytt")))
+                .andExpect(content().string(not(containsString("evil.example"))));
     }
 
     @Test

@@ -66,10 +66,10 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 
 | ID | Feature | Description | Where | Role | Ref |
 |---|---|---|---|---|---|
-| F-USG-01 | CSV upload per period | Upload a period's usage as CSV. | GET `/bruksdata`, POST `/bruksdata/forhandsvis` · `CsvUploadUsageSource` | FORVALTER | docs/04 P2 |
+| F-USG-01 | CSV upload per period | Upload a period's usage as CSV. One upload takes forsystem's format and the DWH export; the header row decides, and an unrecognised file is refused with the columns it has (and an Excel/semicolon hint). | GET `/bruksdata`, POST `/bruksdata/last-opp` · `Bruksdatafil`, `CsvUploadUsageSource` | FORVALTER | docs/04 P2 |
 | F-USG-02 | UsageDataSource port | Source behind a port so a datavarehus adapter can slot in later; same validation pipeline. | `UsageDataSource` | — | OQ-4, docs/06 §1 |
 | F-USG-03 | Documented CSV contract | Column contract; SMS/Azure marked provisional. | `docs/csv-format.md` | — | OQ-3 |
-| F-USG-04 | Staging report before commit | Per-product sums, valid/rejected counts, rejects with line numbers — shown before persisting. | POST `/bruksdata/forhandsvis` · `Forhaandsvisning` | FORVALTER | docs/04 P2 |
+| F-USG-04 | Staging report before commit | Per-product sums, valid/rejected counts, rejects with line numbers — shown before persisting. | POST `/bruksdata/last-opp` · `Forhaandsvisning` | FORVALTER | docs/04 P2 |
 | F-USG-05 | Validation: wrong period | Row periode ≠ declared period → rejected. | `UsageImportService` | — | docs/04 P2 |
 | F-USG-06 | Validation: malformed orgnr | Not 9 digits → rejected. | `UsageImportService` | — | docs/04 P2 |
 | F-USG-07 | Validation: unknown product | produktkode not registered → rejected. | `UsageImportService` | — | docs/04 P2 |
@@ -86,8 +86,8 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-USG-18 | Product-name mapping | DWH `product_name` → produkt + type, maintained in the UI; unmapped names reject. | GET/POST `/produkter/kildenavn` · `ProduktKildenavnService` | FORVALTER (LESER reads) | OQ-18 |
 | F-USG-19 | Raw-payload archive | Every DWH import archives the exact response with SHA-256 and fetch time; downloadable. | GET `/bruksdata/{id}/raadata` | LESER | K-09 |
 | F-USG-20 | Preview warnings | Non-blocking: DWH kundenummer/fakturareferanse ≠ registry; product total ±50 % vs previous period or missing. | `Forhaandsvisning.advarsler` | — | OQ-12 |
-| F-USG-22 | Upload of a DWH CSV export | The datavarehus's own CSV export of `mv_altinn_usage_monthly` (quoted, `NULL`, `maaned` or `transaction_date`) goes through the same aggregation, Kildenavn mapping and cross-check as an API fetch; the file is archived as the raw payload. Fallback while the API is unreachable (OQ-19). | POST `/bruksdata/last-opp-dwh` · `DwhCsv`, `DwhImportService.forhaandsvisFil` | FORVALTER | OQ-19 |
-| F-USG-23 | Create missing customers from a DWH export | From the upload preview: register the file's organisations that are not customers yet, with name, a default kundenummer rule and fakturareferanse/bestillingsnummer as the DWH carries them (from CRM), avtalestatus AKTIV. Each through normal validation and audit. Stopgap until CRM (OQ-5). | POST `/bruksdata/last-opp-dwh/opprett-kunder` · `DwhImportService.opprettManglendeKunder` | FORVALTER | OQ-5 |
+| F-USG-22 | Upload of a DWH CSV export | The datavarehus's own CSV export of `mv_altinn_usage_monthly` (quoted, `NULL`, date column `maaned`, `transaction_month` or `transaction_date`) goes through the same aggregation, Kildenavn mapping and cross-check as an API fetch; the file is archived as the raw payload. Fallback while the API is unreachable (OQ-19). | POST `/bruksdata/last-opp` · `DwhCsv`, `DwhImportService.forhaandsvisFil` | FORVALTER | OQ-19 |
+| F-USG-23 | Create missing customers from a DWH export | From the upload preview: register the file's organisations that are not customers yet, with name, a default kundenummer rule and fakturareferanse/bestillingsnummer as the DWH carries them (from CRM), avtalestatus AKTIV. Each through normal validation and audit. Stopgap until CRM (OQ-5). | POST `/bruksdata/last-opp/opprett-kunder` · `DwhImportService.opprettManglendeKunder` | FORVALTER | OQ-5 |
 | F-USG-21 | Scheduled staging | Optional: stage previous month at 06:00 on the 7th as `MOTTATT`; FORVALTER confirms after re-validation. Never auto-commits. | `DwhImportScheduler`, POST `/bruksdata/{id}/bekreft` | FORVALTER | docs/06 §4 |
 
 ## Generation engine — fakturagrunnlag
@@ -167,7 +167,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-SEC-01 | Roles LESER/FORVALTER/GODKJENNER | Authorization: writes require FORVALTER, approve/export require GODKJENNER, reads LESER. | `web.security.SecurityConfig` | — | docs/02 |
 | F-SEC-02 | OIDC login (prod) | OIDC against any issuer (Entra ID); wired when an issuer is configured. | `SecurityConfig` | — | docs/02 |
 | F-SEC-03 | Stubbed login (local) | Fixed dev user with all roles for offline use. | `StubAuthenticationFilter` (profile `local`) | — | docs/04 P0 |
-| F-SEC-04 | CSRF protection | CSRF enforced on forms; multipart handled via query-string token. | `SecurityConfig` | — | docs/04 P2 |
+| F-SEC-04 | CSRF protection | CSRF enforced on forms; multipart handled via query-string token. A stale token (logged out or redeployed while the form was open) shows «Siden er utløpt» with a reload link; a missing role shows «Ingen tilgang». | `SecurityConfig`, `TilgangNektetHandler` | — | docs/04 P2 |
 | F-CORE-01 | Periode value type | Billing period is always an explicit first-of-month parameter, never derived from the clock. | `common.Periode` | — | docs/02 |
 | F-ARCH-01 | Modulith layout | registry / usage / billing / export / archive / web / common with a defined dependency direction. | package layout | — | docs/02 |
 | F-ARCH-02 | Runs fully offline | `docker compose up` = app + PostgreSQL + local archive + stubbed login, no Azure. | `docker-compose.yaml` | — | docs/02 |

@@ -65,4 +65,28 @@ class DwhCsvTest {
         assertThat(rad.fakturareferanse()).isEqualTo("NULL");
         assertThat(rad.antall()).isEqualTo(new BigDecimal("5"));
     }
+
+    @Test
+    void readsTheRenamedLayoutWithTransactionMonth() throws IOException {
+        byte[] fil;
+        try (InputStream in = getClass().getResourceAsStream("/dwh/eksport-2026-08-transaction-month.csv")) {
+            fil = in.readAllBytes();
+        }
+        var rader = DwhCsv.les(fil);
+
+        assertThat(rader).hasSize(3);
+        assertThat(rader).allSatisfy(r -> assertThat(r.dato()).isEqualTo(LocalDate.of(2026, 8, 1)));
+        assertThat(rader.get(0).kundenummer()).isEqualTo("9001");            // columns matched by name
+        assertThat(rader.get(1).antall()).isNull();
+        assertThat(rader.get(1).belop()).isEqualByComparingTo("1234.567890123456789012");
+    }
+
+    @Test
+    void missingDateColumnNamesTheAcceptedOnesAndListsWhatWasFound() {
+        byte[] fil = "organisation_number,product_name,quantity,amount_nok,periode_start\n".getBytes(StandardCharsets.UTF_8);
+        assertThatThrownBy(() -> DwhCsv.les(fil))
+                .isInstanceOf(Regelbrudd.class)
+                .hasMessageContaining("transaction_date, transaction_month, maaned")
+                .hasMessageContaining("Kolonner i fila: organisation_number, product_name, quantity, amount_nok, periode_start.");
+    }
 }
