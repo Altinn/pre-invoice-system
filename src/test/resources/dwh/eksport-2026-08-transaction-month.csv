@@ -1,0 +1,4 @@
+"organisation_number","organisation_name","product_name","transaction_month","quantity","amount_nok","days_with_data","source_table","fakturareferanse","kundenummer","bestillingsnummer"
+"100000001","testetat en","Autorisasjon","2026-08-01",914,NULL,31,"digdir_prod_autorisasjon_data_main","REF-EN","9001",NULL
+"100000001","testetat en","altinn-studio-applikasjonsinfrastruktur","2026-08-01",NULL,1234.567890123456789012,1,"digdir_prod_studio_altinnstudioapplikasjonsinfrastruktur_data_main","REF-EN","9001",NULL
+"100000002","testetat to","altinn-studio-applikasjonsinfrastruktur","2026-08-01",NULL,99.994999999999999999,1,"digdir_prod_studio_altinnstudioapplikasjonsinfrastruktur_data_main",NULL,"9002",NULL

@@ -56,11 +56,24 @@ unique.
 ## The datavarehus's own export
 
 While the DWH API is unreachable (OQ-19), a CSV export of the view `mv_altinn_usage_monthly` can be
-uploaded as it is, under *Bruksdata → Last opp eksport fra datavarehuset*. It is **not** this format:
-it keeps the view's columns (`organisation_number`, `organisation_name`, `product_name`, `quantity`,
-`amount_nok`, `kundenummer`, `fakturareferanse`, `bestillingsnummer`, and `maaned` or
-`transaction_date`), double-quoted text and the literal `NULL`. Product names are mapped under
-*Produkter → Kildenavn*, exactly as for an API fetch, and missing customers can be created from the file.
+uploaded as it is. It is **not** this format: it keeps the view's columns (`organisation_number`,
+`organisation_name`, `product_name`, `quantity`, `amount_nok`, `kundenummer`, `fakturareferanse`,
+`bestillingsnummer` and a date column), double-quoted text and the literal `NULL`. Product names are
+mapped under *Produkter → Kildenavn*, exactly as for an API fetch, and missing customers can be created
+from the file.
+
+The date column has been seen under three names, and any one is accepted: `maaned` (September 2026
+export), `transaction_month` (August 2026 export, where `antall_rader` also became `days_with_data` and
+the column order changed) and `transaction_date` (as in the API). Columns are matched by name, so order
+and extra columns don't matter. Cost amounts may carry many decimals; they are stored to the øre. The
+column names are not yet an agreed contract with the datavarehus (OQ-4).
+
+## One upload, format recognised
+
+*Bruksdata → Last opp fil* takes both files. The header row decides: a column `organisation_number`
+means the datavarehus export, `organisasjonsnummer` means this format. Anything else is refused with
+the columns the file actually has and both expected column lists. A semicolon-separated header (the file
+was opened and saved in Excel) and an Excel workbook get their own hint: upload the original file.
 
 ## Provisional — SMS and Azure (OQ-3, OQ-4)
 

@@ -1,5 +1,6 @@
 package no.digdir.forsystem.web;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.format.DateTimeParseException;
@@ -8,6 +9,7 @@ import jakarta.servlet.http.HttpSession;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
 import no.digdir.forsystem.usage.BruksdataImport;
+import no.digdir.forsystem.usage.Bruksdatafil;
 import no.digdir.forsystem.usage.DwhImportService;
 import no.digdir.forsystem.usage.Forhaandsvisning;
 import no.digdir.forsystem.usage.UsageImportService;
@@ -76,29 +78,15 @@ class BruksdataController {
                 .body(innhold);
     }
 
-    @PostMapping("/forhandsvis")
-    String forhandsvis(@RequestParam String periode, @RequestParam("fil") MultipartFile fil,
-                       HttpSession session, Model model) {
-        if (fil == null || fil.isEmpty()) {
-            throw new Regelbrudd("Ingen fil ble lastet opp");
-        }
-        Periode p = parsePeriode(periode);
-        Forhaandsvisning fv;
-        try {
-            fv = service.forhaandsvis(p, fil.getOriginalFilename(), fil.getInputStream());
-        } catch (IOException e) {
-            throw new UncheckedIOException("Kunne ikke lese filen", e);
-        }
-        return visForhaandsvisning(fv, session, model);
-    }
-
     /**
-     * Upload a CSV export of the datavarehus view (while the API is unreachable, OQ-19). Same preview as a
-     * fetch; the file is kept in the session so missing customers can be created from it before confirming.
+     * Upload a usage file. Either forsystem's own CSV format or the datavarehus's export of its view
+     * (the fallback while the API is unreachable, OQ-19) — recognised from the header, so there is one
+     * upload for both. An export is kept in the session so missing customers can be created from it
+     * before confirming.
      */
-    @PostMapping("/last-opp-dwh")
-    String lastOppDwh(@RequestParam String periode, @RequestParam("fil") MultipartFile fil,
-                      HttpSession session, Model model) {
+    @PostMapping("/last-opp")
+    String lastOpp(@RequestParam String periode, @RequestParam("fil") MultipartFile fil,
+                   HttpSession session, Model model) {
         if (fil == null || fil.isEmpty()) {
             throw new Regelbrudd("Ingen fil ble lastet opp");
         }
@@ -109,12 +97,21 @@ class BruksdataController {
             throw new UncheckedIOException("Kunne ikke lese filen", e);
         }
         Periode p = parsePeriode(periode);
-        session.setAttribute(DWH_FIL, new DwhFil(p, fil.getOriginalFilename(), innhold));
-        return visDwhFil(session, model, null);
+        if (Bruksdatafil.gjenkjenn(innhold) == Bruksdatafil.Format.DATAVAREHUS) {
+            session.setAttribute(DWH_FIL, new DwhFil(p, fil.getOriginalFilename(), innhold));
+            return visDwhFil(session, model, null);
+        }
+        session.removeAttribute(DWH_FIL);
+        try {
+            return visForhaandsvisning(service.forhaandsvis(p, fil.getOriginalFilename(),
+                    new ByteArrayInputStream(innhold)), session, model);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Kunne ikke lese filen", e);
+        }
     }
 
     /** Register the uploaded export's organisations that are not customers yet, then show the preview again. */
-    @PostMapping("/last-opp-dwh/opprett-kunder")
+    @PostMapping("/last-opp/opprett-kunder")
     String opprettKunderFraDwhFil(HttpSession session, Model model) {
         if (!(session.getAttribute(DWH_FIL) instanceof DwhFil f)) {
             throw new Regelbrudd("Ingen opplastet datavarehus-fil. Last den opp på nytt.");

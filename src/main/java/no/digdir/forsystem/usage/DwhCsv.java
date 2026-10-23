@@ -19,10 +19,18 @@ import no.digdir.forsystem.common.Regelbrudd;
  * the same aggregation, product-name mapping and registry cross-check (specs/001).
  *
  * <p>Format as the datavarehus exports it: comma-separated, double-quoted text, a header row, the
- * literal {@code NULL} for missing values. The date column is {@code maaned} (monthly export) or
- * {@code transaction_date} (daily export); both are accepted.
+ * literal {@code NULL} for missing values. The date column has had three names: {@code maaned} and
+ * {@code transaction_month} (monthly exports, the view has been renamed once already) and
+ * {@code transaction_date} (daily export, as in the API); any one is accepted. Other columns
+ * ({@code antall_rader}, {@code days_with_data}, {@code source_table}) are ignored.
  */
 public final class DwhCsv {
+
+    /** Columns every export must have (besides one of {@link #DATOKOLONNER}). */
+    static final List<String> KOLONNER = List.of("organisation_number", "product_name", "quantity", "amount_nok");
+
+    /** Accepted names of the date column, in order of preference. */
+    static final List<String> DATOKOLONNER = List.of("transaction_date", "transaction_month", "maaned");
 
     /** A customer as the export describes it, for creating missing customers. */
     public record KundeIFil(String organisasjonsnummer, String navn, String kundenummer, String fakturareferanse,
@@ -77,14 +85,14 @@ public final class DwhCsv {
         }
         List<String> hode = linjer.get(0).stream()
                 .map(h -> h.replace(SITERT, "").strip().toLowerCase(Locale.ROOT)).toList();
-        for (String påkrevd : List.of("organisation_number", "product_name", "quantity", "amount_nok")) {
-            if (!hode.contains(påkrevd)) {
-                throw new Regelbrudd("Fila ser ikke ut som en eksport fra datavarehuset: mangler kolonnen «"
-                        + påkrevd + "». Bruk vanlig CSV-opplasting for forsystemets eget format.");
-            }
+        List<String> mangler = KOLONNER.stream().filter(k -> !hode.contains(k)).toList();
+        if (!mangler.isEmpty()) {
+            throw new Regelbrudd("Fila ser ikke ut som en eksport fra datavarehuset: mangler "
+                    + String.join(", ", mangler) + ". " + Bruksdatafil.funnet(hode));
         }
-        if (!hode.contains("maaned") && !hode.contains("transaction_date")) {
-            throw new Regelbrudd("Fila mangler datokolonne («maaned» eller «transaction_date»)");
+        if (DATOKOLONNER.stream().noneMatch(hode::contains)) {
+            throw new Regelbrudd("Eksporten fra datavarehuset mangler datokolonne (en av "
+                    + String.join(", ", DATOKOLONNER) + "). " + Bruksdatafil.funnet(hode));
         }
         List<Map<String, String>> rader = new ArrayList<>();
         for (int i = 1; i < linjer.size(); i++) {
@@ -185,7 +193,7 @@ public final class DwhCsv {
     }
 
     private static LocalDate dato(Map<String, String> r, int linje) {
-        String v = r.get("transaction_date") != null ? r.get("transaction_date") : r.get("maaned");
+        String v = DATOKOLONNER.stream().map(r::get).filter(d -> d != null).findFirst().orElse(null);
         if (v == null) {
             throw new Regelbrudd("Linje " + linje + " mangler dato");
         }

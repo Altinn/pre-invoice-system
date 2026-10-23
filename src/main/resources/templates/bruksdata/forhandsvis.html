@@ -26,7 +26,7 @@
     <div class="seksjon" th:if="${manglendeKunder != null and !manglendeKunder.isEmpty()}">
         <div class="ds-alert" data-color="warning">
             <p th:text="|${manglendeKunder.size()} organisasjoner i fila finnes ikke i kunderegisteret. Uten kunde gir bruken deres et blokkerende funn (MANGLER_KUNDE) når kjøringen genereres.|">Manglende kunder.</p></div>
-        <form th:action="@{/bruksdata/last-opp-dwh/opprett-kunder}" method="post" class="rad" hx-disabled-elt="find button">
+        <form th:action="@{/bruksdata/last-opp/opprett-kunder}" method="post" class="rad" hx-disabled-elt="find button">
             <th:block th:replace="~{layout :: csrf}"></th:block>
             <button class="ds-button" data-variant="secondary" type="submit"
                     th:text="|Opprett ${manglendeKunder.size()} kunder fra fila|">Opprett kunder fra fila</button>
@@ -38,7 +38,8 @@
     <!-- The staging report; also rendered on a staged (MOTTATT) import's detail page. -->
     <section class="seksjon" th:fragment="rapport(fv)">
     <p class="ds-paragraph liten">
-        <th:block th:if="${fv.kilde().name() == 'CSV'}">Fil <strong th:text="${fv.filnavn()}">bruk.csv</strong> ·</th:block>
+        <th:block th:if="${fv.kilde().name() == 'CSV'}">Forsystemets CSV-format,
+            fil <strong th:text="${fv.filnavn()}">bruk.csv</strong> ·</th:block>
         <th:block th:if="${fv.kilde().name() == 'DWH' and manglendeKunder != null}">Eksport fra datavarehuset,
             fil <strong th:text="${fv.filnavn()}">eksport.csv</strong> ·</th:block>
         <th:block th:if="${fv.kilde().name() == 'DWH' and manglendeKunder == null}">Datavarehus, hentet
