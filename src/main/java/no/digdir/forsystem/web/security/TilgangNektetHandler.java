@@ -42,7 +42,9 @@ class TilgangNektetHandler implements AccessDeniedHandler {
             return;
         }
         boolean oktUtlopt = e instanceof CsrfException;
-        LOG.info("403 {} {}: {}", request.getMethod(), request.getRequestURI(),
+        String method = sanitizeForLog(request.getMethod());
+        String requestUri = sanitizeForLog(request.getRequestURI());
+        LOG.info("403 {} {}: {}", method, requestUri,
                 oktUtlopt ? "utløpt eller manglende CSRF-token" : "mangler rolle");
         response.setStatus(HttpStatus.FORBIDDEN.value());
         try {
@@ -77,5 +79,14 @@ class TilgangNektetHandler implements AccessDeniedHandler {
         } catch (IllegalArgumentException ugyldig) {
             return hjem;
         }
+    }
+
+    private static String sanitizeForLog(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value
+                .replace('\r', '_')
+                .replace('\n', '_');
     }
 }
