@@ -49,6 +49,19 @@ class LocalFileArchive implements FileArchive {
         }
     }
 
+    @Override
+    public void slett(String blobUrl) {
+        Path fil = Path.of(blobUrl).toAbsolutePath().normalize();
+        if (!fil.startsWith(base)) {
+            throw new IllegalArgumentException("Ugyldig sti utenfor arkivet: " + blobUrl);
+        }
+        try {
+            Files.deleteIfExists(fil);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Kunne ikke slette arkivert fil " + blobUrl, e);
+        }
+    }
+
     private static String sha256(byte[] innhold) {
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(innhold));

@@ -12,3 +12,8 @@ management:
   endpoint:
     health:
       show-details: always
+
+# Test tools ("Nullstill periode") are available locally, as in tt02.
+forsystem:
+  testverktoy:
+    enabled: true

@@ -2,6 +2,7 @@ package no.digdir.forsystem.web;
 
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import no.digdir.forsystem.billing.BruksdataavstemmingService;
@@ -9,6 +10,7 @@ import no.digdir.forsystem.billing.Faktura;
 import no.digdir.forsystem.billing.Fakturakjoring;
 import no.digdir.forsystem.billing.FakturakjoringService;
 import no.digdir.forsystem.billing.Kontrollfunn;
+import no.digdir.forsystem.billing.NullstillingService;
 import no.digdir.forsystem.common.HendelsesloggRepository;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
@@ -39,15 +41,18 @@ class FakturakjoringController {
     private final EksportService eksport;
     private final BruksdataavstemmingService avstemming;
     private final HendelsesloggRepository hendelser;
+    /** Present only in test environments (forsystem.testverktoy.enabled). */
+    private final Optional<NullstillingService> nullstilling;
 
     FakturakjoringController(FakturakjoringService kjoringer, ProduktService produkter,
                              EksportService eksport, BruksdataavstemmingService avstemming,
-                             HendelsesloggRepository hendelser) {
+                             HendelsesloggRepository hendelser, Optional<NullstillingService> nullstilling) {
         this.kjoringer = kjoringer;
         this.produkter = produkter;
         this.eksport = eksport;
         this.avstemming = avstemming;
         this.hendelser = hendelser;
+        this.nullstilling = nullstilling;
     }
 
     @GetMapping
@@ -59,6 +64,7 @@ class FakturakjoringController {
             return new Kjoringsrad(k, sammendrag.antallFakturaer(), sammendrag.sumBelop(),
                     antall(funn, "BLOKKERENDE"), antall(funn, "ADVARSEL"));
         }).toList());
+        nullstilling.ifPresent(n -> model.addAttribute("nullstillbare", n.perioderMedData()));
         return "kjoring/liste";
     }
 

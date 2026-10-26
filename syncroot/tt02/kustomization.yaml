@@ -12,6 +12,17 @@ images:
     newTag: will-be-replaced
 
 patches:
+  # Test tools ("Nullstill periode" on the run list: permanently delete a month's runs and usage
+  # so testers can run it again). tt02 only — prod must never set this.
+  - target:
+      kind: Deployment
+      name: preinvoicingsystem
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: FORSYSTEM_TESTVERKTOY_ENABLED
+          value: "true"
   - target:
       kind: ApplicationIdentity
     patch: |-
