@@ -16,6 +16,12 @@ public interface FileArchive {
     /** Read back a previously archived artifact by its stored location. */
     byte[] hent(String blobUrl);
 
+    /**
+     * Remove a previously archived artifact by its stored location; a missing one is not an error. Only
+     * the test-environment period reset uses this — archived files are otherwise never deleted.
+     */
+    void slett(String blobUrl);
+
     /** The result of archiving: the stored location (local path or blob URL) and content hash. */
     record Arkivert(String blobUrl, String sha256) {
     }

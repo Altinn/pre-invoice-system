@@ -45,6 +45,10 @@ info:
 # Datavarehus usage source (specs/001-dwh-usage-import, docs/06 §1). Off by default: local runs and
 # tests never need the DWH, and CSV upload works regardless. See DwhEgenskaper for every key.
 forsystem:
+  # Test tools: "Nullstill periode" permanently deletes a month's runs (also exported ones) and usage
+  # imports so testers can run it again. On in local and tt02 only (syncroot/tt02); never in prod.
+  testverktoy:
+    enabled: ${FORSYSTEM_TESTVERKTOY_ENABLED:false}
   produkt:
     # Display names for Dim 1/2/4 on the product pages. Empty until Økonomi confirms what each
     # dimension is (OQ-2) — never guessed; set per environment, e.g. PRODUKT_DIM1_NAVN=koststed.

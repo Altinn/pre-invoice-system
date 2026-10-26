@@ -7,6 +7,7 @@
     <h1 class="ds-heading" data-size="lg">Fakturakjøringer</h1>
     <p class="ds-paragraph ingress">Generer fakturagrunnlag for en periode fra bruksdata og den
         aktive prisversjonen. Kjør kontroller, godkjenn og eksporter.</p>
+    <div class="ds-alert bred" data-color="success" role="status" th:if="${nullstilt}"><p th:text="${nullstilt}">Nullstilt.</p></div>
 
     <h2 class="ds-heading" data-size="xs">Ny kjøring</h2>
     <form th:action="@{/kjoringer}" method="post" class="rad">
@@ -51,6 +52,52 @@
         </tr>
         </tbody>
     </table>
+
+    <!-- Test environments only (forsystem.testverktoy.enabled): wipe a month so it can be run again. -->
+    <section class="seksjon" th:if="${nullstillbare != null}" aria-labelledby="nullstill-tittel">
+        <h2 class="ds-heading" data-size="xs" id="nullstill-tittel">Testverktøy: nullstill periode</h2>
+        <div class="ds-alert bred" data-color="warning">
+            <p>Finnes bare i testmiljøet. Nullstilling sletter alle kjøringer for måneden (også eksporterte),
+                med fakturaer, kontrollfunn, eksportfiler og alle bruksdataimporter. Det kan ikke angres.
+                Kunder, produkter, priser og hendelsesloggen beholdes.</p>
+        </div>
+        <table class="ds-table" data-size="sm">
+            <thead>
+            <tr><th>Periode</th><th class="hoyre">Kjøringer</th><th class="hoyre">Bruksdataimporter</th><th><span class="ds-sr-only">Status</span></th>
+                <th><span class="ds-sr-only">Handling</span></th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="d : ${nullstillbare}" th:with="id=|bekreft-nullstill-${d.periode()}|">
+                <td class="periode" th:text="${d.periode().norskLabel()}">januar 2027</td>
+                <td class="hoyre" th:text="${d.antallKjoringer()}">1</td>
+                <td class="hoyre" th:text="${d.antallImporter()}">1</td>
+                <td><span class="ds-tag" data-color="info" data-size="sm" th:if="${d.eksportert()}">Eksportert</span></td>
+                <td class="hoyre">
+                    <form th:action="@{/testverktoy/nullstill-periode}" method="post">
+                        <th:block th:replace="~{layout :: csrf}"></th:block>
+                        <input type="hidden" name="periode" th:value="${d.periode()}">
+                        <button class="ds-button" data-variant="secondary" data-color="danger" data-size="sm"
+                                type="submit" th:attr="data-bekreft=${id}">Nullstill</button>
+                        <dialog class="ds-dialog" th:id="${id}" closedby="any" th:attr="aria-labelledby=|${id}-tittel|">
+                            <h2 class="ds-heading" data-size="xs" th:id="|${id}-tittel|"
+                                th:text="|Nullstille ${d.periode().norskLabel()}?|">Bekreft</h2>
+                            <p class="ds-paragraph" th:text="|Kjøringer (${d.antallKjoringer()}) og bruksdataimporter (${d.antallImporter()}) for ${d.periode().norskLabel()} slettes for godt. Etterpå kan du laste opp bruksdata og generere måneden på nytt.|">
+                                Slett for godt?</p>
+                            <div class="rad">
+                                <button class="ds-button" data-color="danger" type="submit">Ja, nullstill</button>
+                                <button class="ds-button" data-variant="secondary" type="button" autofocus
+                                        command="close" th:attr="commandfor=${id}">Avbryt</button>
+                            </div>
+                        </dialog>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${nullstillbare.isEmpty()}">
+                <td colspan="5" class="tom">Ingen måneder har kjøringer eller bruksdata.</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
 </main>
 </body>
 </html>

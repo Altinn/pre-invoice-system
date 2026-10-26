@@ -283,6 +283,10 @@ stateDiagram-v2
   og den aktive prisversjonen, bygger fakturaene, og kjører kontrollene.
 - Tabell over kjøringer med status. **Åpne** for detaljer.
 - *Kun én aktiv kjøring per periode:* vil du kjøre på nytt, må du først **forkaste** den gamle.
+- **Testverktøy: nullstill periode** (bare i testmiljøet tt02 og lokalt): sletter alle kjøringer for
+  en måned for godt, også eksporterte, med fakturaer, kontrollfunn, eksportfiler og alle
+  bruksdataimporter. Kunder, produkter, priser og hendelsesloggen beholdes. Etterpå kan du laste opp
+  samme fil og kjøre måneden helt gjennom igjen. Finnes ikke i produksjon.
 
 **Detalj-siden:**
 
@@ -440,7 +444,7 @@ Samlet oversikt over statusene i systemet:
 | **Import blokkeres** | Det finnes en ikke-forkastet kjøring for perioden. Forkast den, importer på nytt. |
 | **CSV avvist** | Se avviste rader med linjenummer i forhåndsvisningen; rett og last opp på nytt. |
 | **Generering blokkeres av «aktiv kjøring finnes»** | Forkast den eksisterende kjøringen for perioden først. |
-| **Eksportert kjøring kan ikke forkastes** | Med vilje — korreksjoner håndteres av en fremtidig avregningsmekanisme. |
+| **Eksportert kjøring kan ikke forkastes** | Med vilje — korreksjoner håndteres av en fremtidig avregningsmekanisme. I testmiljøet kan du i stedet bruke **Nullstill periode** nederst på Kjøringer-siden. |
 
 ---
 

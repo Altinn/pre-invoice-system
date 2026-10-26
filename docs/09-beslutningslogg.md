@@ -166,6 +166,7 @@ fortsatt ukartlagt.
 | B-12 | BRREG-validering ved registrering av kunde (ikke-eksisterende orgnr blokkerer; navneavvik varsler) | FinMod-arket («valideres mot BRREG i dag») | Lukket det ene stille gapet i kravsporingen (K-16) |
 | B-13 | Ingen mva-beregning før OQ-11 er avklart; sammendrag viser filbeløp merket «mva uavklart» | Oss, etter FEL-kontaktens svar | Unngår gale tall i e-posten til regnskap |
 | B-14 | CRM er den avtalte kortsiktige løsningen for kunde- og avtaleinformasjon; forsystemets kunderegister er cache, dry-run-kilde og reserveløsning — ikke midlertidig master | Løsningsbeskrivelsen + CRM-tråden, 2026-08-18 | OQ-5 besvart på kilde. Register-UI beholdes uendret (`kilde='MANUELL'`), men import fra CRM blir hovedveien (docs/06 §2). Gjenstår: grensesnitt og tidspunkt |
+| B-15 | Testmiljøet får «Nullstill periode»: sletter en måneds kjøringer (også eksporterte) og bruksdataimporter for godt, bak flagget `forsystem.testverktoy.enabled` (lokalt og tt02, aldri prod) | Testerne, 2026-10-26 | Måneder kan testes ende-til-ende flere ganger med samme fil. Bryter med vilje B-10 og «eksportert er endelig», derfor bare der flagget er på; hendelsesloggen beholdes og registrerer nullstillingen |
 
 ## Antakelser til bekreftelse
 

@@ -137,6 +137,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-APPR-04 | Forkast (pre-export) | Discard a GENERERT/GODKJENT run. | POST `/kjoringer/{id}/forkast` | FORVALTER | docs/04 P3 |
 | F-APPR-05 | One active run per period | Partial unique index; re-run requires forkasting the previous. | Flyway `V4` + `FakturakjoringService` | — | docs/03 §3 |
 | F-APPR-06 | Exported run immutable | An EKSPORTERT run cannot be forkastet. | `FakturakjoringService.forkast` | — | docs/04 P3 |
+| F-APPR-07 | Nullstill periode (test only) | Permanently delete a month's runs (also exported), invoices, findings, export files and usage imports so it can be run again. Only when `forsystem.testverktoy.enabled` (local, tt02); absent in prod. | POST `/testverktoy/nullstill-periode`, `NullstillingService` | FORVALTER | B-15 |
 
 ## Export — LG04, PDF, CSV, XLSX
 

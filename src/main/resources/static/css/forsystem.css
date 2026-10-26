@@ -270,6 +270,8 @@ pre.epost {
 /* Confirmation dialog (contracts/ui.md): heading, one sentence, buttons. */
 .ds-dialog > * + * { margin-block-start: var(--ds-size-4); }
 .ds-dialog .rad { margin-block-start: var(--ds-size-6); }
+/* A dialog opened from a table cell must not inherit the cell's alignment (.hoyre). */
+.ds-dialog { text-align: start; white-space: normal; }
 
 /* ---- Print ----------------------------------------------------------------------------- */
 

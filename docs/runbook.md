@@ -54,6 +54,13 @@ A period may only have one active run. To redo one: open the run, **Forkast** it
 (registries and/or re-import usage), then **Generer** again. The discarded run keeps its own usage
 import and stays explainable (its *Avstemming bruksdata* still works).
 
+**Test environments only (local, tt02): Nullstill periode.** To repeat a month end to end — including
+after export — use *Testverktøy: nullstill periode* at the bottom of the Kjøringer page (FORVALTER).
+It permanently deletes the month's runs, invoices, findings, LG04 reconciliation, export files and
+usage imports, plus their archived files; registries and hendelseslogg stay, and the reset is logged
+as `NULLSTILTE`. It exists only when `FORSYSTEM_TESTVERKTOY_ENABLED=true`, which only the tt02
+overlay (`syncroot/tt02`) and the `local` profile set. Never set it in prod.
+
 ## Eksport stoppet (LG04 does not match the run)
 
 The export reads the LG04 file back before saving anything. If its order count or amount differs
