@@ -63,7 +63,7 @@ class KjoringNesteStegIT extends BillingFixture {
         assertThat(panel).contains("Neste steg: kontroller og godkjenn", "Ingen blokkerende funn", "Ingen advarsler",
                 "All bruksdata er med i fakturagrunnlaget");
         assertThat(godkjennKnapp(panel)).doesNotContain("disabled");
-        assertThat(html).contains("<h1 class=\"ds-heading\" data-size=\"lg\">Kjøring januar 2027</h1>");
+        assertThat(html).contains("<h1 class=\"ds-heading\" data-size=\"lg\">Kjøring januar 2027 · V1</h1>");
     }
 
     @Test

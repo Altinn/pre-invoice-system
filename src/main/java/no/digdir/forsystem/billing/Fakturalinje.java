@@ -24,5 +24,14 @@ public record Fakturalinje(
         Long bruksdataId,
         String servicekode,
         String fakturareferanse,
-        String bestillingsnummer) {
+        String bestillingsnummer,
+        Long bruksdataEndringId) {
+
+    public Fakturalinje(Long id, Long fakturaId, Long produktId, String beskrivelse,
+                        BigDecimal antall, BigDecimal enhetspris, BigDecimal belop, Long prisId,
+                        Long bruksdataId, String servicekode, String fakturareferanse,
+                        String bestillingsnummer) {
+        this(id, fakturaId, produktId, beskrivelse, antall, enhetspris, belop, prisId,
+                bruksdataId, servicekode, fakturareferanse, bestillingsnummer, null);
+    }
 }

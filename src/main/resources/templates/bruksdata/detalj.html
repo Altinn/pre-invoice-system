@@ -26,6 +26,11 @@
         SHA-256 <code th:text="${import.raadataSha256()}">abc…</code> ·
         <a class="ds-link" th:href="@{/bruksdata/{id}/raadata(id=${import.id()})}" hx-boost="false">Last ned rådata</a>
     </p>
+    <p class="ds-paragraph liten" th:if="${sammenligning != null}">
+        <a class="ds-link" th:href="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()})}">
+            Åpne siste sammenligning</a>
+        · status <span class="ds-tag" th:text="${sammenligning.status()}">AAPEN</span>
+    </p>
 
     <!-- Staged datavarehus import: show the preview (rebuilt from the archive) and let FORVALTER confirm. -->
     <div class="seksjon" th:if="${fv != null}">

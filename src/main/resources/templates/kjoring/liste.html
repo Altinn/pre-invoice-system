@@ -24,12 +24,13 @@
     <h2 class="ds-heading" data-size="xs">Kjøringer</h2>
     <table class="ds-table" data-size="sm" data-hover>
         <thead>
-        <tr><th>Periode</th><th>Status</th><th class="hoyre">Fakturaer</th><th class="hoyre">Sum</th>
+        <tr><th>Periode</th><th>Type/versjon</th><th>Status</th><th class="hoyre">Fakturaer</th><th class="hoyre">Sum</th>
             <th>Kontrollfunn</th><th>Generert av</th><th>Godkjent av</th><th><span class="ds-sr-only">Handling</span></th></tr>
         </thead>
         <tbody>
         <tr th:each="r : ${kjoringer}" th:with="k=${r.kjoring()}">
             <td class="periode" th:text="${k.periodeLabel()}">januar 2027</td>
+            <td th:text="|${k.erKorrigering() ? 'Korrigering' : 'Ordinær'} ${k.versjonLabel()}|">Ordinær V1</td>
             <td><th:block th:replace="~{kjoring/fragmenter :: status(${k.status()})}"></th:block></td>
             <td class="hoyre" th:text="${r.antallFakturaer()}">0</td>
             <td class="hoyre" th:text="${#numbers.formatDecimal(r.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
@@ -48,7 +49,7 @@
             </td>
         </tr>
         <tr th:if="${kjoringer.isEmpty()}">
-            <td colspan="8" class="tom">Ingen kjøringer ennå. Velg en periode over og trykk Generer.</td>
+            <td colspan="9" class="tom">Ingen kjøringer ennå. Velg en periode over og trykk Generer.</td>
         </tr>
         </tbody>
     </table>

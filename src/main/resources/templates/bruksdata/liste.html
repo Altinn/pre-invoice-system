@@ -90,6 +90,9 @@
             <td class="hoyre">
                 <a class="ds-button" data-variant="tertiary" data-size="sm"
                    th:href="@{/bruksdata/{id}(id=${i.id()})}">Åpne</a>
+                <a class="ds-button" data-variant="tertiary" data-size="sm"
+                   th:if="${sammenligningPerImport[i.id()] != null}"
+                   th:href="@{/bruksdata/sammenligninger/{id}(id=${sammenligningPerImport[i.id()]})}">Sammenligning</a>
             </td>
         </tr>
         <tr th:if="${importer.isEmpty()}">

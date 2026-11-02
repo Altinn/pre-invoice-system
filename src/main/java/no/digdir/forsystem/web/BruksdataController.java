@@ -4,11 +4,13 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.format.DateTimeParseException;
+import java.util.LinkedHashMap;
 
 import jakarta.servlet.http.HttpSession;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
 import no.digdir.forsystem.usage.BruksdataImport;
+import no.digdir.forsystem.usage.BruksdataKandidatService;
 import no.digdir.forsystem.usage.Bruksdatafil;
 import no.digdir.forsystem.usage.DwhImportService;
 import no.digdir.forsystem.usage.Forhaandsvisning;
@@ -36,16 +38,23 @@ class BruksdataController {
 
     private final UsageImportService service;
     private final DwhImportService dwh;
+    private final BruksdataKandidatService kandidater;
 
-    BruksdataController(UsageImportService service, DwhImportService dwh) {
+    BruksdataController(UsageImportService service, DwhImportService dwh,
+                        BruksdataKandidatService kandidater) {
         this.service = service;
         this.dwh = dwh;
+        this.kandidater = kandidater;
     }
 
     @GetMapping
     String liste(Model model) {
         var importer = service.alleImporter();
         model.addAttribute("importer", importer);
+        var sammenligningPerImport = new LinkedHashMap<Long, Long>();
+        importer.forEach(i -> kandidater.sisteSammenligningForKandidat(i.id())
+                .ifPresent(s -> sammenligningPerImport.put(i.id(), s.id())));
+        model.addAttribute("sammenligningPerImport", sammenligningPerImport);
         model.addAttribute("dwhAktiv", dwh.aktiv());
         model.addAttribute("venter", importer.stream().filter(i -> "MOTTATT".equals(i.status())).count());
         return "bruksdata/liste";
@@ -54,7 +63,13 @@ class BruksdataController {
     /** Fetch the period from the datavarehus and show the same preview as a CSV upload. */
     @PostMapping("/hent-dwh")
     String hentDwh(@RequestParam String periode, HttpSession session, Model model) {
-        return visForhaandsvisning(dwh.forhaandsvis(parsePeriode(periode)), session, model);
+        Forhaandsvisning fv = dwh.forhaandsvis(parsePeriode(periode));
+        var kandidat = kandidater.opprettHvisEksportert(fv);
+        if (kandidat.isPresent()) {
+            session.removeAttribute(STAGED);
+            return "redirect:/bruksdata/sammenligninger/" + kandidat.get().sammenligning().id();
+        }
+        return visForhaandsvisning(fv, session, model);
     }
 
     /** Confirm a staged (MOTTATT) datavarehus import after re-validating it from its archived payload. */
@@ -123,7 +138,13 @@ class BruksdataController {
         DwhFil f = (DwhFil) session.getAttribute(DWH_FIL);
         model.addAttribute("manglendeKunder", dwh.manglendeKunder(f.innhold()));
         model.addAttribute("kundeoppretting", resultat);
-        return visForhaandsvisning(dwh.forhaandsvisFil(f.periode(), f.filnavn(), f.innhold()), session, model);
+        Forhaandsvisning fv = dwh.forhaandsvisFil(f.periode(), f.filnavn(), f.innhold());
+        var kandidat = kandidater.opprettHvisEksportert(fv);
+        if (kandidat.isPresent()) {
+            session.removeAttribute(STAGED);
+            return "redirect:/bruksdata/sammenligninger/" + kandidat.get().sammenligning().id();
+        }
+        return visForhaandsvisning(fv, session, model);
     }
 
     /** An uploaded datavarehus export kept between preview, customer creation and confirm. */
@@ -157,6 +178,8 @@ class BruksdataController {
         BruksdataImport imp = service.hentImport(id);
         model.addAttribute("import", imp);
         model.addAttribute("rader", service.rader(id));
+        kandidater.sisteSammenligningForKandidat(id)
+                .ifPresent(s -> model.addAttribute("sammenligning", s));
         if ("MOTTATT".equals(imp.status()) && "DWH".equals(imp.kilde())) {
             // A staged import shows its preview, rebuilt now from the archived payload.
             model.addAttribute("fv", dwh.forhaandsvisStaget(id));

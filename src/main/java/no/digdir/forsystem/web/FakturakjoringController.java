@@ -89,7 +89,10 @@ class FakturakjoringController {
                 hendelser.findByEntitetAndEntitetIdOrderByTidspunktDescIdDesc(ENTITET, id)));
         // The usage check matters only before approval; other statuses skip the query.
         model.addAttribute("bruksdataavstemming",
-                "GENERERT".equals(kjoring.status()) ? avstemming.forKjoring(id) : null);
+                "GENERERT".equals(kjoring.status()) && !kjoring.erKorrigering()
+                        ? avstemming.forKjoring(id) : null);
+        model.addAttribute("antallValgteEndringer",
+                kjoring.erKorrigering() ? kjoringer.valgteEndringIder(id).size() : 0);
         model.addAttribute("harBlokkerende", kjoringer.harBlokkerende(id));
         model.addAttribute("sammendrag", kjoringer.sammendrag(id));
         model.addAttribute("antallOrdrer", eksport.forventetAntallOrdrer(id));
@@ -102,7 +105,9 @@ class FakturakjoringController {
     String kontroller(@PathVariable Long id, Model model) {
         var fane = fane(id, model);
         model.addAttribute("funngrupper", Funngruppe.av(fane.funn()));
-        model.addAttribute("avstemming", avstemming.forKjoring(id));
+        model.addAttribute("avstemming", fane.kjoring().erKorrigering() ? null : avstemming.forKjoring(id));
+        model.addAttribute("antallValgteEndringer", fane.kjoring().erKorrigering()
+                ? kjoringer.valgteEndringIder(id).size() : 0);
         model.addAttribute("lg04Avstemming", eksport.avstemmingFor(id).orElse(null));
         return "kjoring/kontroller";
     }
