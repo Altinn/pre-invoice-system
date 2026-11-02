@@ -45,6 +45,10 @@ info:
 # Datavarehus usage source (specs/001-dwh-usage-import, docs/06 §1). Off by default: local runs and
 # tests never need the DWH, and CSV upload works regardless. See DwhEgenskaper for every key.
 forsystem:
+  # Hard gate: correction drafts may be reviewed, but Unit4 export remains disabled until OQ-6 is
+  # decided by Økonomi/VIS and the confirmed representation has passed a tt02 test import.
+  korrigering:
+    eksport-enabled: ${FORSYSTEM_KORRIGERING_EKSPORT_ENABLED:false}
   # Test tools: "Nullstill periode" permanently deletes a month's runs (also exported ones) and usage
   # imports so testers can run it again. On in local and tt02 only (syncroot/tt02); never in prod.
   testverktoy:

@@ -35,7 +35,7 @@
 
 
     <!-- Imported usage against invoiced usage (specs/002 US2); was its own page before specs/006. -->
-    <section class="seksjon" id="bruksdata" th:with="a=${avstemming}" aria-labelledby="bruksdata-tittel">
+    <section class="seksjon" id="bruksdata" th:if="${avstemming != null}" th:with="a=${avstemming}" aria-labelledby="bruksdata-tittel">
         <h2 class="ds-heading" data-size="xs" id="bruksdata-tittel">Avstemming bruksdata</h2>
         <p class="ds-paragraph liten" th:if="${a.kilde() != null}"
            th:text="|Bruksdata fra import ${a.kilde().id()} (${a.kilde().kilde()}, ${a.kilde().filnavn()}), lastet ${#temporals.format(a.kilde().lastetAt(), 'dd.MM.yyyy HH:mm')} av ${a.kilde().lastetAv()}.|">
@@ -91,6 +91,14 @@
                 </tbody>
             </table>
         </div>
+    </section>
+
+    <section class="seksjon" id="bruksdata" th:if="${kjoring.erKorrigering()}" aria-labelledby="korrigering-tittel">
+        <h2 class="ds-heading" data-size="xs" id="korrigering-tittel">Avstemming korrigering</h2>
+        <div class="ds-alert" data-color="success">
+            <p th:text="|Kjøringen er bygget fra ${antallValgteEndringer} eksplisitt valgte endringer. Hver fakturalinje peker på endringen den korrigerer.|">Valgte endringer.</p>
+        </div>
+        <p><a class="ds-link" th:href="@{/bruksdata/sammenligninger/{id}(id=${kjoring.sammenligningId()})}">Se gammelt grunnlag, nytt grunnlag og differanser</a></p>
     </section>
 
     <!-- LG04 reconciliation details (specs/002 FR-006/007). A failure is shown as an error, never as a match. -->

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Endringer i bruksdata')}"></head>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('bruksdata')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <nav class="ds-breadcrumbs" aria-label="Du er her:">
+        <a class="ds-link" th:href="@{/bruksdata}" aria-label="Tilbake til Bruksdata">Bruksdata</a>
+        <ol>
+            <li><a class="ds-link" th:href="@{/}">Forside</a></li>
+            <li><a class="ds-link" th:href="@{/bruksdata}">Bruksdata</a></li>
+            <li><a class="ds-link" aria-current="page">Sammenligning</a></li>
+        </ol>
+    </nav>
+
+    <h1 class="ds-heading" data-size="lg"
+        th:text="|Endringer i bruksdata · ${grunnlag.periodeLabel()}|">Endringer i bruksdata</h1>
+    <p class="ds-paragraph liten">
+        Sammenligner fakturert grunnlag <strong th:text="${grunnlag.versjonLabel()}">V1</strong>
+        med kandidat hentet
+        <strong th:text="${#temporals.format(kandidat.hentetAt(), 'yyyy-MM-dd HH:mm')}">2027-02-10 10:00</strong>.
+        <a class="ds-link" th:href="@{/kjoringer/{id}(id=${grunnlag.id()})}">Åpne kjøringen</a> ·
+        <a class="ds-link" th:href="@{/bruksdata/{id}/raadata(id=${kandidat.id()})}" hx-boost="false">Last ned nye rådata</a>
+    </p>
+    <p class="ds-paragraph liten">
+        SHA-256 <code th:text="${kandidat.raadataSha256()}">abc</code> ·
+        status <span class="ds-tag" th:text="${sammenligning.status()}">AAPEN</span>
+    </p>
+
+    <div class="ds-alert bred" data-color="success" th:if="${antallEndringer == 0}">
+        <h2 class="ds-heading" data-size="2xs">Ingen endringer</h2>
+        <p>Det nye grunnlaget er likt det som allerede er fakturert.</p>
+    </div>
+
+    <section class="seksjon" th:if="${antallEndringer > 0}">
+        <h2 class="ds-heading" data-size="xs">Endringer</h2>
+        <p class="ds-paragraph liten">
+            <strong th:text="${antallEndringer}">0</strong> endringer ·
+            <span th:text="${sammenligning.uendredeRader()}">0</span> uendrede rader er skjult.
+            <span aria-live="polite"><strong data-valgt-antall>0</strong> valgt ·
+                volumdifferanse <strong data-valgt-volum>0</strong> ·
+                kostnadsdifferanse <strong data-valgt-kostnad>0</strong>.</span>
+        </p>
+        <form method="get" class="rad" th:action="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()})}">
+            <ds-field class="ds-field">
+                <label class="ds-label" for="orgnr">Organisasjonsnummer</label>
+                <input class="ds-input" id="orgnr" name="orgnr" th:value="${orgnr}" inputmode="numeric">
+            </ds-field>
+            <ds-field class="ds-field">
+                <label class="ds-label" for="produktId">Produkt</label>
+                <select class="ds-input" id="produktId" name="produktId">
+                    <option value="">Alle</option>
+                    <option th:each="p : ${produkter}" th:value="${p.id()}" th:text="${p.navn()}"
+                            th:selected="${valgtProduktId == p.id()}">Produkt</option>
+                </select>
+            </ds-field>
+            <ds-field class="ds-field">
+                <label class="ds-label" for="endringstype">Endring</label>
+                <select class="ds-input" id="endringstype" name="endringstype">
+                    <option value="">Alle</option>
+                    <option value="TILAGT" th:selected="${valgtEndringstype == 'TILAGT'}">Lagt til</option>
+                    <option value="ENDRET" th:selected="${valgtEndringstype == 'ENDRET'}">Endret</option>
+                    <option value="FJERNET" th:selected="${valgtEndringstype == 'FJERNET'}">Fjernet</option>
+                </select>
+            </ds-field>
+            <ds-field class="ds-field">
+                <label class="ds-label" for="fortegn">Differanse</label>
+                <select class="ds-input" id="fortegn" name="fortegn">
+                    <option value="">Alle</option>
+                    <option value="POSITIV" th:selected="${valgtFortegn == 'POSITIV'}">Positiv</option>
+                    <option value="NEGATIV" th:selected="${valgtFortegn == 'NEGATIV'}">Negativ</option>
+                </select>
+            </ds-field>
+            <button class="ds-button" data-variant="secondary" type="submit">Filtrer</button>
+            <a class="ds-link" th:href="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()})}">Nullstill</a>
+        </form>
+        <p class="ds-paragraph liten" th:if="${antallFiltrert != antallEndringer}"
+           th:text="|Viser ${antallFiltrert} av ${antallEndringer} endringer.|">Filtrert.</p>
+        <form th:action="@{/bruksdata/sammenligninger/{id}/kjoring(id=${sammenligning.id()})}"
+              method="post" hx-disabled-elt="find button" data-endring-utvalg>
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <input type="hidden" name="grunnlagKjoringId" th:value="${grunnlag.id()}">
+        <p th:if="${sammenligning.status() == 'AAPEN'}">
+            <button class="ds-button" data-variant="secondary" data-size="sm" type="button"
+                    data-velg-alle>Velg alle</button>
+        </p>
+        <table class="ds-table" data-size="sm" data-hover>
+            <thead>
+            <tr>
+                <th>Velg</th><th>Endring</th><th>Orgnr</th><th>Produkt</th><th>Type</th>
+                <th class="hoyre">Før</th><th class="hoyre">Nå</th><th class="hoyre">Differanse</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="e : ${endringer}">
+                <td><input type="checkbox" name="endringId" th:value="${e.id()}"
+                           data-endring-checkbox th:attr="data-endring-type=${e.type()},data-endring-delta=${e.delta()}"
+                           th:disabled="${sammenligning.status() != 'AAPEN'}"
+                           th:aria-label="|Velg ${e.organisasjonsnummer()}, ${produktnavn[e.produktId()]}, differanse ${e.delta()}|"></td>
+                <td><span class="ds-tag" th:text="${e.endringstype()}">ENDRET</span></td>
+                <td th:text="${e.organisasjonsnummer()}">123456789</td>
+                <td th:text="${produktnavn[e.produktId()]} ?: ${e.produktId()}">Produkt</td>
+                <td th:text="${e.type()}">BRUKSVOLUM</td>
+                <td class="hoyre" th:text="${e.gammelVerdi()} ?: '—'">100</td>
+                <td class="hoyre" th:text="${e.nyVerdi()} ?: '—'">120</td>
+                <td class="hoyre"><strong th:text="|${e.delta().signum() > 0 ? '+' : ''}${e.delta()}|">+20</strong></td>
+            </tr>
+            <tr th:if="${endringer.isEmpty()}"><td colspan="8" class="tom">Ingen endringer passer filtrene.</td></tr>
+            </tbody>
+        </table>
+        <nav class="rad" aria-label="Sider" th:if="${antallSider > 1}">
+            <a class="ds-button" data-variant="secondary" data-size="sm" th:if="${side > 1}"
+               th:href="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()},orgnr=${orgnr},produktId=${valgtProduktId},endringstype=${valgtEndringstype},fortegn=${valgtFortegn},side=${side - 1})}">Forrige</a>
+            <span th:text="|Side ${side} av ${antallSider}|">Side 1 av 2</span>
+            <a class="ds-button" data-variant="secondary" data-size="sm" th:if="${side < antallSider}"
+               th:href="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()},orgnr=${orgnr},produktId=${valgtProduktId},endringstype=${valgtEndringstype},fortegn=${valgtFortegn},side=${side + 1})}">Neste</a>
+        </nav>
+        <div class="seksjon bred" th:if="${sammenligning.status() == 'AAPEN'}">
+            <ds-field class="ds-field">
+                <label class="ds-label" for="aarsak">Hvorfor opprettes korrigeringen?</label>
+                <textarea class="ds-input" id="aarsak" name="aarsak" required rows="3"
+                          data-feilmelding="Skriv hvorfor korrigeringen opprettes."></textarea>
+                <p class="ds-validation-message" data-field="validation" hidden></p>
+            </ds-field>
+            <button class="ds-button" data-color="accent" type="submit"
+                    th:text="|Opprett korrigering V${grunnlag.versjon() + 1}|">Opprett korrigering V2</button>
+        </div>
+        </form>
+    </section>
+</main>
+</body>
+</html>

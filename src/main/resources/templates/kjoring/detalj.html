@@ -21,6 +21,7 @@
         <th:block th:if="${generert}">
             <h2 class="ds-heading" data-size="xs" id="neste-steg-tittel">Neste steg: kontroller og godkjenn</h2>
             <ul class="sjekkliste" th:with="b=${bruksdataavstemming}">
+                <th:block th:unless="${kjoring.erKorrigering()}">
                 <li class="feil" th:if="${b.invariantBrudd()}"><span class="ds-sr-only">Feil: </span>
                     Bruksdata går ikke opp mot fakturagrunnlaget. Dette er en feil i forsystemet — kontakt forsystem-teamet.
                     <a class="ds-link" th:href="@{/kjoringer/{id}/kontroller(id=${kjoring.id()})} + '#bruksdata'">Se avstemming</a></li>
@@ -33,6 +34,10 @@
                 <li class="advarsel" th:if="${b.kilde() != null and !b.invariantBrudd() and !b.allFakturert()}"><span class="ds-sr-only">Advarsel: </span>
                     <span th:text="|${b.ikkeFakturert().size()} rader med bruk er ikke fakturert. Alle er forklart av kontrollfunn.|">Rader ikke fakturert.</span>
                     <a class="ds-link" th:href="@{/kjoringer/{id}/kontroller(id=${kjoring.id()})} + '#bruksdata'">Se avstemming</a></li>
+                </th:block>
+                <li class="ok" th:if="${kjoring.erKorrigering()}"><span class="ds-sr-only">OK: </span>
+                    <span th:text="|${antallValgteEndringer} valgte endringer er med i korrigeringsgrunnlaget.|">Valgte endringer.</span>
+                    <a class="ds-link" th:href="@{/bruksdata/sammenligninger/{id}(id=${kjoring.sammenligningId()})}">Se sammenligning</a></li>
 
                 <li class="ok" th:if="${antallBlokkerende == 0}"><span class="ds-sr-only">OK: </span>Ingen blokkerende funn.</li>
                 <li class="feil" th:if="${antallBlokkerende > 0}"><span class="ds-sr-only">Feil: </span>
@@ -72,7 +77,10 @@
                 <li class="ok"><span class="ds-sr-only">OK: </span>
                     <span th:text="|Godkjent av ${kjoring.godkjentAv()}${kjoring.godkjentAt() != null ? ', ' + #temporals.format(kjoring.godkjentAt(), 'dd.MM.yyyy HH:mm') : ''}.|">Godkjent.</span></li>
             </ul>
-            <div class="rad ikke-utskrift">
+            <div class="ds-alert bred" data-color="warning" th:if="${kjoring.erKorrigering()}">
+                <p>Korrigeringen kan ikke eksporteres før avregningsmåten er avklart og testet med regnskap (OQ-6).</p>
+            </div>
+            <div class="rad ikke-utskrift" th:unless="${kjoring.erKorrigering()}">
                 <form th:action="@{/kjoringer/{id}/eksporter(id=${kjoring.id()})}" method="post">
                     <th:block th:replace="~{layout :: csrf}"></th:block>
                     <button class="ds-button" data-color="accent" type="submit" data-bekreft="bekreft-eksporter">Eksporter</button>
@@ -86,6 +94,9 @@
                         </div>
                     </dialog>
                 </form>
+                <th:block th:replace="~{:: forkast}"></th:block>
+            </div>
+            <div class="rad ikke-utskrift" th:if="${kjoring.erKorrigering()}">
                 <th:block th:replace="~{:: forkast}"></th:block>
             </div>
         </th:block>
@@ -117,20 +128,32 @@ Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 
 
         <th:block th:if="${status == 'FORKASTET'}">
             <h2 class="ds-heading" data-size="xs" id="neste-steg-tittel">Kjøringen er forkastet</h2>
-            <p class="ds-paragraph">En forkastet kjøring kan ikke godkjennes eller eksporteres. Rett det som trengs i
+            <p class="ds-paragraph" th:unless="${kjoring.erKorrigering()}">En forkastet kjøring kan ikke godkjennes eller eksporteres. Rett det som trengs i
                 registrene eller bruksdata, og generer perioden på nytt.</p>
+            <p class="ds-paragraph" th:if="${kjoring.erKorrigering()}">
+                Den eksporterte forrige versjonen er uendret. Sammenligningen er åpnet igjen, og et nytt
+                utkast får neste ledige versjonsnummer.
+            </p>
             <!-- Explicit period: the run's own month, never derived from today (Constitution IV). -->
-            <form th:action="@{/kjoringer}" method="post" class="rad ikke-utskrift">
+            <form th:unless="${kjoring.erKorrigering()}" th:action="@{/kjoringer}" method="post" class="rad ikke-utskrift">
                 <th:block th:replace="~{layout :: csrf}"></th:block>
                 <input type="hidden" name="periode" th:value="${sammendrag.periode()}">
                 <button class="ds-button" data-color="accent" type="submit"
                         th:text="|Generer ${maaned} på nytt|">Generer på nytt</button>
             </form>
+            <a class="ds-button ikke-utskrift" data-color="accent" th:if="${kjoring.erKorrigering()}"
+               th:href="@{/bruksdata/sammenligninger/{id}(id=${kjoring.sammenligningId()})}">Tilbake til sammenligningen</a>
         </th:block>
     </section>
 
     <!-- Summary (specs/002 FR-001..003). VAT treatment is open (OQ-11): no VAT figure, only the label. -->
     <h2 class="ds-heading" data-size="xs">Sammendrag</h2>
+    <div class="ds-alert bred" data-color="info" th:if="${kjoring.erKorrigering()}">
+        <p><strong th:text="|Korrigering ${kjoring.versjonLabel()}|">Korrigering V2</strong> ·
+            <span th:text="${kjoring.korrigeringsaarsak()}">Årsak</span> ·
+            <a class="ds-link" th:href="@{/kjoringer/{id}(id=${kjoring.forrigeKjoringId()})}">Forrige versjon</a> ·
+            <a class="ds-link" th:href="@{/bruksdata/sammenligninger/{id}(id=${kjoring.sammenligningId()})}">Se valgte endringer</a></p>
+    </div>
     <table class="ds-table smal" data-size="sm">
         <tbody>
         <tr><th scope="row">Periode</th><td class="hoyre" th:text="${sammendrag.periode()}">2027-01</td></tr>
@@ -153,7 +176,9 @@ Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 
                     data-bekreft="bekreft-forkast">Forkast</button>
             <dialog class="ds-dialog" id="bekreft-forkast" closedby="any" aria-labelledby="bekreft-forkast-tittel">
                 <h2 class="ds-heading" data-size="xs" id="bekreft-forkast-tittel" th:text="|Forkaste kjøringen for ${maaned}?|">Bekreft</h2>
-                <p class="ds-paragraph">En forkastet kjøring kan ikke godkjennes eller eksporteres. Perioden kan genereres på nytt etterpå.</p>
+                <p class="ds-paragraph" th:text="${kjoring.erKorrigering()
+                        ? 'Den forrige eksporterte versjonen forblir uendret. Sammenligningen åpnes igjen, og et nytt utkast får neste versjonsnummer.'
+                        : 'En forkastet kjøring kan ikke godkjennes eller eksporteres. Perioden kan genereres på nytt etterpå.'}">Forkast kjøringen.</p>
                 <div class="rad">
                     <button class="ds-button" data-color="danger" type="submit">Ja, forkast</button>
                     <button class="ds-button" data-variant="secondary" type="button" autofocus

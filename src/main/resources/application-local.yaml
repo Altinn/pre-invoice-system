@@ -15,5 +15,7 @@ management:
 
 # Test tools ("Nullstill periode") are available locally, as in tt02.
 forsystem:
+  korrigering:
+    eksport-enabled: false
   testverktoy:
     enabled: true

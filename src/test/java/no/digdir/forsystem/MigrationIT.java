@@ -31,8 +31,9 @@ class MigrationIT {
                 "select count(*) from flyway_schema_history where success = true", Integer.class);
         // V1..V6 from docs/03, V7 for the datavarehus source (specs/001-dwh-usage-import),
         // V8 keeps superseded usage per import, V9 stores LG04 reconciliations, V10 links skipped usage
-        // to its finding, V11 freezes the customer name on faktura (specs/002).
-        assertThat(applied).isEqualTo(11);
+        // to its finding, V11 freezes the customer name on faktura (specs/002), and V12 adds
+        // immutable comparison data plus versioned correction runs (specs/007).
+        assertThat(applied).isEqualTo(12);
     }
 
     @Test

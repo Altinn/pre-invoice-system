@@ -17,6 +17,8 @@ public enum Handling {
     GODKJENTE,
     FORKASTET,
     HENTET,
+    /** A complete correction candidate was compared with one exported run baseline. */
+    SAMMENLIGNET,
     EKSPORTERTE,
     /** An export was stopped because the LG04 file did not reconcile with the run; nothing was written. */
     EKSPORT_STOPPET,

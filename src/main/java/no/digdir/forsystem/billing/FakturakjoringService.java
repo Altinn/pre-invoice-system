@@ -34,7 +34,14 @@ import no.digdir.forsystem.registry.Produkt;
 import no.digdir.forsystem.registry.ProduktRepository;
 import no.digdir.forsystem.usage.Bruksdata;
 import no.digdir.forsystem.usage.BruksdataImport;
+import no.digdir.forsystem.usage.BruksdataImportRepository;
+import no.digdir.forsystem.usage.BruksdataEndring;
+import no.digdir.forsystem.usage.BruksdataEndringRepository;
+import no.digdir.forsystem.usage.BruksdataSammenligning;
+import no.digdir.forsystem.usage.BruksdataSammenligningRepository;
 import no.digdir.forsystem.usage.Bruksdatatype;
+import no.digdir.forsystem.usage.Importstatus;
+import no.digdir.forsystem.usage.Sammenligningstatus;
 import no.digdir.forsystem.usage.UsageImportService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,6 +73,11 @@ public class FakturakjoringService {
     private final KundeReferanseRepository referanser;
     private final KundenummerRegelRepository regler;
     private final UsageImportService usage;
+    private final BruksdataImportRepository usageImports;
+    private final BruksdataSammenligningRepository sammenligninger;
+    private final BruksdataEndringRepository endringer;
+    private final KorrigeringskjoringEndringRepository valgteEndringer;
+    private final KjoringVersjonService versjoner;
     private final AuditService audit;
     private final BrukerContext brukerContext;
 
@@ -75,7 +87,12 @@ public class FakturakjoringService {
                           ProduktRepository produkter, PrisRepository priser,
                           PrisversjonRepository prisversjoner, KundeRepository kunder,
                           KundeReferanseRepository referanser, KundenummerRegelRepository regler,
-                          UsageImportService usage, AuditService audit, BrukerContext brukerContext) {
+                          UsageImportService usage, BruksdataImportRepository usageImports,
+                          BruksdataSammenligningRepository sammenligninger,
+                          BruksdataEndringRepository endringer,
+                          KorrigeringskjoringEndringRepository valgteEndringer,
+                          KjoringVersjonService versjoner,
+                          AuditService audit, BrukerContext brukerContext) {
         this.kjoringer = kjoringer;
         this.fakturaer = fakturaer;
         this.linjer = linjer;
@@ -89,6 +106,11 @@ public class FakturakjoringService {
         this.referanser = referanser;
         this.regler = regler;
         this.usage = usage;
+        this.usageImports = usageImports;
+        this.sammenligninger = sammenligninger;
+        this.endringer = endringer;
+        this.valgteEndringer = valgteEndringer;
+        this.versjoner = versjoner;
         this.audit = audit;
         this.brukerContext = brukerContext;
     }
@@ -101,6 +123,7 @@ public class FakturakjoringService {
     @Transactional
     public Fakturakjoring generer(Periode periode) {
         Prisversjon versjon = aktivVersjonFor(periode);
+        versjoner.laas(periode.førsteDag());
         if (kjoringer.existsByPeriodeAndStatusNot(periode.førsteDag(), Kjoringstatus.FORKASTET.name())) {
             throw new Regelbrudd("Det finnes allerede en aktiv kjøring for " + periode
                     + ". Forkast den før du genererer på nytt.");
@@ -111,14 +134,93 @@ public class FakturakjoringService {
             throw new Regelbrudd("Ingen bruksdata for " + periode + " — importer bruk først.");
         }
 
+        int kjoringVersjon = versjoner.neste(periode.førsteDag());
+        Long forrigeKjoringId = kjoringer.findFirstByPeriodeOrderByVersjonDesc(periode.førsteDag())
+                .map(Fakturakjoring::id).orElse(null);
+
         Fakturakjoring kjoring = kjoringer.save(new Fakturakjoring(null, periode.førsteDag(),
                 Kjoringstatus.GENERERT.name(), versjon.id(), importId, brukerContext.naavaerendeBruker(),
-                OffsetDateTime.now(), null, null, null));
+                OffsetDateTime.now(), null, null, null, Kjoringstype.ORDINAER.name(), kjoringVersjon,
+                forrigeKjoringId, null, null));
 
-        var ctx = new Byggekontekst(periode, versjon, kjoring.id());
+        var ctx = new Byggekontekst(periode, versjon, kjoring.id(), false);
         bygg(ctx, bruk);
         audit.logg(Handling.GENERERTE, "FAKTURAKJORING", kjoring.id(),
                 Map.of("periode", periode.toString(), "antallFakturaer", ctx.antallFakturaer));
+        return kjoring;
+    }
+
+    /** Generate a draft containing only the explicitly selected signed differences. */
+    @Transactional
+    public Fakturakjoring genererKorrigering(Long sammenligningId, List<Long> endringIder, String aarsak) {
+        if (aarsak == null || aarsak.isBlank()) {
+            throw new Regelbrudd("Skriv hvorfor korrigeringen opprettes");
+        }
+        List<Long> unikeIder = endringIder == null ? List.of() : endringIder.stream().distinct().toList();
+        if (unikeIder.isEmpty()) {
+            throw new Regelbrudd("Velg minst én endring som skal være med i korrigeringen");
+        }
+        BruksdataSammenligning foerLaas = sammenligninger.findById(sammenligningId)
+                .orElseThrow(() -> new Regelbrudd("Fant ikke sammenligning " + sammenligningId));
+        versjoner.laas(foerLaas.periode());
+        BruksdataSammenligning sammenligning = sammenligninger.findById(sammenligningId)
+                .orElseThrow(() -> new Regelbrudd("Fant ikke sammenligning " + sammenligningId));
+        if (!Sammenligningstatus.AAPEN.name().equals(sammenligning.status())) {
+            throw new Regelbrudd("Sammenligningen er ikke lenger åpen. Sammenlign på nytt.");
+        }
+        Fakturakjoring grunnlag = hent(sammenligning.grunnlagKjoringId());
+        Optional<Fakturakjoring> sisteEksporterte = kjoringer.findFirstByPeriodeAndStatusOrderByVersjonDesc(
+                sammenligning.periode(), Kjoringstatus.EKSPORTERT.name());
+        if (sisteEksporterte.isEmpty() || !sisteEksporterte.get().id().equals(grunnlag.id())) {
+            throw new Regelbrudd("Grunnlaget er endret siden sammenligningen ble åpnet. Sammenlign på nytt.");
+        }
+        if (kjoringer.existsByPeriodeAndStatusIn(sammenligning.periode(),
+                List.of(Kjoringstatus.GENERERT.name(), Kjoringstatus.GODKJENT.name()))) {
+            throw new Regelbrudd("Det finnes allerede en pågående kjøring for "
+                    + new Periode(sammenligning.periode()).norskLabel());
+        }
+
+        List<BruksdataEndring> valgte = endringer.findAllById(unikeIder);
+        if (valgte.size() != unikeIder.size()
+                || valgte.stream().anyMatch(e -> !sammenligningId.equals(e.sammenligningId())
+                        || e.avvistAt() != null)) {
+            throw new Regelbrudd("En eller flere valgte endringer tilhører ikke den åpne sammenligningen");
+        }
+        BruksdataImport kandidat = usageImports.findById(sammenligning.kandidatImportId())
+                .orElseThrow(() -> new Regelbrudd("Fant ikke kandidatimport " + sammenligning.kandidatImportId()));
+        Prisversjon prisversjon = prisversjoner.findById(grunnlag.prisversjonId())
+                .orElseThrow(() -> new Regelbrudd("Fant ikke prisversjonen fra " + grunnlag.versjonLabel()));
+        int versjon = versjoner.neste(sammenligning.periode());
+        Long forrigeId = kjoringer.findFirstByPeriodeOrderByVersjonDesc(sammenligning.periode())
+                .map(Fakturakjoring::id).orElse(grunnlag.id());
+        String bruker = brukerContext.naavaerendeBruker();
+        OffsetDateTime naa = OffsetDateTime.now();
+        Fakturakjoring kjoring = kjoringer.save(new Fakturakjoring(null, sammenligning.periode(),
+                Kjoringstatus.GENERERT.name(), prisversjon.id(), kandidat.id(), bruker, naa,
+                null, null, null, Kjoringstype.KORRIGERING.name(), versjon, forrigeId,
+                aarsak.trim(), sammenligning.id()));
+        valgteEndringer.lagre(kjoring.id(), unikeIder, bruker, naa);
+
+        List<Bruksdata> differanser = valgte.stream().map(e -> new Bruksdata(
+                e.id(), kandidat.id(), sammenligning.periode(), e.organisasjonsnummer(), e.produktId(),
+                e.type(), e.deltaAntall(), e.deltaBelop())).toList();
+        var ctx = new Byggekontekst(new Periode(sammenligning.periode()), prisversjon, kjoring.id(), true);
+        bygg(ctx, differanser);
+        List<Faktura> korrigeringsfakturaer = fakturaer.findByKjoringIdOrderByOrdreNr(kjoring.id());
+        if (!korrigeringsfakturaer.isEmpty() && korrigeringsfakturaer.stream()
+                .flatMap(f -> linjer.findByFakturaIdOrderById(f.id()).stream())
+                .allMatch(l -> l.belop().compareTo(BigDecimal.ZERO) == 0)) {
+            throw new Regelbrudd("Alle valgte korreksjoner avrundes til 0 kroner. "
+                    + "Kontroller differansene og prisgrunnlaget.");
+        }
+
+        sammenligninger.save(sammenligning.medStatus(Sammenligningstatus.KJORING_OPPRETTET.name(), null));
+        usageImports.save(kandidat.medStatus(Importstatus.BEHANDLET.name()));
+        audit.logg(Handling.GENERERTE, "FAKTURAKJORING", kjoring.id(), Map.of(
+                "periode", new Periode(sammenligning.periode()).toString(),
+                "versjon", versjon, "type", Kjoringstype.KORRIGERING.name(),
+                "sammenligningId", sammenligning.id(), "valgteEndringer", valgte.size(),
+                "aarsak", aarsak.trim(), "antallFakturaer", ctx.antallFakturaer));
         return kjoring;
     }
 
@@ -189,7 +291,8 @@ public class FakturakjoringService {
                 enhetspris = pris.enhetspris();
                 prisId = pris.id();
                 belop = antall.multiply(enhetspris).setScale(2, RoundingMode.HALF_UP);
-                beskrivelse = "Bruk av " + p.navn() + " " + ctx.periode.norskLabel();
+                beskrivelse = (ctx.korrigering ? "Korrigering av " : "Bruk av ")
+                        + p.navn() + " " + ctx.periode.norskLabel();
             } else {
                 belop = (b.belop() == null ? BigDecimal.ZERO : b.belop()).setScale(2, RoundingMode.HALF_UP);
                 beskrivelse = beskrivKostnad(b.type(), p, ctx.periode);
@@ -198,7 +301,7 @@ public class FakturakjoringService {
             KundeReferanse ref = velgReferanse(
                     referanserByKunde.getOrDefault(k.id(), List.of()), p.id());
             var linje = new LinjeUtkast(p.id(), p.kode(), b.type(), beskrivelse, antall, enhetspris, belop,
-                    prisId, b.id(), regel.servicekode(),
+                    prisId, ctx.korrigering ? null : b.id(), ctx.korrigering ? b.id() : null, regel.servicekode(),
                     ref == null ? null : ref.fakturareferanse(),
                     ref == null ? null : ref.bestillingsnummer());
 
@@ -236,13 +339,15 @@ public class FakturakjoringService {
         // Completeness (specs/003 D5, BF1 T10): an active customer without a single usage row may be an
         // expected tjenesteeier missing from the basis. A warning, not a blocker — a month without
         // billable usage can be legitimate, and Økonomi decides.
-        Set<String> orgnrMedBruk = bruk.stream().map(Bruksdata::organisasjonsnummer).collect(Collectors.toSet());
-        kundeByOrgnr.values().stream()
-                .filter(k -> "AKTIV".equals(k.avtalestatus()) && !orgnrMedBruk.contains(k.organisasjonsnummer()))
-                .sorted(Comparator.comparing(Kunde::organisasjonsnummer))
-                .forEach(k -> funnListe.add(advarsel(ctx.kjoringId, null, Kontrollkode.AKTIV_KUNDE_UTEN_BRUK,
-                        "Kunde " + k.virksomhetsnavn() + " (" + k.organisasjonsnummer()
-                                + ") har aktiv avtale, men ingen bruk i perioden")));
+        if (!ctx.korrigering) {
+            Set<String> orgnrMedBruk = bruk.stream().map(Bruksdata::organisasjonsnummer).collect(Collectors.toSet());
+            kundeByOrgnr.values().stream()
+                    .filter(k -> "AKTIV".equals(k.avtalestatus()) && !orgnrMedBruk.contains(k.organisasjonsnummer()))
+                    .sorted(Comparator.comparing(Kunde::organisasjonsnummer))
+                    .forEach(k -> funnListe.add(advarsel(ctx.kjoringId, null, Kontrollkode.AKTIV_KUNDE_UTEN_BRUK,
+                            "Kunde " + k.virksomhetsnavn() + " (" + k.organisasjonsnummer()
+                                    + ") har aktiv avtale, men ingen bruk i perioden")));
+        }
 
         // Create invoices in deterministic order and assign ordre_nr.
         List<Gruppe> sorterteGrupper = new ArrayList<>(grupper.keySet());
@@ -257,7 +362,7 @@ public class FakturakjoringService {
             Gruppedata data = grupper.get(g);
             data.linjer.sort(Comparator.comparing((LinjeUtkast l) -> l.produktKode).thenComparing(l -> l.type));
             BigDecimal sum = data.linjer.stream().map(l -> l.belop).reduce(BigDecimal.ZERO, BigDecimal::add);
-            if (sum.compareTo(MAKS_FAKTURABELOP) > 0) {
+            if (sum.abs().compareTo(MAKS_FAKTURABELOP) > 0) {
                 // faktura.sum_belop is numeric(12,2); fail with a reason instead of a DB overflow (500).
                 throw new Regelbrudd("Fakturaen til " + data.kunde.virksomhetsnavn() + " ("
                         + data.kunde.organisasjonsnummer() + ", kundenummer " + g.kundenummer + ") blir "
@@ -273,7 +378,7 @@ public class FakturakjoringService {
             for (LinjeUtkast l : data.linjer) {
                 linjer.save(new Fakturalinje(null, faktura.id(), l.produktId, l.beskrivelse, l.antall,
                         l.enhetspris, l.belop, l.prisId, l.bruksdataId, l.servicekode,
-                        l.fakturareferanse, l.bestillingsnummer));
+                        l.fakturareferanse, l.bestillingsnummer, l.bruksdataEndringId));
             }
             if (data.linjer.stream().anyMatch(l -> l.belop.compareTo(BigDecimal.ZERO) == 0)) {
                 funnListe.add(advarsel(ctx.kjoringId, faktura.id(), Kontrollkode.NULLBELOP,
@@ -283,11 +388,15 @@ public class FakturakjoringService {
             forsteFakturaPerKunde.putIfAbsent(data.kunde.id(), faktura.id());
         }
 
-        leggTilForrigePeriodeAdvarsler(ctx, sumPerKunde, forsteFakturaPerKunde, funnListe);
+        if (!ctx.korrigering) {
+            leggTilForrigePeriodeAdvarsler(ctx, sumPerKunde, forsteFakturaPerKunde, funnListe);
+        }
         List<Kontrollfunn> lagret = funn.saveAll(funnListe);
         List<KontrollfunnBruksdata> lenker = new ArrayList<>();
-        utelattePerFunn.forEach((indeks, ider) ->
-                ider.forEach(id -> lenker.add(new KontrollfunnBruksdata(lagret.get(indeks).id(), id))));
+        if (!ctx.korrigering) {
+            utelattePerFunn.forEach((indeks, ider) ->
+                    ider.forEach(id -> lenker.add(new KontrollfunnBruksdata(lagret.get(indeks).id(), id))));
+        }
         funnBruksdata.lagre(lenker);
     }
 
@@ -332,9 +441,9 @@ public class FakturakjoringService {
             throw new Regelbrudd("Kjøringen har blokkerende kontrollfunn og kan ikke godkjennes");
         }
         String bruker = brukerContext.naavaerendeBruker();
-        kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.GODKJENT.name(),
-                kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), bruker, OffsetDateTime.now(), kj.kommentar()));
-        audit.logg(Handling.GODKJENTE, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString()));
+        kjoringer.save(kj.medStatus(Kjoringstatus.GODKJENT.name(), bruker, OffsetDateTime.now()));
+        audit.logg(Handling.GODKJENTE, "FAKTURAKJORING", kjoringId, Map.of(
+                "periode", kj.periode().toString(), "versjon", kj.versjon(), "type", kj.type()));
     }
 
     /** Move an approved run to EKSPORTERT. Called by the export service once artifacts are archived. */
@@ -344,9 +453,7 @@ public class FakturakjoringService {
         if (!Kjoringstatus.GODKJENT.name().equals(kj.status())) {
             throw new Regelbrudd("Bare en godkjent kjøring kan eksporteres (status er " + kj.status() + ")");
         }
-        kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.EKSPORTERT.name(),
-                kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
-                kj.kommentar()));
+        kjoringer.save(kj.medStatus(Kjoringstatus.EKSPORTERT.name(), kj.godkjentAv(), kj.godkjentAt()));
     }
 
     @Transactional
@@ -358,10 +465,23 @@ public class FakturakjoringService {
         if (Kjoringstatus.FORKASTET.name().equals(kj.status())) {
             return;
         }
-        kjoringer.save(new Fakturakjoring(kj.id(), kj.periode(), Kjoringstatus.FORKASTET.name(),
-                kj.prisversjonId(), kj.bruksdataImportId(), kj.generertAv(), kj.generertAt(), kj.godkjentAv(), kj.godkjentAt(),
-                kj.kommentar()));
-        audit.logg(Handling.FORKASTET, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString()));
+        kjoringer.save(kj.medStatus(Kjoringstatus.FORKASTET.name(), kj.godkjentAv(), kj.godkjentAt()));
+        if (kj.erKorrigering() && kj.sammenligningId() != null) {
+            BruksdataSammenligning sammenligning = sammenligninger.findById(kj.sammenligningId())
+                    .orElseThrow(() -> new Regelbrudd("Fant ikke sammenligning " + kj.sammenligningId()));
+            if (Sammenligningstatus.KJORING_OPPRETTET.name().equals(sammenligning.status())) {
+                List<BruksdataSammenligning> nyereAapne = sammenligninger.findByPeriodeAndStatus(
+                        kj.periode(), Sammenligningstatus.AAPEN.name());
+                if (nyereAapne.isEmpty()) {
+                    sammenligninger.save(sammenligning.medStatus(Sammenligningstatus.AAPEN.name(), null));
+                } else {
+                    sammenligninger.save(sammenligning.medStatus(
+                            Sammenligningstatus.ERSTATTET.name(), nyereAapne.getLast().id()));
+                }
+            }
+        }
+        audit.logg(Handling.FORKASTET, "FAKTURAKJORING", kjoringId, Map.of(
+                "periode", kj.periode().toString(), "versjon", kj.versjon(), "type", kj.type()));
     }
 
     // ---- Queries ----------------------------------------------------------------------------
@@ -427,8 +547,13 @@ public class FakturakjoringService {
     public List<Grunnlagslinje> grunnlagslinjer(Long kjoringId) {
         Fakturakjoring kj = hent(kjoringId);
         Map<Long, String> typeByBruksdata = new LinkedHashMap<>();
+        Map<Long, String> typeByEndring = new LinkedHashMap<>();
         if (kj.bruksdataImportId() != null) {
             usage.rader(kj.bruksdataImportId()).forEach(b -> typeByBruksdata.put(b.id(), b.type()));
+        }
+        if (kj.erKorrigering()) {
+            endringer.findAllById(valgteEndringer.endringIder(kjoringId))
+                    .forEach(e -> typeByEndring.put(e.id(), e.type()));
         }
         List<Faktura> fs = fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
         Map<Long, String> navn = kundenavn(fs);
@@ -438,7 +563,9 @@ public class FakturakjoringService {
             String orgnr = orgnrByKunde.computeIfAbsent(f.kundeId(),
                     id -> kunder.findById(id).map(Kunde::organisasjonsnummer).orElse(""));
             for (Fakturalinje l : linjer.findByFakturaIdOrderById(f.id())) {
-                ut.add(new Grunnlagslinje(f, l, navn.get(f.id()), orgnr, typeByBruksdata.get(l.bruksdataId())));
+                String type = l.bruksdataEndringId() == null
+                        ? typeByBruksdata.get(l.bruksdataId()) : typeByEndring.get(l.bruksdataEndringId());
+                ut.add(new Grunnlagslinje(f, l, navn.get(f.id()), orgnr, type));
             }
         }
         return ut;
@@ -472,6 +599,11 @@ public class FakturakjoringService {
     @Transactional(readOnly = true)
     public boolean harBlokkerende(Long kjoringId) {
         return funn.existsByKjoringIdAndAlvorlighet(kjoringId, Alvorlighet.BLOKKERENDE.name());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Long> valgteEndringIder(Long kjoringId) {
+        return valgteEndringer.endringIder(kjoringId);
     }
 
     @Transactional(readOnly = true)
@@ -536,12 +668,14 @@ public class FakturakjoringService {
         final Periode periode;
         final Prisversjon versjon;
         final Long kjoringId;
+        final boolean korrigering;
         int antallFakturaer;
 
-        Byggekontekst(Periode periode, Prisversjon versjon, Long kjoringId) {
+        Byggekontekst(Periode periode, Prisversjon versjon, Long kjoringId, boolean korrigering) {
             this.periode = periode;
             this.versjon = versjon;
             this.kjoringId = kjoringId;
+            this.korrigering = korrigering;
         }
     }
 
@@ -561,7 +695,7 @@ public class FakturakjoringService {
 
     private record LinjeUtkast(Long produktId, String produktKode, String type, String beskrivelse,
                                BigDecimal antall, BigDecimal enhetspris, BigDecimal belop, Long prisId,
-                               Long bruksdataId, String servicekode, String fakturareferanse,
+                               Long bruksdataId, Long bruksdataEndringId, String servicekode, String fakturareferanse,
                                String bestillingsnummer) {
     }
 }

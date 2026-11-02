@@ -15,11 +15,13 @@
         <ol>
             <li><a class="ds-link" th:href="@{/}">Forside</a></li>
             <li><a class="ds-link" th:href="@{/kjoringer}">Kjøringer</a></li>
-            <li><a class="ds-link" aria-current="page" th:text="|Kjøring ${kjoring.periodeLabel()}|">Kjøring</a></li>
+            <li><a class="ds-link" aria-current="page"
+                   th:text="|${kjoring.erKorrigering() ? 'Korrigering' : 'Kjøring'} ${kjoring.periodeLabel()} · ${kjoring.versjonLabel()}|">Kjøring</a></li>
         </ol>
     </nav>
     <div class="topprad">
-        <h1 class="ds-heading" data-size="lg" th:text="|Kjøring ${kjoring.periodeLabel()}|">Kjøring</h1>
+        <h1 class="ds-heading" data-size="lg"
+            th:text="|${kjoring.erKorrigering() ? 'Korrigering' : 'Kjøring'} ${kjoring.periodeLabel()} · ${kjoring.versjonLabel()}|">Kjøring</h1>
         <th:block th:replace="~{kjoring/fragmenter :: status(${kjoring.status()})}"></th:block>
     </div>
     <nav class="faner ikke-utskrift" aria-label="Kjøring">

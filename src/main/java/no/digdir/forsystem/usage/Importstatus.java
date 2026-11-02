@@ -4,5 +4,7 @@ package no.digdir.forsystem.usage;
 public enum Importstatus {
     MOTTATT,
     VALIDERT,
+    KANDIDAT,
+    BEHANDLET,
     AVVIST
 }

@@ -61,13 +61,15 @@ public class EksportService {
     private final EksportKonfig konfig;
     private final Lg04AvstemmingRepository avstemminger;
     private final FakturagrunnlagRegneark grunnlag;
+    private final KorrigeringEksportKonfig korrigeringKonfig;
     private final Lg04Leser leser = new Lg04Leser();
 
     EksportService(FakturakjoringService kjoringer, ProduktRepository produkter, Lg04Eksport lg04,
                    PdfEksport pdf, RegnearkEksport regneark, FileArchive arkiv,
                    EksportfilRepository eksportfiler, AuditService audit, BrukerContext brukerContext,
                    EksportKonfig konfig, Lg04AvstemmingRepository avstemminger,
-                   FakturagrunnlagRegneark grunnlag) {
+                   FakturagrunnlagRegneark grunnlag,
+                   KorrigeringEksportKonfig korrigeringKonfig) {
         this.kjoringer = kjoringer;
         this.produkter = produkter;
         this.lg04 = lg04;
@@ -80,6 +82,7 @@ public class EksportService {
         this.konfig = konfig;
         this.avstemminger = avstemminger;
         this.grunnlag = grunnlag;
+        this.korrigeringKonfig = korrigeringKonfig;
     }
 
     /**
@@ -92,6 +95,13 @@ public class EksportService {
         Fakturakjoring kj = kjoringer.hent(kjoringId);
         if (!"GODKJENT".equals(kj.status())) {
             throw new Regelbrudd("Bare en godkjent kjøring kan eksporteres (status er " + kj.status() + ")");
+        }
+        if (kj.erKorrigering()) {
+            if (!korrigeringKonfig.eksportEnabled()) {
+                throw new Regelbrudd("Eksport av korrigeringer er deaktivert i dette miljøet");
+            }
+            throw new Regelbrudd("Korrigeringen kan ikke eksporteres før avregningsmåten er avklart "
+                    + "og testet med regnskap (OQ-6)");
         }
         Map<Long, Produkt> produktById = produktById();
         List<Faktura> fakturaer = kjoringer.fakturaer(kjoringId);
@@ -149,7 +159,9 @@ public class EksportService {
             throw new Regelbrudd("Forkastede kjøringer kan ikke lastes ned som fakturagrunnlag");
         }
         FakturagrunnlagRegneark.Tabell tabell = grunnlag.bygg(kj);
-        String navn = "fakturagrunnlag-" + kj.periode().toString().substring(0, 7) + "-" + kj.status();
+        String versjon = kj.erKorrigering() ? "-v" + kj.versjon() : "";
+        String navn = "fakturagrunnlag-" + kj.periode().toString().substring(0, 7)
+                + versjon + "-" + kj.status();
         Nedlasting n = switch (format) {
             case "csv" -> new Nedlasting(navn + ".csv", "text/csv",
                     regneark.csv(tabell.kolonner(), tabell.rader()));

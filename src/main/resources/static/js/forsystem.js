@@ -45,6 +45,46 @@
     document.addEventListener('input', ryddOppHvisGyldig);
     document.addEventListener('change', ryddOppHvisGyldig);
 
+    // ---- Correction comparison selection ---------------------------------------------------
+    // Checkboxes start unchecked. The summary keeps volume and pass-through cost separate because
+    // they are different units and must never be presented as one invented total.
+    function oppdaterEndringsutvalg(skjema) {
+        var bokser = Array.prototype.slice.call(skjema.querySelectorAll('[data-endring-checkbox]'));
+        var omraade = skjema.closest('section') || skjema;
+        var valgte = bokser.filter(function (boks) { return boks.checked; });
+        var volum = 0;
+        var kostnad = 0;
+        valgte.forEach(function (boks) {
+            var delta = Number(boks.getAttribute('data-endring-delta')) || 0;
+            if (boks.getAttribute('data-endring-type') === 'BRUKSVOLUM') volum += delta;
+            else kostnad += delta;
+        });
+        var antall = omraade.querySelector('[data-valgt-antall]');
+        var volumFelt = omraade.querySelector('[data-valgt-volum]');
+        var kostnadFelt = omraade.querySelector('[data-valgt-kostnad]');
+        var knapp = skjema.querySelector('[data-velg-alle]');
+        if (antall) antall.textContent = String(valgte.length);
+        if (volumFelt) volumFelt.textContent = String(volum);
+        if (kostnadFelt) kostnadFelt.textContent = kostnad.toFixed(2);
+        if (knapp) knapp.textContent = bokser.length > 0 && valgte.length === bokser.length
+            ? 'Fjern alle valg' : 'Velg alle';
+    }
+
+    document.addEventListener('change', function (e) {
+        if (!e.target.matches('[data-endring-checkbox]')) return;
+        oppdaterEndringsutvalg(e.target.closest('[data-endring-utvalg]'));
+    });
+
+    document.addEventListener('click', function (e) {
+        var knapp = e.target.closest('[data-velg-alle]');
+        if (!knapp) return;
+        var skjema = knapp.closest('[data-endring-utvalg]');
+        var bokser = Array.prototype.slice.call(skjema.querySelectorAll('[data-endring-checkbox]:not(:disabled)'));
+        var velg = bokser.some(function (boks) { return !boks.checked; });
+        bokser.forEach(function (boks) { boks.checked = velg; });
+        oppdaterEndringsutvalg(skjema);
+    });
+
     // ---- Confirmation before irreversible actions (FR-012/013) ------------------------------
     // <button type="submit" data-bekreft="dialog-id"> opens that <dialog> instead of submitting.
     // The dialog sits inside the same <form>; its own submit button performs the action.
