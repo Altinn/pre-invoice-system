@@ -66,14 +66,14 @@ class E2eScenarioIT extends BillingFixture {
         var filer = tjeneste.eksportfiler(kj.id());
         assertThat(filer).extracting(Eksportfil::type).containsExactlyInAnyOrder("LG04", "PDF", "CSV", "XLSX");
 
-        // LG04 is valid: 3 lines per order, 4324 chars, amounts sum to the run total.
+        // LG04 is valid: a header plus a pair per product, 4324 chars, amounts sum to the run total.
         var lg04 = filer.stream().filter(f -> "LG04".equals(f.type())).findFirst().orElseThrow();
         List<String> linjer = Arrays.stream(new String(arkiv.hent(lg04.blobUrl()), WIN_1252).split("\n", -1))
                 .filter(l -> !l.isEmpty()).toList();
-        assertThat(linjer).hasSize(6); // melding line + SMS line → 2 orders
+        assertThat(linjer).hasSize(5); // one invoice: header + melding pair + SMS pair
         assertThat(linjer).allSatisfy(l -> assertThat(l).hasSize(4324));
         long ore = 0;
-        for (int i = 1; i < linjer.size(); i += 3) {
+        for (int i = 1; i < linjer.size(); i += 2) {
             ore += Long.parseLong(linjer.get(i).substring(212, 232).trim());
         }
         // 1000 × 0.85 = 850.00 + 250.50 SMS = 1100.50 → 110050 øre.

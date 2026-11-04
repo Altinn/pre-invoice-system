@@ -13,8 +13,9 @@ import java.util.List;
  * reference format and pinned by the golden files, and it never calls the writer. A reader that shared
  * the writer's code would share its bugs, and the check would prove nothing.
  *
- * <p>Any structural problem (wrong line length, broken order triple, disagreeing amount fields,
- * unparseable amount) is reported in {@link Lg04Innhold#feil()} and makes the file invalid; the caller
+ * <p>An order is a header line (line number 0) followed by one line pair per product, numbered 1, 2, 3…
+ * (OQ-1). Any structural problem (wrong line length, a pair out of sequence, disagreeing order numbers or
+ * amount fields, unparseable amount) is reported in {@link Lg04Innhold#feil()} and makes the file invalid; the caller
  * treats an invalid file as a mismatch.
  */
 public final class Lg04Leser {
@@ -22,11 +23,12 @@ public final class Lg04Leser {
     private static final Charset WIN_1252 = Charset.forName("windows-1252");
 
     static final int LINJELENGDE = 4324;
-    private static final int LINJETYPE = 2493;            // '0' header, '1' amount and trailer
-    private static final int BELOP_FRA = 212;             // amount in øre, followed by BELOP_SATT at 232
+    private static final int LINJENR_FRA = 2493;          // 0 on the header, 1, 2, 3… on each product's pair
+    private static final int LINJENR_TIL = 2509;
+    private static final int BELOP_FRA = 212;             // amount in øre, right-aligned, then BELOP_SATT at 232
     private static final int BELOP_TIL = 232;
     private static final int BELOP_SATT = 232;            // '1' on the amount line only
-    private static final int BELOP2_FRA = 965;            // the same amount again, 20 wide
+    private static final int BELOP2_FRA = 965;            // the same amount again, 20 wide, right-aligned
     private static final int BELOP2_TIL = 985;
     private static final int ORDRENR_FRA = 3130;
     private static final int ORDRENR_TIL = 3145;
@@ -56,46 +58,76 @@ public final class Lg04Leser {
                 feil.add("Linje " + (i + 1) + " har " + linjer.get(i).length() + " tegn, forventet " + LINJELENGDE);
             }
         }
-        if (linjer.size() % 3 != 0) {
-            feil.add("Filen har " + linjer.size() + " linjer, som ikke er et multiplum av 3 (tre linjer per ordre)");
-        }
         if (!feil.isEmpty()) {
             return new Lg04Innhold(0, 0, linjer.size(), feil);
         }
 
         int ordrer = 0;
+        int ordre = 0;
         long sumOre = 0;
-        for (int i = 0; i < linjer.size(); i += 3) {
+        int i = 0;
+        while (i < linjer.size()) {
             String hode = linjer.get(i);
-            String belop = linjer.get(i + 1);
-            String slutt = linjer.get(i + 2);
-            int ordre = i / 3 + 1;
-            if (hode.charAt(LINJETYPE) != '0' || belop.charAt(LINJETYPE) != '1' || slutt.charAt(LINJETYPE) != '1') {
-                feil.add("Ordre " + ordre + " (linje " + (i + 1) + "–" + (i + 3) + ") har feil linjetyper, forventet 0, 1, 1");
-                continue;
-            }
-            if (belop.charAt(BELOP_SATT) != '1' || slutt.charAt(BELOP_SATT) == '1') {
-                feil.add("Ordre " + ordre + ": beløpslinjen er ikke linje 2 i ordren");
-                continue;
+            ordre++;
+            if (!"0".equals(felt(hode, LINJENR_FRA, LINJENR_TIL))) {
+                feil.add("Linje " + (i + 1) + " skulle vært hodelinjen til ordre " + ordre + " (linjenummer 0)");
+                break;
             }
             String nr = felt(hode, ORDRENR_FRA, ORDRENR_TIL);
-            if (!nr.equals(felt(belop, ORDRENR_FRA, ORDRENR_TIL)) || !nr.equals(felt(slutt, ORDRENR_FRA, ORDRENR_TIL))) {
-                feil.add("Ordre " + ordre + ": ordrenummeret er ikke likt på alle tre linjene");
-                continue;
+            int forste = i;
+            i++;
+            int produkt = 0;
+            boolean ok = true;
+            while (i < linjer.size() && !"0".equals(felt(linjer.get(i), LINJENR_FRA, LINJENR_TIL))) {
+                produkt++;
+                if (i + 1 >= linjer.size()) {
+                    feil.add("Ordre " + ordre + ": produkt " + produkt + " mangler den andre linjen i paret");
+                    ok = false;
+                    i++;
+                    break;
+                }
+                String belop = linjer.get(i);
+                String slutt = linjer.get(i + 1);
+                i += 2;
+                String forventet = String.valueOf(produkt);
+                if (!forventet.equals(felt(belop, LINJENR_FRA, LINJENR_TIL))
+                        || !forventet.equals(felt(slutt, LINJENR_FRA, LINJENR_TIL))) {
+                    feil.add("Ordre " + ordre + ": produkt " + produkt + " har feil linjenummer, forventet "
+                            + forventet + " på begge linjene");
+                    ok = false;
+                    continue;
+                }
+                if (belop.charAt(BELOP_SATT) != '1' || slutt.charAt(BELOP_SATT) == '1') {
+                    feil.add("Ordre " + ordre + ", produkt " + produkt + ": beløpslinjen er ikke første linje i paret");
+                    ok = false;
+                    continue;
+                }
+                if (!nr.equals(felt(belop, ORDRENR_FRA, ORDRENR_TIL)) || !nr.equals(felt(slutt, ORDRENR_FRA, ORDRENR_TIL))) {
+                    feil.add("Ordre " + ordre + ", produkt " + produkt + ": ordrenummeret er ulikt hodelinjens");
+                    ok = false;
+                    continue;
+                }
+                String a = felt(belop, BELOP_FRA, BELOP_TIL);
+                String b = felt(belop, BELOP2_FRA, BELOP2_TIL);
+                if (!a.equals(b)) {
+                    feil.add("Ordre " + ordre + ", produkt " + produkt + ": beløpsfeltene er ulike (" + a + " og " + b + ")");
+                    ok = false;
+                    continue;
+                }
+                try {
+                    sumOre = Math.addExact(sumOre, Long.parseLong(a));
+                } catch (NumberFormatException | ArithmeticException e) {
+                    feil.add("Ordre " + ordre + ", produkt " + produkt + ": beløpet «" + a + "» er ikke et gyldig tall i øre");
+                    ok = false;
+                }
             }
-            String a = felt(belop, BELOP_FRA, BELOP_TIL);
-            String b = felt(belop, BELOP2_FRA, BELOP2_TIL);
-            if (!a.equals(b)) {
-                feil.add("Ordre " + ordre + ": beløpsfeltene er ulike (" + a + " og " + b + ")");
-                continue;
+            if (produkt == 0) {
+                feil.add("Ordre " + ordre + " (linje " + (forste + 1) + ") har ingen produktlinjer");
+                ok = false;
             }
-            try {
-                sumOre = Math.addExact(sumOre, Long.parseLong(a));
-            } catch (NumberFormatException | ArithmeticException e) {
-                feil.add("Ordre " + ordre + ": beløpet «" + a + "» er ikke et gyldig tall i øre");
-                continue;
+            if (ok) {
+                ordrer++;
             }
-            ordrer++;
         }
         return new Lg04Innhold(ordrer, sumOre, linjer.size(), feil);
     }

@@ -2,6 +2,8 @@ package no.digdir.forsystem.export;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 import no.digdir.forsystem.billing.Lg04Avstemming;
 
@@ -43,6 +45,15 @@ public record Lg04AvstemmingVisning(
     public boolean stemmer() {
         return kilde != Kilde.FEIL
                 && antallOrdrerFil.equals(antallOrdrerKjoring) && sumOreFil.equals(sumOreKjoring);
+    }
+
+    /**
+     * The file's buntnummer for the covering e-mail: the export date, which is what the export writes at
+     * offset 881 (FEL). Null when the export time is not known (not stored at export).
+     */
+    public String buntnummer() {
+        return avstemtAt == null ? null
+                : avstemtAt.atZoneSameInstant(ZoneId.of("Europe/Oslo")).format(DateTimeFormatter.ofPattern("yyyyMMdd"));
     }
 
     public BigDecimal belopFil() {

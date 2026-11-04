@@ -44,6 +44,13 @@ class EksportIT extends BillingFixture {
     }
 
     @Test
+    void anInvoiceWithOneReferenceHasNoSplitWarning() {
+        var kj = approvedMultiLineRun();
+        var faktura = tjeneste.fakturaer(kj.id()).get(0);
+        assertThat(tjeneste.funnForFaktura(faktura.id())).noneMatch(f -> "DELT_REFERANSE".equals(f.kode()));
+    }
+
+    @Test
     void exportProducesAllFourArtifactsAndSetsEksportert() {
         var kj = approvedMultiLineRun();
         eksport.eksporter(kj.id());
@@ -56,7 +63,7 @@ class EksportIT extends BillingFixture {
     }
 
     @Test
-    void lg04LineCountIsThreeTimesOrdersAndAmountsMatchTotals() {
+    void lg04HasAHeaderAndAPairPerProductAndAmountsMatchTotals() {
         var kj = approvedMultiLineRun();
         eksport.eksporter(kj.id());
         Eksportfil lg04 = tjeneste.eksportfiler(kj.id()).stream()
@@ -65,18 +72,59 @@ class EksportIT extends BillingFixture {
         String tekst = new String(arkiv.hent(lg04.blobUrl()), WIN_1252);
         List<String> linjer = Arrays.stream(tekst.split("\n", -1)).filter(l -> !l.isEmpty()).toList();
 
-        // Default one-order-per-line: 2 invoice lines → 2 orders → 6 LG04 lines.
-        assertThat(linjer).hasSize(6);
+        // One invoice with 2 lines → 1 order: a header line and one line pair per product.
+        assertThat(linjer).hasSize(5);
         assertThat(linjer).allSatisfy(l -> assertThat(l).hasSize(4324));
+        assertThat(linjer).extracting(l -> l.charAt(2493)).containsExactly('0', '1', '1', '2', '2');
 
         // Control: sum of amount-line øre equals the run's invoice total × 100.
         long oreSum = 0;
-        for (int i = 1; i < linjer.size(); i += 3) { // line 2 of each order
+        for (int i = 1; i < linjer.size(); i += 2) { // first line of each product's pair
             oreSum += Long.parseLong(linjer.get(i).substring(212, 232).trim());
         }
         long forventet = tjeneste.fakturaer(kj.id()).stream()
                 .map(Faktura::sumBelop).mapToLong(b -> b.movePointRight(2).longValueExact()).sum();
         assertThat(oreSum).isEqualTo(forventet).isEqualTo(2300L); // 3.00 + 20.00 = 23.00 → 2300 øre
+    }
+
+    @Test
+    void anInvoiceWithTwoReferencesBecomesTwoOrders() {
+        settKontoAlle();
+        Long v = aktivVersjon(LocalDate.of(2027, 1, 1), null).id();
+        pris(v, "melding", "1.0000");
+        pris(v, "formidling", "2.0000");
+        Long k = kunde("100000001", "Kunde", "AKTIV", null).id();
+        regel(k, "KN1", null, null, null);
+        referanse(k, "melding", "REF-MELDING", null);
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);
+        bruk(imp, JAN, "100000001", "formidling", Bruksdatatype.BRUKSVOLUM, "10", null);
+        var kj = tjeneste.generer(JAN);
+        var faktura = tjeneste.fakturaer(kj.id()).get(0);
+        assertThat(tjeneste.fakturaer(kj.id())).hasSize(1);
+        // A visible warning before approval, not a block (FR-009).
+        assertThat(tjeneste.funnForFaktura(faktura.id()))
+                .filteredOn(f -> "DELT_REFERANSE".equals(f.kode()))
+                .singleElement()
+                .satisfies(f -> {
+                    assertThat(f.alvorlighet()).isEqualTo("ADVARSEL");
+                    assertThat(f.melding()).contains("REF-MELDING").contains("ingen referanse")
+                            .contains("2 fakturaer i Unit4");
+                });
+        tjeneste.godkjenn(kj.id());
+
+        eksport.eksporter(kj.id());
+        Eksportfil lg04 = tjeneste.eksportfiler(kj.id()).stream()
+                .filter(f -> "LG04".equals(f.type())).findFirst().orElseThrow();
+        List<String> linjer = Arrays.stream(new String(arkiv.hent(lg04.blobUrl()), WIN_1252).split("\n", -1))
+                .filter(l -> !l.isEmpty()).toList();
+
+        // formidling (no reference) sorts first, then melding with its own reference on its own header.
+        assertThat(linjer).extracting(l -> l.charAt(2493)).containsExactly('0', '1', '1', '0', '1', '1');
+        assertThat(linjer.get(0).substring(25, 50).trim()).isEmpty();
+        assertThat(linjer.get(3).substring(25, 50).trim()).isEqualTo("REF-MELDING");
+        assertThat(linjer.get(0).substring(3130, 3145).trim()).isEqualTo("1");
+        assertThat(linjer.get(3).substring(3130, 3145).trim()).isEqualTo("2");
     }
 
     @Test

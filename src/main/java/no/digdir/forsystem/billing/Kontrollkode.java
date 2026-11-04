@@ -13,5 +13,7 @@ public enum Kontrollkode {
     NULLBELOP,
     NY_KUNDE,
     /** A customer with an active agreement has no usage in the period — an expected TE may be missing (BF1 T10). */
-    AKTIV_KUNDE_UTEN_BRUK
+    AKTIV_KUNDE_UTEN_BRUK,
+    /** The invoice's lines carry different fakturareferanse/bestillingsnummer, so LG04 splits it into several orders. */
+    DELT_REFERANSE
 }

@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 import no.digdir.forsystem.common.HendelsesloggRepository;
@@ -45,7 +46,7 @@ class EksportAvstemmingIT extends BillingFixture {
     @Autowired MockMvc mvc;
     @MockitoSpyBean Lg04Eksport lg04;
 
-    /** One customer, two products → one invoice with two lines → two LG04 orders. 3.00 + 20.00. */
+    /** One customer, two products → one invoice with two lines → one LG04 order with two products. 3.00 + 20.00. */
     private Fakturakjoring godkjentKjoring() {
         settKontoAlle();
         Long v = aktivVersjon(LocalDate.of(2027, 1, 1), null).id();
@@ -61,13 +62,34 @@ class EksportAvstemmingIT extends BillingFixture {
         return kj;
     }
 
-    /** Simulate a writer defect: the file silently loses its last order. */
+    /** Simulate a writer defect: the file silently loses the last product of its last order. */
     @SuppressWarnings("unchecked")
-    private void filenMisterSisteOrdre() {
+    private void filenMisterSisteProdukt() {
         doAnswer(inv -> {
-            List<Lg04Ordre> ordrer = inv.getArgument(0);
-            return new Lg04Eksport().bygg(ordrer.subList(0, ordrer.size() - 1));
+            List<Lg04Ordre> ordrer = new ArrayList<>((List<Lg04Ordre>) inv.getArgument(0));
+            Lg04Ordre siste = ordrer.removeLast();
+            ordrer.add(new Lg04Ordre(siste.kundenummer(), siste.fakturareferanse(), siste.bestillingsnummer(),
+                    siste.tekst(), siste.ordreNr(), siste.url(), siste.ansvarlig1(), siste.ansvarlig2(),
+                    siste.batchId(), siste.linjer().subList(0, siste.linjer().size() - 1)));
+            return new Lg04Eksport().bygg(ordrer);
         }).when(lg04).bygg(anyList());
+    }
+
+    /** FEL: mva per invoice (sum × 1.25, rounded to øre), then summed — not the total × 1.25. */
+    @Test
+    void inklMvaIsRoundedPerInvoice() {
+        settKontoAlle();
+        Long v = aktivVersjon(LocalDate.of(2027, 1, 1), null).id();
+        pris(v, "melding", "10.0100");
+        regel(kunde("100000001", "Kunde A", "AKTIV", null).id(), "KN1", null, null, null);
+        regel(kunde("100000002", "Kunde B", "AKTIV", null).id(), "KN2", null, null, null);
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
+        bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
+        var s = tjeneste.sammendrag(tjeneste.generer(JAN).id());
+
+        assertThat(s.sumBelop()).isEqualByComparingTo("20.02");
+        assertThat(s.sumInklMva()).isEqualByComparingTo("25.02");   // 12.51 + 12.51; 20.02 × 1.25 would be 25.03
     }
 
     @Test
@@ -78,8 +100,8 @@ class EksportAvstemmingIT extends BillingFixture {
         assertThat(s.antallLinjer()).isEqualTo(2);
         assertThat(s.sumBelop()).isEqualByComparingTo("23.00");
         assertThat(s.konsistent()).isTrue();
-        // One order per invoice line while OQ-1 is open.
-        assertThat(eksport.forventetAntallOrdrer(kj.id())).isEqualTo(2);
+        // One order per invoice, carrying both products (OQ-1).
+        assertThat(eksport.forventetAntallOrdrer(kj.id())).isEqualTo(1);
     }
 
     @Test
@@ -88,7 +110,7 @@ class EksportAvstemmingIT extends BillingFixture {
         eksport.eksporter(kj.id());
 
         var a = avstemminger.findByKjoringId(kj.id()).orElseThrow();
-        assertThat(a.antallOrdrerFil()).isEqualTo(2).isEqualTo(a.antallOrdrerKjoring());
+        assertThat(a.antallOrdrerFil()).isEqualTo(1).isEqualTo(a.antallOrdrerKjoring());
         assertThat(a.sumOreFil()).isEqualTo(2300L).isEqualTo(a.sumOreKjoring());
         assertThat(a.antallFakturaer()).isEqualTo(1);
         Eksportfil lg04Fil = eksportfiler.findById(a.eksportfilId()).orElseThrow();
@@ -117,12 +139,12 @@ class EksportAvstemmingIT extends BillingFixture {
     @Test
     void mismatchStopsTheExportBeforeAnythingIsWritten() {
         var kj = godkjentKjoring();
-        filenMisterSisteOrdre();
+        filenMisterSisteProdukt();
 
         assertThatThrownBy(() -> eksport.eksporter(kj.id()))
                 .isInstanceOf(Lg04Avvik.class)
                 .hasMessageContaining("LG04-filen har 1 ordrer / 20,00")   // formidling sorts first
-                .hasMessageContaining("fakturagrunnlaget har 2 ordrer / 23,00")
+                .hasMessageContaining("fakturagrunnlaget har 1 ordrer / 23,00")
                 .hasMessageContaining("kjøringen er fortsatt godkjent")
                 .hasMessageContaining("kontakt forsystem-teamet");
         assertThat(tjeneste.hent(kj.id()).status()).isEqualTo("GODKJENT");
@@ -134,7 +156,7 @@ class EksportAvstemmingIT extends BillingFixture {
     @WithMockUser(username = "godkjenner", roles = {"LESER", "GODKJENNER"})
     void stoppedExportReturnsToTheRunPageWithTheExplanationAndIsLogged() throws Exception {
         var kj = godkjentKjoring();
-        filenMisterSisteOrdre();
+        filenMisterSisteProdukt();
 
         mvc.perform(post("/kjoringer/{id}/eksporter", kj.id()).with(csrf()))
                 .andExpect(status().is3xxRedirection())
@@ -157,8 +179,13 @@ class EksportAvstemmingIT extends BillingFixture {
 
         mvc.perform(get("/kjoringer/{id}", kj.id()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("eksl./inkl. mva uavklart")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("uavklart"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Til e-post til regnskap")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Samlet beløp eksl. mva: 23,00 kr")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Samlet beløp inkl. mva: 28,75 kr")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Område: Altinn")))
+                .andExpect(content().string(org.hamcrest.Matchers.matchesPattern("(?s).*Buntnummer: \\d{8}\\n.*")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Antall fakturaer: 1")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("LG04 stemmer med fakturagrunnlaget")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("23,00")));
         mvc.perform(get("/kjoringer/{id}/lg04-kontroll", kj.id()))

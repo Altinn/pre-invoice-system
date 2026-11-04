@@ -192,6 +192,7 @@ navn, gyldig fra, evt. gyldig til).
      produktet (fakturareferanse kan være ulik per produkt).
    - Legg til med produkt (valgfritt), fakturareferanse og bestillingsnummer → **Legg til**. Fjern
      med **Slett**.
+   - Begge feltene kan være **høyst 25 tegn** – det er plassen de har på fakturaen i Unit4.
 3. **Kundenummerregler** — kobler kunden til Unit4-kundenummer.
    - **Én faktura per kundenummer.** Har en kunde to kundenummer (f.eks. ulik **servicekode** per
      produkt, som Utdanningsdirektoratet), blir det to fakturaer.
@@ -291,11 +292,12 @@ stateDiagram-v2
 **Detalj-siden:**
 
 - **Status** øverst (fargelagt merke).
-- **Sammendrag** — antall fakturaer, antall LG04-ordrer (i dag én ordre per fakturalinje, OQ-1),
-  antall linjer og sum beløp. Summen er merket **«eksl./inkl. mva uavklart»** fordi det ennå ikke er
-  avklart om beløpene er med eller uten mva (OQ-11).
-- **Til e-post til regnskap** (når kjøringen er GODKJENT eller EKSPORTERT) — periode, antall fakturaer
-  og samlet beløp, klare til å kopieres inn i følge-e-posten med **Kopier**.
+- **Sammendrag** — antall fakturaer, antall LG04-ordrer (én ordre per faktura, OQ-1),
+  antall linjer, sum beløp eksl. mva og sum inkl. mva. Mva er 25 % og regnes per faktura (summen × 1,25,
+  avrundet til øre), slik regnskap får det i Unit4-rapporten. Det kan likevel avvike med noen øre.
+- **Til e-post til regnskap** (når kjøringen er GODKJENT eller EKSPORTERT) — område (Altinn),
+  buntnummer (datoen LG04-fila ble laget), periode, antall fakturaer og samlet beløp eksl. og inkl. mva,
+  klare til å kopieres inn i følge-e-posten med **Kopier**.
 - **LG04-avstemming** (når kjøringen er EKSPORTERT) — viser at LG04-fila har nøyaktig like mange
   ordrer og samme beløp som kjøringen («LG04 stemmer med fakturagrunnlaget»). **Kontroller arkivert
   LG04 på nytt** leser den lagrede fila på nytt og sjekker at den ikke er endret.
@@ -416,6 +418,7 @@ er kun til informasjon.
 | `NULLBELOP` | Advarsel | Fakturaen har en linje med beløp 0. | Vurder om linjen skal være med. |
 | `NY_KUNDE` | Advarsel | Kunden ble ikke fakturert forrige periode. | Bekreft at ny kunde er forventet. |
 | `AKTIV_KUNDE_UTEN_BRUK` | Advarsel | Kunden har aktiv avtale, men ingen bruk i perioden. En forventet tjenesteeier kan mangle i grunnlaget. | Sjekk om fraværet er riktig (ingen fakturerbar bruk), eller om bruken mangler i datavarehuset. |
+| `DELT_REFERANSE` | Advarsel | Linjene på fakturaen har ulik fakturareferanse/bestillingsnummer. LG04 kan bare ha én referanse per ordre, så kunden får én faktura i Unit4 per referanse. | Sjekk at det er ønsket. Skal kunden ha én faktura, fjern den produktspesifikke referansen i kunderegisteret og generer på nytt. |
 
 **Etter å ha rettet:** forkast kjøringen, rett dataene, og generer på nytt. Funnene beregnes på nytt.
 

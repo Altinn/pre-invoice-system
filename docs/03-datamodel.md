@@ -287,6 +287,8 @@ alter table faktura add column kundenavn text;
    usage" is the latest VALIDERT import's rows, and each run records `bruksdata_import_id`.
    (Until V8 the old rows were deleted, which failed on `fakturalinje_bruksdata_id_fkey` once any
    run existed for the period — specs/002 research R1.)
-5. **`ordre_nr` lives on `faktura`, not on lines**: if it turns out LG04 cannot carry
-   multiple amount lines per invoice (OQ-1), one faktura is split into several LG04 orders
-   at export time — the domain model does not change.
+5. **`ordre_nr` lives on `faktura`, not on lines**: LG04 carries several products per order
+   (OQ-1), so a faktura is normally one LG04 order. It is split into several orders only when
+   its lines carry different fakturareferanse/bestillingsnummer, since the reference sits on the
+   order's header line — the domain model does not change. The LG04 order number is assigned at
+   export and equals `ordre_nr` unless an earlier invoice was split.

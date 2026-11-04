@@ -5,15 +5,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import no.digdir.forsystem.export.Lg04Eksport;
+import no.digdir.forsystem.export.lg04.Lg04Ordre.Lg04Ordrelinje;
 import org.junit.jupiter.api.Test;
 
 /**
- * The independent LG04 reader (specs/002 D4): pinned by the golden files, round-trips the writer, and
+ * The independent LG04 reader (specs/002 D4): pinned by the golden file, round-trips the writer, and
  * reports every structural defect instead of returning a plausible total.
  */
 class Lg04LeserTest {
@@ -22,15 +24,13 @@ class Lg04LeserTest {
     private final Lg04Leser leser = new Lg04Leser();
 
     @Test
-    void readsTheGoldenOrder() throws IOException {
-        String fil = gyllen("linje1.txt") + "\n" + gyllen("linje2.txt") + "\n" + gyllen("linje3.txt") + "\n";
-
-        var innhold = leser.les(fil.getBytes(WIN_1252));
+    void readsTheGoldenFile() throws IOException {
+        var innhold = leser.les(gyllen("altinn-test3.txt"));
 
         assertThat(innhold.gyldig()).isTrue();
         assertThat(innhold.antallOrdrer()).isEqualTo(1);
-        assertThat(innhold.sumOre()).isEqualTo(2810L);   // the reference order's amount (Lg04SkriverTest)
-        assertThat(innhold.antallLinjer()).isEqualTo(3);
+        assertThat(innhold.sumOre()).isEqualTo(50365L + 465394L);   // the two products in Lg04SkriverTest
+        assertThat(innhold.antallLinjer()).isEqualTo(5);
     }
 
     @Test
@@ -61,10 +61,35 @@ class Lg04LeserTest {
     }
 
     @Test
-    void lineCountNotMultipleOfThreeIsAnError() {
+    void readsSeveralProductsPerOrder() {
+        var innhold = leser.les(new Lg04Eksport().bygg(List.of(ordre(1, "100", "200", "300"), ordre(2, "5"))));
+
+        assertThat(innhold.gyldig()).isTrue();
+        assertThat(innhold.antallOrdrer()).isEqualTo(2);
+        assertThat(innhold.sumOre()).isEqualTo(605L);
+        assertThat(innhold.antallLinjer()).isEqualTo(1 + 6 + 1 + 2);
+    }
+
+    @Test
+    void incompletePairIsAnError() {
         List<String> linjer = linjer(ordre(1, "100"));
         linjer.remove(2);
-        assertThat(leser.les(fil(linjer)).feil()).anySatisfy(f -> assertThat(f).contains("multiplum av 3"));
+        assertThat(leser.les(fil(linjer)).feil()).anySatisfy(f -> assertThat(f).contains("mangler den andre linjen"));
+    }
+
+    @Test
+    void headerWithoutProductsIsAnError() {
+        List<String> linjer = linjer(ordre(1, "100"));
+        linjer.add(linjer(ordre(2, "100")).get(0));
+        assertThat(leser.les(fil(linjer)).feil()).anySatisfy(f -> assertThat(f).contains("ingen produktlinjer"));
+    }
+
+    @Test
+    void productNumbersOutOfSequenceIsAnError() {
+        List<String> linjer = linjer(ordre(1, "100", "200"));
+        linjer.set(3, sett(linjer.get(3), 2493, "3"));
+        linjer.set(4, sett(linjer.get(4), 2493, "3"));
+        assertThat(leser.les(fil(linjer)).feil()).anySatisfy(f -> assertThat(f).contains("feil linjenummer"));
     }
 
     @Test
@@ -88,7 +113,7 @@ class Lg04LeserTest {
     @Test
     void disagreeingAmountFieldsIsAnError() {
         List<String> linjer = linjer(ordre(1, "100"));
-        linjer.set(1, sett(linjer.get(1), 965, "999                 "));
+        linjer.set(1, sett(linjer.get(1), 965, "                 999"));
         assertThat(leser.les(fil(linjer)).feil()).anySatisfy(f -> assertThat(f).contains("beløpsfeltene er ulike"));
     }
 
@@ -100,9 +125,11 @@ class Lg04LeserTest {
         assertThat(leser.les(fil(linjer)).feil()).anySatisfy(f -> assertThat(f).contains("ikke et gyldig tall"));
     }
 
-    private static Lg04Ordre ordre(int nr, String ore) {
-        return new Lg04Ordre("3030", "20002", "7130", "4206", "454005", "KN1", "ref", "best",
-                "Bruk av melding januar 2027", ore, nr, "https://example.invalid/x.pdf", "a", "b", "20270206", nr);
+    private static Lg04Ordre ordre(int nr, String... ore) {
+        return new Lg04Ordre("KN1", "ref", "best", "Bruk av Altinn januar 2027", nr,
+                "https://example.invalid/x.pdf", "a", "b", "20270206",
+                Arrays.stream(ore).map(o -> new Lg04Ordrelinje("3030", "20002", "7130", "4206", "454005",
+                        "Melding", o, BigDecimal.TEN)).toList());
     }
 
     private static List<String> linjer(Lg04Ordre o) {
@@ -119,9 +146,9 @@ class Lg04LeserTest {
         return linje.substring(0, fra) + verdi + linje.substring(fra + verdi.length());
     }
 
-    private String gyllen(String navn) throws IOException {
+    private byte[] gyllen(String navn) throws IOException {
         try (InputStream in = getClass().getResourceAsStream("/lg04/" + navn)) {
-            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+            return in.readAllBytes();
         }
     }
 }
