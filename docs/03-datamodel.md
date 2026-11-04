@@ -271,6 +271,21 @@ create table kontrollfunn_bruksdata (
 alter table faktura add column kundenavn text;
 ```
 
+## V13 — invoice texts per run (specs/009-kjoring-fakturatekster)
+
+```sql
+-- The LG04 header (long_info1), footer (long_info2) and «Vår referanse» (responsible/responsible2),
+-- stored with the run so the export writes what was approved. Defaults are set at generation.
+alter table fakturakjoring
+    add column topptekst text check (char_length(topptekst) <= 120),
+    add column bunntekst text check (char_length(bunntekst) <= 120),
+    add column var_referanse text check (char_length(var_referanse) <= 25);
+-- GENERERT/GODKJENT runs are backfilled with the defaults; EKSPORTERT/FORKASTET keep NULL.
+alter table fakturakjoring add constraint fakturakjoring_tekster_satt check (
+    status not in ('GENERERT', 'GODKJENT')
+    or (topptekst is not null and bunntekst is not null and var_referanse is not null));
+```
+
 ## Design decisions (preserve these)
 
 1. **Traceability is structural**: `fakturalinje → bruksdata` (which usage),

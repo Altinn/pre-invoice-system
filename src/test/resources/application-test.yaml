@@ -10,7 +10,3 @@ logging:
 forsystem:
   arkiv:
     katalog: target/arkiv-test
-  eksport:
-    ansvarlig1: Testansvarlig
-    ansvarlig2: Testansvarlig
-    faktura-url-base: https://faktura.digdir.no/detaljer

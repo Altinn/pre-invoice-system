@@ -27,4 +27,12 @@ public interface FakturakjoringRepository extends ListCrudRepository<Fakturakjor
     int nesteVersjon(LocalDate periode);
 
     List<Fakturakjoring> findAllByOrderByGenerertAtDesc();
+
+    /**
+     * The run, row-locked until the transaction ends. Approval and text edits both save the whole
+     * record, so they read through this to serialise: whichever comes second sees the first's result
+     * (specs/009 R4).
+     */
+    @Query("select * from fakturakjoring where id = :id for update")
+    Optional<Fakturakjoring> finnForOppdatering(Long id);
 }

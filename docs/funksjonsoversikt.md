@@ -150,7 +150,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-EXP-04 | LG04 assembly (one order per invoice) | One header line per invoice, then one line pair per product numbered 1, 2, 3…; split by fakturareferanse/bestillingsnummer if they differ within an invoice (warned as DELT_REFERANSE). VALUE_1 blank without quantity. | `EksportService.byggOrdrer` | — | OQ-1 |
 | F-EXP-05 | Øre conversion in export only | ×100, round half-up, only here. | `EksportService` | — | docs/02 |
 | F-EXP-06 | Kontering from product | account/dims/article from produkt (not hardcoded). | `EksportService` | — | docs/04 P4 |
-| F-EXP-07 | Responsible from config | LG04 responsible persons from `EksportKonfig` (placeholders until OQ-2). | `EksportKonfig` | — | OQ-2 |
+| F-EXP-07 | Invoice texts per run | Header (`long_info1`), footer (`long_info2`) and «Vår referanse» (`responsible`/`responsible2`) stored on the run with Økonomi's defaults; editable while GENERERT, locked from approval on, each change logged (`ENDRET`). Limits 120/120/25 enforced; printed-invoice limit 90/65 is a warning only. | `Fakturatekster`, `FakturakjoringService.endreTekster`, POST `/kjoringer/{id}/tekster` | FORVALTER (edit), LESER (view) | specs/009, OQ-23 |
 | F-EXP-08 | PDF detail per invoice | XHTML→PDF, zipped, named `<kundenummer>-<faktura_uuid>.pdf`. | `PdfEksport` | GODKJENNER | docs/04 P4 |
 | F-EXP-09 | CSV export of lines | Run's lines as CSV, same columns as F-EXP-15. | `RegnearkEksport.csv`, `FakturagrunnlagRegneark` | GODKJENNER | docs/04 P4 |
 | F-EXP-10 | XLSX export of lines | Run's lines as XLSX; numbers are numeric cells. | `RegnearkEksport.xlsx`, `FakturagrunnlagRegneark` | GODKJENNER | docs/04 P4 |
@@ -218,7 +218,7 @@ Facts not yet decided; the design stays safe while they are open (never invent a
 | OQ | Question | Affects features |
 |---|---|---|
 | OQ-1 | Does LG04 support multiple amount lines per order? (Answered: yes, FEL format adopted) | F-EXP-04 |
-| OQ-2 | Kontering (konto, dims, artikkel_id) per product | F-REG-PROD-05, F-CTRL-05, F-EXP-06/07 |
+| OQ-2 | Kontering (konto, dims, artikkel_id) per product | F-REG-PROD-05, F-CTRL-05, F-EXP-06 |
 | OQ-3 | SMS cost source & format | F-USG-03, F-USG-15 |
 | OQ-4 | Datavarehus contract | F-USG-02, N-04 |
 | OQ-5 | CRM readiness / temporary governance | F-REG-KUN-11, N-03 |

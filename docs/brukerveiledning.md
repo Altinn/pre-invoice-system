@@ -292,6 +292,23 @@ stateDiagram-v2
 **Detalj-siden:**
 
 - **Status** øverst (fargelagt merke).
+- **Tekster på fakturaen** — tre tekster som står på hver faktura i Unit4, ferdig utfylt når kjøringen
+  genereres:
+
+  | Felt | Standardtekst | Maks i LG04-fila | Trykt faktura (regnskaps mal) |
+  |---|---|---|---|
+  | **Topptekst** (over linjene) | «Bruk av Altinn januar 2027» (kjøringens måned) | 120 tegn | 90 tegn |
+  | **Bunntekst** (under linjene) | «Se samarbeid.digdir.no for priser og innsyn i egen statistikk» | 120 tegn | 65 tegn |
+  | **Vår referanse** (kontaktpunkt) | `Servicedesk@altinn.no` | 25 tegn | — |
+
+  Mens kjøringen er **GENERERT** kan FORVALTER endre tekstene og trykke **Lagre tekstene**. Tekst over
+  LG04-grensen, med linjeskift eller med tegn LG04-fila ikke kan lagre (f.eks. emoji), avvises med en
+  melding, og det du skrev står igjen i skjemaet. Går teksten over regnskaps grense for trykt faktura,
+  lagres den, men siden advarer: FEL har ikke bekreftet hvilken grense som gjelder (OQ-23). Lenker i
+  bunnteksten er ikke klikkbare i fakturaen. Hver endring havner i **Historikk** med gammel og ny
+  tekst. Fra **Godkjenn** av er tekstene låst — vil du endre dem etter godkjenning, må kjøringen
+  forkastes og genereres på nytt (da starter tekstene fra standard igjen). Kjøringer eksportert før
+  funksjonen kom, viser «Tekstene ble ikke lagret for denne kjøringen».
 - **Sammendrag** — antall fakturaer, antall LG04-ordrer (én ordre per faktura, OQ-1),
   antall linjer, sum beløp eksl. mva og sum inkl. mva. Mva er 25 % og regnes per faktura (summen × 1,25,
   avrundet til øre), slik regnskap får det i Unit4-rapporten. Det kan likevel avvike med noen øre.
@@ -378,6 +395,8 @@ Den komplette rutinen for å fakturere forrige måned (roller i parentes):
 3. **Generer** (FORVALTER): *Kjøringer* → velg periode → **Generer**. Åpne kjøringen og gå gjennom
    sammendrag, fakturaer og funn. Kontroller med **Avstemming bruksdata** og **Last ned
    fakturagrunnlag (XLSX)**.
+   Sjekk **Tekster på fakturaen** (topptekst, bunntekst, Vår referanse) og endre dem om Økonomi vil
+   ha noe annet denne måneden — de låses ved godkjenning.
 4. **Løs blokkerende funn** hvis noen: rett dataene, **Forkast** kjøringen, og **Generer** på nytt.
 5. **Godkjenn** (GODKJENNER): **Godkjenn** når det ikke er blokkerende funn.
 6. **Eksporter** (GODKJENNER): **Eksporter**. Sjekk at **LG04-avstemming** sier at fila stemmer, og
