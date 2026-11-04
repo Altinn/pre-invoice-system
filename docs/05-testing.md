@@ -2,9 +2,12 @@
 
 ## Principles
 
-- **The LG04 golden files are the spec.** The old repo locks the format character-by-
-  character (`Linje1Test/Linje2Test/Linje3Test` in `../agresso`); port them and keep the
-  discipline: any format change must be a conscious golden-file update in its own commit.
+- **The LG04 golden file is the spec.** `src/test/resources/lg04/altinn-test3.txt` is FEL's
+  Altinn sample (one header line per order, one line pair per product; OQ-1, OQ-23), with the
+  person name anonymized to a same-length placeholder. `Lg04SkriverTest` renders the same order
+  and compares the whole file byte for byte. The discipline from `../agresso`
+  (`Linje1Test/Linje2Test/Linje3Test`) stays: any format change must be a conscious golden-file
+  update in its own commit.
 - **Business logic tests never touch the clock.** Period is a parameter everywhere; tests
   pass explicit periods. If you need "previous month", the test constructs it.
 - **Integration over mocks for persistence.** Testcontainers PostgreSQL for everything

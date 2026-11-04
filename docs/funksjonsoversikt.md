@@ -144,9 +144,9 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | ID | Feature | Description | Where | Role | Ref |
 |---|---|---|---|---|---|
 | F-EXP-01 | Export from GODKJENT only | Export allowed only from GODKJENT; sets EKSPORTERT. | POST `/kjoringer/{id}/eksporter` · `EksportService` | GODKJENNER | docs/04 P4 |
-| F-EXP-02 | LG04 fixed-width writer | 4324-char lines, fields at fixed byte offsets; byte-identical to the reference. | `export.lg04.Lg04Skriver` | — | docs/05 golden |
+| F-EXP-02 | LG04 fixed-width writer | 4324-char lines, fields at fixed byte offsets; byte-identical to FEL's Altinn sample. | `export.lg04.Lg04Skriver` | — | docs/05 golden |
 | F-EXP-03 | LG04 Windows-1252, no iconv | Written directly as Windows-1252. | `Lg04Eksport` | — | docs/02 |
-| F-EXP-04 | LG04 assembly (one order per line) | Default: one LG04 order per invoice line (OQ-1-safe); 3 lines per order. | `EksportService.byggOrdrer` | — | OQ-1 |
+| F-EXP-04 | LG04 assembly (one order per invoice) | One header line per invoice, then one line pair per product numbered 1, 2, 3…; split by fakturareferanse/bestillingsnummer if they differ within an invoice. | `EksportService.byggOrdrer` | — | OQ-1 |
 | F-EXP-05 | Øre conversion in export only | ×100, round half-up, only here. | `EksportService` | — | docs/02 |
 | F-EXP-06 | Kontering from product | account/dims/article from produkt (not hardcoded). | `EksportService` | — | docs/04 P4 |
 | F-EXP-07 | Responsible from config | LG04 responsible persons from `EksportKonfig` (placeholders until OQ-2). | `EksportKonfig` | — | OQ-2 |
@@ -180,7 +180,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 |---|---|---|---|---|---|
 | F-NFR-01 | Flyway schema migrations | V1–V11 versioned in git; applied on start. | `db/migration` | — | docs/03 |
 | F-NFR-02 | Testcontainers tests | 152 tests (103 integration on real PostgreSQL 16, no H2; 49 unit). | `src/test` | — | docs/05 |
-| F-NFR-03 | LG04 golden-file tests | Byte-identical single line, 4324 invariant, Windows-1252, field offsets. | `Lg04SkriverTest` | — | docs/05 |
+| F-NFR-03 | LG04 golden-file tests | Byte-identical whole file against FEL's sample, 4324 invariant, Windows-1252, field offsets. | `Lg04SkriverTest` | — | docs/05 |
 | F-NFR-04 | End-to-end scenario test | import→generate→approve→export verified. | `E2eScenarioIT` | — | docs/04 P5 |
 | F-NFR-05 | Load sanity | 5000 customers × 6 products generate in < 1 min (~16 s measured). | `LoadIT` (`-Dload=true`) | — | docs/04 P5 |
 | F-NFR-06 | CI: build/test/image | GitHub Actions: mvn verify + image publish (configurable registry). | `.github/workflows/ci.yml` | — | docs/04 P0 |
@@ -206,7 +206,6 @@ MVP» and docs/06.
 | N-05 | Automated delivery to DFØ + receipt ingestion | Manual download/send in MVP. | OQ-8, docs/06 §3 |
 | N-06 | Scheduling (cron generation) | Manual «Generer» in MVP; generation is a service method with an explicit period. | docs/06 §4 |
 | N-07 | Avregning (corrections/crediting/retroactive prices) | Mechanism undefined. | OQ-6, docs/06 §5 |
-| N-08 | LG04 multiple amount lines per order | Behind a flag; default is one order per line until confirmed. | OQ-1 |
 | N-09 | Hosted PDF detail views for tjenesteeiere | PDFs are downloaded/distributed manually in MVP. | OQ-9, docs/06 §8 |
 | N-10 | Onboarding old services (dp, e-signering, Altinn current, BOD) | Out of scope; period type isolated for future extension. | docs/06 §6 |
 | N-11 | UX pass with real approvers | Needs the actual people. | docs/04 P5 |
@@ -217,7 +216,7 @@ Facts not yet decided; the design stays safe while they are open (never invent a
 
 | OQ | Question | Affects features |
 |---|---|---|
-| OQ-1 | Does LG04 support multiple amount lines per order? | F-EXP-04, N-08 |
+| OQ-1 | Does LG04 support multiple amount lines per order? (Answered: yes, FEL format adopted) | F-EXP-04 |
 | OQ-2 | Kontering (konto, dims, artikkel_id) per product | F-REG-PROD-05, F-CTRL-05, F-EXP-06/07 |
 | OQ-3 | SMS cost source & format | F-USG-03, F-USG-15 |
 | OQ-4 | Datavarehus contract | F-USG-02, N-04 |

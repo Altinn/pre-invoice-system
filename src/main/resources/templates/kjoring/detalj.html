@@ -116,9 +116,13 @@
             </ul>
             <!-- Figures for the covering e-mail to regnskap (OQ-8). Shown once exported: the e-mail goes with the files. -->
             <h3 class="ds-heading" data-size="2xs">Til e-post til regnskap</h3>
+            <!-- Buntnummer and invoice count as regnskap sees them in the file: an invoice split by reference is several orders. -->
             <pre id="epost" class="ds-paragraph epost bred" data-size="sm"
-                 th:text="|Periode: ${sammendrag.periode()} (${sammendrag.periode().norskLabel()})
-Antall fakturaer: ${sammendrag.antallFakturaer()}
+                 th:with="a=${lg04Avstemming}, fraFil=${a != null and a.kilde().name() != 'FEIL'}"
+                 th:text="|Område: Altinn
+Buntnummer: ${a != null and a.buntnummer() != null ? a.buntnummer() : 'ukjent'}
+Periode: ${sammendrag.periode()} (${sammendrag.periode().norskLabel()})
+Antall fakturaer: ${fraFil ? a.antallOrdrerFil() : sammendrag.antallFakturaer()}
 Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')} kr (eksl./inkl. mva uavklart)|">…</pre>
             <div class="rad ikke-utskrift">
                 <button class="ds-button" data-color="accent" type="button"

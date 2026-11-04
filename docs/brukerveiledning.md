@@ -291,11 +291,11 @@ stateDiagram-v2
 **Detalj-siden:**
 
 - **Status** øverst (fargelagt merke).
-- **Sammendrag** — antall fakturaer, antall LG04-ordrer (i dag én ordre per fakturalinje, OQ-1),
+- **Sammendrag** — antall fakturaer, antall LG04-ordrer (én ordre per faktura, OQ-1),
   antall linjer og sum beløp. Summen er merket **«eksl./inkl. mva uavklart»** fordi det ennå ikke er
   avklart om beløpene er med eller uten mva (OQ-11).
-- **Til e-post til regnskap** (når kjøringen er GODKJENT eller EKSPORTERT) — periode, antall fakturaer
-  og samlet beløp, klare til å kopieres inn i følge-e-posten med **Kopier**.
+- **Til e-post til regnskap** (når kjøringen er GODKJENT eller EKSPORTERT) — område (Altinn),
+  buntnummer (datoen LG04-fila ble laget), periode, antall fakturaer og samlet beløp, klare til å kopieres inn i følge-e-posten med **Kopier**.
 - **LG04-avstemming** (når kjøringen er EKSPORTERT) — viser at LG04-fila har nøyaktig like mange
   ordrer og samme beløp som kjøringen («LG04 stemmer med fakturagrunnlaget»). **Kontroller arkivert
   LG04 på nytt** leser den lagrede fila på nytt og sjekker at den ikke er endret.

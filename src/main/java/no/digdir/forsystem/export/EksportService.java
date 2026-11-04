@@ -5,8 +5,10 @@ import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,13 +43,15 @@ import org.springframework.transaction.annotation.Transactional;
  * file has been read back and reconciled against the run (specs/002 D3) — the reconciliation is stored
  * as {@code lg04_avstemming}.
  *
- * <p>Default LG04 behaviour is one order per invoice line (the OQ-1-safe interpretation); the
- * alternate "multiple amount lines per order" mode waits on OQ-1.
+ * <p>LG04 orders follow FEL's Altinn format (OQ-1): one order per invoice, with one line pair per
+ * product. An invoice whose lines carry different fakturareferanse/bestillingsnummer is split into one
+ * order per reference, since the reference sits on the order's header line.
  */
 @Service
 public class EksportService {
 
     private static final DateTimeFormatter BATCH = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final ZoneId OSLO = ZoneId.of("Europe/Oslo");
 
     private final FakturakjoringService kjoringer;
     private final ProduktRepository produkter;
@@ -107,8 +111,11 @@ public class EksportService {
         List<Faktura> fakturaer = kjoringer.fakturaer(kjoringId);
         String periode = kj.periode().toString();
 
+        // Buntnummer is the date the file is made (FEL); the billing period comes from the run.
+        OffsetDateTime naa = OffsetDateTime.now(OSLO);
+
         // 1–4: build, read back, compare — nothing is archived until the file is proven to match.
-        List<Lg04Ordre> ordrer = ordrerFor(kj, fakturaer, produktById);
+        List<Lg04Ordre> ordrer = ordrerFor(kj, fakturaer, produktById, naa.format(BATCH));
         byte[] lg04Bytes = lg04.bygg(ordrer);
         Lg04Leser.Lg04Innhold fil = leser.les(lg04Bytes);
         long sumOreKjoring = sumOre(fakturaer);
@@ -135,7 +142,7 @@ public class EksportService {
 
         avstemminger.save(new Lg04Avstemming(null, kjoringId, lg04Fil.id(), fil.antallOrdrer(), fil.sumOre(),
                 ordrer.size(), sumOreKjoring, fakturaer.size(), sha256, brukerContext.naavaerendeBruker(),
-                OffsetDateTime.now()));
+                naa));
         kjoringer.settEksportert(kjoringId);
         audit.logg(Handling.EKSPORTERTE, "FAKTURAKJORING", kjoringId,
                 Map.of("periode", periode, "antallFakturaer", fakturaer.size(), "antallOrdrer", ordrer.size(),
@@ -213,7 +220,7 @@ public class EksportService {
     @Transactional(readOnly = true)
     public int forventetAntallOrdrer(Long kjoringId) {
         Fakturakjoring kj = kjoringer.hent(kjoringId);
-        return ordrerFor(kj, kjoringer.fakturaer(kjoringId), produktById()).size();
+        return ordrerFor(kj, kjoringer.fakturaer(kjoringId), produktById(), "").size();
     }
 
     /**
@@ -264,12 +271,13 @@ public class EksportService {
             return Lg04AvstemmingVisning.feil("Den arkiverte LG04-filen er ikke gyldig: " + String.join("; ", fil.feil()));
         }
         return Lg04AvstemmingVisning.fraArkiv(fil.antallOrdrer(), fil.sumOre(),
-                ordrerFor(kj, fakturaer, produktById()).size(), sumOre(fakturaer), fakturaer.size(), sha256);
+                ordrerFor(kj, fakturaer, produktById(), "").size(), sumOre(fakturaer), fakturaer.size(), sha256);
     }
 
     /** The run's order assembly — the single place that decides how lines become LG04 orders (D5). */
-    private List<Lg04Ordre> ordrerFor(Fakturakjoring kj, List<Faktura> fakturaer, Map<Long, Produkt> produktById) {
-        return byggOrdrer(fakturaer, produktById, kj.generertAt().format(BATCH));
+    private List<Lg04Ordre> ordrerFor(Fakturakjoring kj, List<Faktura> fakturaer, Map<Long, Produkt> produktById,
+                                      String batchId) {
+        return byggOrdrer(fakturaer, produktById, "Bruk av Altinn " + kj.periodeLabel(), batchId);
     }
 
     /** The run's amount in øre, with the export's own rounding: Σ over lines, not over invoices. */
@@ -297,20 +305,25 @@ public class EksportService {
         }
     }
 
-    private List<Lg04Ordre> byggOrdrer(List<Faktura> fakturaer, Map<Long, Produkt> produktById, String batchId) {
+    private List<Lg04Ordre> byggOrdrer(List<Faktura> fakturaer, Map<Long, Produkt> produktById, String tekst,
+                                       String batchId) {
         List<Lg04Ordre> ordrer = new ArrayList<>();
-        int serie = 1;
+        int ordreNr = 1;
         for (Faktura f : fakturaer) {
+            // One order per reference pair on the invoice — almost always exactly one.
+            Map<List<String>, List<Lg04Ordre.Lg04Ordrelinje>> perReferanse = new LinkedHashMap<>();
             for (Fakturalinje l : kjoringer.linjer(f.id())) {
                 Produkt p = produktById.get(l.produktId());
-                ordrer.add(new Lg04Ordre(
+                perReferanse.computeIfAbsent(Arrays.asList(l.fakturareferanse(), l.bestillingsnummer()),
+                        k -> new ArrayList<>()).add(new Lg04Ordre.Lg04Ordrelinje(
                         p.konto(),
                         p.artikkelId() == null ? null : String.valueOf(p.artikkelId()),
                         p.dim1(), p.dim2(), p.dim4(),
-                        f.kundenummer(), l.fakturareferanse(), l.bestillingsnummer(), l.beskrivelse(),
-                        ore(l.belop()), serie, url(f), konfig.ansvarlig1(), konfig.ansvarlig2(),
-                        batchId, serie));
-                serie++;
+                        p.navn(), ore(l.belop()), l.antall()));
+            }
+            for (var e : perReferanse.entrySet()) {
+                ordrer.add(new Lg04Ordre(f.kundenummer(), e.getKey().get(0), e.getKey().get(1), tekst,
+                        ordreNr++, url(f), konfig.ansvarlig1(), konfig.ansvarlig2(), batchId, e.getValue()));
             }
         }
         return ordrer;

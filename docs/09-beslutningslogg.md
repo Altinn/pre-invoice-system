@@ -162,11 +162,12 @@ fortsatt ukartlagt.
 | B-08 | Azure-klar, ikke Azure-låst: porter/adaptere (UsageDataSource, CustomerSource, FileArchive, BrregOppslag), OIDC, 12-faktor-konfig, alt kjører offline med docker compose | Oss, docs/02 | Ingen Azure-SDK i kjernen; miljøvalg er en driftsbeslutning |
 | B-09 | Faktura grupperes per (kunde, kundenummer); ordre_nr ligger på faktura | Oss, docs/03 (av Ivars regler) | Ivars spesialtilfeller håndteres; OQ-1-sikker eksport |
 | B-10 | Full sporbarhet som struktur: linje → bruksdata + pris; kjøring → prisversjon; snapshots ved generering | Løsningsbeskrivelsens prinsipp | Historikk skrives aldri om; revisjon mulig |
-| B-11 | Eksport: én LG04-ordre per linje inntil OQ-1 er avklart (trygt standardvalg) | Oss | Kan slås om med flagg uten datamodellendring |
+| B-11 | ~~Eksport: én LG04-ordre per linje inntil OQ-1 er avklart (trygt standardvalg)~~ Erstattet av B-16 | Oss | — |
 | B-12 | BRREG-validering ved registrering av kunde (ikke-eksisterende orgnr blokkerer; navneavvik varsler) | FinMod-arket («valideres mot BRREG i dag») | Lukket det ene stille gapet i kravsporingen (K-16) |
 | B-13 | Ingen mva-beregning før OQ-11 er avklart; sammendrag viser filbeløp merket «mva uavklart» | Oss, etter FEL-kontaktens svar | Unngår gale tall i e-posten til regnskap |
 | B-14 | CRM er den avtalte kortsiktige løsningen for kunde- og avtaleinformasjon; forsystemets kunderegister er cache, dry-run-kilde og reserveløsning — ikke midlertidig master | Løsningsbeskrivelsen + CRM-tråden, 2026-08-18 | OQ-5 besvart på kilde. Register-UI beholdes uendret (`kilde='MANUELL'`), men import fra CRM blir hovedveien (docs/06 §2). Gjenstår: grensesnitt og tidspunkt |
 | B-15 | Testmiljøet får «Nullstill periode»: sletter en måneds kjøringer (også eksporterte) og bruksdataimporter for godt, bak flagget `forsystem.testverktoy.enabled` (lokalt og tt02, aldri prod) | Testerne, 2026-10-26 | Måneder kan testes ende-til-ende flere ganger med samme fil. Bryter med vilje B-10 og «eksportert er endelig», derfor bare der flagget er på; hendelsesloggen beholdes og registrerer nullstillingen |
+| B-16 | LG04 følger FELs Altinn-format (`test_3`): én ordre per faktura med hodelinje (linjenummer 0) og ett linjepar per produkt (1, 2, 3 …); produktnavn som artikkeltekst, VALUE_1 = antall × 100, buntnummer = datoen filen lages. FELs eksempelfil er golden-fil | FEL-kontakten, 2026-11-04 | Erstatter B-11. Kunden får én faktura med alle produktene; enhetskode (STK/KR) venter på regnskaps test (OQ-23) |
 
 ## Antakelser til bekreftelse
 
