@@ -67,5 +67,5 @@ stop and ask; do not guess around a blocking unknown.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/009-kjoring-fakturatekster/plan.md
+at specs/010-tekst-og-tallformat/plan.md
 <!-- SPECKIT END -->
