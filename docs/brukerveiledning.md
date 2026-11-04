@@ -192,6 +192,7 @@ navn, gyldig fra, evt. gyldig til).
      produktet (fakturareferanse kan være ulik per produkt).
    - Legg til med produkt (valgfritt), fakturareferanse og bestillingsnummer → **Legg til**. Fjern
      med **Slett**.
+   - Begge feltene kan være **høyst 25 tegn** – det er plassen de har på fakturaen i Unit4.
 3. **Kundenummerregler** — kobler kunden til Unit4-kundenummer.
    - **Én faktura per kundenummer.** Har en kunde to kundenummer (f.eks. ulik **servicekode** per
      produkt, som Utdanningsdirektoratet), blir det to fakturaer.

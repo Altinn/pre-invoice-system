@@ -33,6 +33,21 @@ class KundeServiceIT extends IntegrationTest {
     }
 
     @Test
+    void referenceAndOrderNumberAreLimitedTo25Characters() {
+        Kunde k = service.opprett("876543219", "Lang referanse", null, Avtalestatus.AKTIV);
+        String maks = "x".repeat(25);
+        service.leggTilReferanse(k.id(), null, maks, maks);
+
+        assertThatThrownBy(() -> service.leggTilReferanse(k.id(), null, maks + "y", null))
+                .isInstanceOf(Regelbrudd.class)
+                .hasMessageContaining("Fakturareferanse").hasMessageContaining("25 tegn");
+        assertThatThrownBy(() -> service.leggTilReferanse(k.id(), null, null, maks + "y"))
+                .isInstanceOf(Regelbrudd.class)
+                .hasMessageContaining("Bestillingsnummer").hasMessageContaining("25 tegn");
+        assertThat(service.referanser(k.id())).hasSize(1);
+    }
+
+    @Test
     void duplicateOrgnrIsRejected() {
         service.opprett("123456789", "Kunde A", null, Avtalestatus.AKTIV);
         assertThatThrownBy(() -> service.opprett("123456789", "Kunde B", null, Avtalestatus.AKTIV))

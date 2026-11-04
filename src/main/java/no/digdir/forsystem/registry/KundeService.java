@@ -23,6 +23,7 @@ public class KundeService {
 
     static final String ENTITET_KUNDE = "KUNDE";
     static final String ENTITET_REFERANSE = "KUNDE_REFERANSE";
+    public static final int REFERANSE_MAKS = 25;
     static final String ENTITET_REGEL = "KUNDENUMMER_REGEL";
 
     private final KundeRepository kunder;
@@ -94,6 +95,8 @@ public class KundeService {
     public KundeReferanse leggTilReferanse(Long kundeId, Long produktId,
                                            String fakturareferanse, String bestillingsnummer) {
         hent(kundeId);
+        sjekkLengde("Fakturareferanse", fakturareferanse);
+        sjekkLengde("Bestillingsnummer", bestillingsnummer);
         KundeReferanse lagret = referanser.save(new KundeReferanse(
                 null, kundeId, produktId, tomTilNull(fakturareferanse), tomTilNull(bestillingsnummer)));
         audit.logg(Handling.OPPRETTET, ENTITET_REFERANSE, lagret.id(),
@@ -160,6 +163,17 @@ public class KundeService {
             return Optional.of(svar.offisieltNavn());
         }
         return Optional.empty();
+    }
+
+    /**
+     * Fakturareferanse fills its 25-character LG04 field; FEL keeps bestillingsnummer at 25 too, though
+     * Unit4 takes 100, because the two are usually the same value (FEL, 2026-11-04; OQ-23).
+     */
+    private static void sjekkLengde(String felt, String verdi) {
+        if (verdi != null && verdi.strip().length() > REFERANSE_MAKS) {
+            throw new Regelbrudd(felt + " kan være høyst " + REFERANSE_MAKS + " tegn (har "
+                    + verdi.strip().length() + ")");
+        }
     }
 
     private static String tomTilNull(String s) {

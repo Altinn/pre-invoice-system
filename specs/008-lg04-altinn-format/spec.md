@@ -231,6 +231,8 @@ Follow-ups:
 - A text line with sequence 1 and `short_info` (e.g. tilleggstekst) instead of sequence 8.
 - Kontering per product (3247 vs 3030 and dimensions): registry data, not code (OQ-2).
 - The 40 % påslag on applikasjonsinfrastruktur seen in regnskap's example.
-- Footer content, the `responsible` user, credit notes via `text1` (OQ-6).
-- Widening bestillingsnummer from 25 to the field's 100 characters.
+- Footer content, the `responsible` user, credit notes via `text1` (OQ-6; FEL does not use `text1`
+  today).
+- Widening bestillingsnummer from 25 to the field's 100 characters — settled: FEL keeps both at 25
+  (2026-11-04), and the registry now refuses longer values.
 - The bagatellgrense itself (OQ-22), which is a separate task.
