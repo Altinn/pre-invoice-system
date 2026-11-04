@@ -4,6 +4,7 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import no.digdir.forsystem.billing.BruksdataavstemmingService;
 import no.digdir.forsystem.billing.Faktura;
@@ -11,6 +12,7 @@ import no.digdir.forsystem.billing.Fakturakjoring;
 import no.digdir.forsystem.billing.Fakturatekster;
 import no.digdir.forsystem.billing.FakturakjoringService;
 import no.digdir.forsystem.billing.Kontrollfunn;
+import no.digdir.forsystem.billing.Kontrollkode;
 import no.digdir.forsystem.billing.NullstillingService;
 import no.digdir.forsystem.common.HendelsesloggRepository;
 import no.digdir.forsystem.common.Periode;
@@ -106,6 +108,7 @@ class FakturakjoringController {
     String kontroller(@PathVariable Long id, Model model) {
         var fane = fane(id, model);
         model.addAttribute("funngrupper", Funngruppe.av(fane.funn()));
+        model.addAttribute("kontrollkoder", Kontrollkode.values());
         model.addAttribute("avstemming", fane.kjoring().erKorrigering() ? null : avstemming.forKjoring(id));
         model.addAttribute("antallValgteEndringer", fane.kjoring().erKorrigering()
                 ? kjoringer.valgteEndringIder(id).size() : 0);
@@ -243,7 +246,13 @@ class FakturakjoringController {
                 .collect(Collectors.toMap(p -> p.id(), p -> p.navn()));
         model.addAttribute("kjoring", kjoringer.hent(id));
         model.addAttribute("faktura", kjoringer.hentFaktura(fakturaId));
-        model.addAttribute("linjer", kjoringer.linjer(fakturaId));
+        var linjer = kjoringer.linjer(fakturaId);
+        model.addAttribute("linjer", linjer);
+        // The reference once, in the header; several only when the invoice is split (DELT_REFERANSE).
+        model.addAttribute("referanser", linjer.stream()
+                .map(l -> Stream.of(l.fakturareferanse(), l.bestillingsnummer())
+                        .filter(v -> v != null && !v.isBlank()).collect(Collectors.joining(" / ")))
+                .map(r -> r.isEmpty() ? "ingen referanse" : r).distinct().toList());
         model.addAttribute("funn", kjoringer.funnForFaktura(fakturaId));
         model.addAttribute("produktNavn", produktNavn);
         return "kjoring/faktura";

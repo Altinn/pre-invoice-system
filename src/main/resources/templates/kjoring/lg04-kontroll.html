@@ -28,11 +28,11 @@
             <thead><tr><th></th><th class="hoyre">LG04-fil</th><th class="hoyre">Kjøring</th></tr></thead>
             <tbody>
             <tr><th scope="row">Ordrer</th>
-                <td class="hoyre" th:text="${a.antallOrdrerFil()}">0</td>
-                <td class="hoyre" th:text="${a.antallOrdrerKjoring()}">0</td></tr>
-            <tr><th scope="row">Beløp</th>
-                <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopFil(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
-                <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopKjoring(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
+                <td class="hoyre" th:text="${@tall.antall(a.antallOrdrerFil())}">0</td>
+                <td class="hoyre" th:text="${@tall.antall(a.antallOrdrerKjoring())}">0</td></tr>
+            <tr><th scope="row">Beløp (eksl. mva)</th>
+                <td class="hoyre" th:text="${@tall.belop(a.belopFil())}">0,00</td>
+                <td class="hoyre" th:text="${@tall.belop(a.belopKjoring())}">0,00</td></tr>
             <tr><th scope="row">SHA-256</th><td colspan="2"><code th:text="${a.sha256()}">…</code></td></tr>
             </tbody>
         </table>

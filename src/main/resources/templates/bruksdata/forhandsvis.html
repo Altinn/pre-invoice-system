@@ -45,8 +45,8 @@
         <th:block th:if="${fv.kilde().name() == 'DWH' and manglendeKunder == null}">Datavarehus, hentet
             <strong th:text="${#temporals.format(fv.raadata().hentetAt(), 'yyyy-MM-dd HH:mm')}">2027-02-07 06:00</strong> ·</th:block>
         periode <strong th:text="${fv.periode()}">2027-01</strong> ·
-        <span th:text="${fv.antallGyldige()}">0</span> gyldige,
-        <span th:text="${fv.antallAvviste()}">0</span> avviste rader.
+        <span th:text="${@tall.antall(fv.antallGyldige())}">0</span> gyldige,
+        <span th:text="${@tall.antall(fv.antallAvviste())}">0</span> avviste rader.
     </p>
 
     <!-- Blocking reasons (e.g. an existing run) prevent import entirely. -->
@@ -69,14 +69,14 @@
     <h2 class="ds-heading" data-size="xs">Summer per produkt</h2>
     <table class="ds-table" data-size="sm" data-hover>
         <thead>
-        <tr><th>Produkt</th><th class="hoyre">Antall rader</th><th class="hoyre">Sum antall</th><th class="hoyre">Sum beløp</th></tr>
+        <tr><th>Produkt</th><th class="hoyre">Antall rader</th><th class="hoyre">Sum antall</th><th class="hoyre">Sum beløp (eksl. mva)</th></tr>
         </thead>
         <tbody>
         <tr th:each="s : ${fv.summer()}">
-            <td th:text="${s.produktkode()}">melding</td>
-            <td class="hoyre" th:text="${s.antallRader()}">10</td>
-            <td class="hoyre" th:text="${s.sumAntall()}">100.00</td>
-            <td class="hoyre" th:text="${s.sumBelop()}">0.00</td>
+            <td th:text="${produktnavn.containsKey(s.produktkode())} ? ${produktnavn.get(s.produktkode())} : |${s.produktkode()} (ukjent produkt)|">Melding</td>
+            <td class="hoyre" th:text="${@tall.antall(s.antallRader())}">10</td>
+            <td class="hoyre" th:text="${@tall.mengde(s.sumAntall())}">100,00</td>
+            <td class="hoyre" th:text="${@tall.belop(s.sumBelop())}">0,00</td>
         </tr>
         <tr th:if="${fv.summer().isEmpty()}">
             <td colspan="4" class="tom">Ingen gyldige rader.</td>
@@ -99,6 +99,8 @@
         </table>
     </div>
 
+    <div class="ds-alert bred" data-color="warning" th:if="${fv.kanImporteres()}"><p>Ved å trykke på Bekreft import
+        importeres data fra datavarehuset. Importen kan ikke slettes eller endres etter at importen er bekreftet.</p></div>
     <div class="rad">
         <form th:if="${fv.kanImporteres()}"
               th:action="${fv.stagetImportId() == null} ? @{/bruksdata/bekreft} : @{/bruksdata/{id}/bekreft(id=${fv.stagetImportId()})}"

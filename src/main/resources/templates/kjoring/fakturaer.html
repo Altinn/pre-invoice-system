@@ -26,9 +26,9 @@
 
     <div id="fakturaresultat" class="seksjon" aria-live="polite">
         <p class="ds-paragraph liten" th:unless="${u.soker()}"
-           th:text="|${u.antallTotalt()} fakturaer · sum ${#numbers.formatDecimal(u.sumTreff(), 1, 'WHITESPACE', 2, 'COMMA')} kr|">0 fakturaer</p>
+           th:text="|${u.antallTotalt()} fakturaer · sum ${@tall.belop(u.sumTreff())} kr eksl. mva|">0 fakturaer</p>
         <p class="ds-paragraph liten" th:if="${u.soker()}"
-           th:text="|${u.antallTreff()} av ${u.antallTotalt()} fakturaer treffer «${u.q()}» · sum ${#numbers.formatDecimal(u.sumTreff(), 1, 'WHITESPACE', 2, 'COMMA')} kr|">0 av 0</p>
+           th:text="|${u.antallTreff()} av ${u.antallTotalt()} fakturaer treffer «${u.q()}» · sum ${@tall.belop(u.sumTreff())} kr eksl. mva|">0 av 0</p>
 
         <table class="ds-table" data-size="sm" data-hover th:unless="${u.rader().isEmpty()}">
             <thead>
@@ -39,7 +39,7 @@
                     <a th:href="@{${base}(q=${u.q()},sorter='kunde')}">Kunde</a></th>
                 <th>Kundenummer</th><th>Tilleggstekst</th><th>Mottaker (orgnr)</th>
                 <th class="hoyre" th:attr="aria-sort=${u.sorter() == 'belop'} ? 'descending' : 'none'">
-                    <a th:href="@{${base}(q=${u.q()},sorter='belop')}">Sum</a></th>
+                    <a th:href="@{${base}(q=${u.q()},sorter='belop')}">Sum (eksl. mva)</a></th>
                 <th><span class="ds-sr-only">Handling</span></th>
             </tr>
             </thead>
@@ -50,7 +50,7 @@
                 <td th:text="${f.kundenummer()}">100200</td>
                 <td th:text="${f.tilleggstekst()} ?: '—'">—</td>
                 <td th:text="${f.fakturamottakerOrgnr()}">123456789</td>
-                <td class="hoyre" th:text="${#numbers.formatDecimal(f.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+                <td class="hoyre" th:text="${@tall.belop(f.sumBelop())}">0,00</td>
                 <td class="hoyre">
                     <a class="ds-button" data-variant="tertiary" data-size="sm"
                        th:href="@{/kjoringer/{id}/faktura/{fid}(id=${kjoring.id()},fid=${f.id()})}">Linjer</a>

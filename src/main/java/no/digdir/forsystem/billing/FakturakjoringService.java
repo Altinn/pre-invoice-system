@@ -713,11 +713,20 @@ public class FakturakjoringService {
     }
 
     private static Kontrollfunn blokk(Long kjoringId, Long fakturaId, Kontrollkode kode, String melding) {
-        return new Kontrollfunn(null, kjoringId, fakturaId, Alvorlighet.BLOKKERENDE.name(), kode.name(), melding);
+        return funn(kjoringId, fakturaId, Alvorlighet.BLOKKERENDE, kode, melding);
     }
 
     private static Kontrollfunn advarsel(Long kjoringId, Long fakturaId, Kontrollkode kode, String melding) {
-        return new Kontrollfunn(null, kjoringId, fakturaId, Alvorlighet.ADVARSEL.name(), kode.name(), melding);
+        return funn(kjoringId, fakturaId, Alvorlighet.ADVARSEL, kode, melding);
+    }
+
+    // The Kontroller tab explains each code with its declared severity; raising it with another would mislead.
+    private static Kontrollfunn funn(Long kjoringId, Long fakturaId, Alvorlighet alvorlighet, Kontrollkode kode,
+                                     String melding) {
+        if (kode.alvorlighet() != alvorlighet) {
+            throw new IllegalStateException(kode + " er " + kode.alvorlighet() + ", ikke " + alvorlighet);
+        }
+        return new Kontrollfunn(null, kjoringId, fakturaId, alvorlighet.name(), kode.name(), melding);
     }
 
     private static final class Byggekontekst {

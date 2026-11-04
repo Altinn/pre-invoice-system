@@ -35,8 +35,8 @@
     <section class="seksjon" th:if="${antallEndringer > 0}">
         <h2 class="ds-heading" data-size="xs">Endringer</h2>
         <p class="ds-paragraph liten">
-            <strong th:text="${antallEndringer}">0</strong> endringer ·
-            <span th:text="${sammenligning.uendredeRader()}">0</span> uendrede rader er skjult.
+            <strong th:text="${@tall.antall(antallEndringer)}">0</strong> endringer ·
+            <span th:text="${@tall.antall(sammenligning.uendredeRader())}">0</span> uendrede rader er skjult.
             <span aria-live="polite"><strong data-valgt-antall>0</strong> valgt ·
                 volumdifferanse <strong data-valgt-volum>0</strong> ·
                 kostnadsdifferanse <strong data-valgt-kostnad>0</strong>.</span>
@@ -101,9 +101,9 @@
                 <td th:text="${e.organisasjonsnummer()}">123456789</td>
                 <td th:text="${produktnavn[e.produktId()]} ?: ${e.produktId()}">Produkt</td>
                 <td th:text="${e.type()}">BRUKSVOLUM</td>
-                <td class="hoyre" th:text="${e.gammelVerdi()} ?: '—'">100</td>
-                <td class="hoyre" th:text="${e.nyVerdi()} ?: '—'">120</td>
-                <td class="hoyre"><strong th:text="|${e.delta().signum() > 0 ? '+' : ''}${e.delta()}|">+20</strong></td>
+                <td class="hoyre" th:text="${@tall.mengde(e.gammelVerdi())}">100</td>
+                <td class="hoyre" th:text="${@tall.mengde(e.nyVerdi())}">120</td>
+                <td class="hoyre"><strong th:text="|${e.delta().signum() > 0 ? '+' : ''}${@tall.mengde(e.delta())}|">+20</strong></td>
             </tr>
             <tr th:if="${endringer.isEmpty()}"><td colspan="8" class="tom">Ingen endringer passer filtrene.</td></tr>
             </tbody>

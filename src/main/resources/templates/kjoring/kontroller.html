@@ -10,16 +10,40 @@
     <!-- Findings, one row per code (specs/005 FR-006/007): blocking first, then the largest group. -->
     <h2 class="ds-heading" data-size="xs" id="kontrollfunn">Kontrollfunn</h2>
     <p class="ds-paragraph liten" th:if="${funngrupper.isEmpty()}">Ingen kontrollfunn.</p>
+    <!-- What severities and codes mean (specs/010 FR-008), rendered from Kontrollkode so it stays complete. -->
+    <details class="ds-details bred" data-variant="tinted" id="om-alvorlighet">
+        <summary>Hva betyr alvorlighet?</summary>
+        <div>
+            <p class="ds-paragraph" data-size="sm"><strong>Blokkerende:</strong> må rettes før kjøringen kan
+                godkjennes. Rett registeret og generer kjøringen på nytt.</p>
+            <p class="ds-paragraph" data-size="sm"><strong>Advarsel:</strong> bør sjekkes, men hindrer ikke
+                godkjenning.</p>
+        </div>
+    </details>
+    <details class="ds-details bred" data-variant="tinted" id="om-koder">
+        <summary>Hva betyr kodene?</summary>
+        <div>
+            <dl class="kodeliste">
+                <th:block th:each="k : ${kontrollkoder}">
+                    <dt><code th:text="${k.name()}">MANGLER_KUNDE</code>
+                        <span class="ds-tag" data-size="sm" th:data-color="${k.alvorlighet().name() == 'BLOKKERENDE'} ? 'danger' : 'warning'"
+                              th:text="${k.alvorlighet().name() == 'BLOKKERENDE'} ? 'Blokkerende' : 'Advarsel'">Blokkerende</span></dt>
+                    <dd class="ds-paragraph" data-size="sm" th:text="${k.definisjon()}">Definisjon.</dd>
+                </th:block>
+            </dl>
+        </div>
+    </details>
     <table class="ds-table funn" data-size="sm" th:unless="${funngrupper.isEmpty()}">
         <thead>
-        <tr><th>Alvorlighet</th><th>Kode</th><th class="hoyre">Antall</th><th>Eksempel</th></tr>
+        <tr><th><a class="ds-link" href="#om-alvorlighet">Alvorlighet</a></th><th><a class="ds-link" href="#om-koder">Kode</a></th>
+            <th class="hoyre">Antall</th><th>Beskrivelse</th></tr>
         </thead>
         <tbody th:each="g : ${funngrupper}">
         <tr>
             <td><span class="ds-tag" data-size="sm" th:data-color="${g.blokkerende()} ? 'danger' : 'warning'"
                       th:text="${g.blokkerende()} ? 'Blokkerende' : 'Advarsel'">Blokkerende</span></td>
             <td><code th:text="${g.kode()}">MANGLER_KUNDE</code></td>
-            <td class="hoyre" th:text="${g.antall()}">1</td>
+            <td class="hoyre" th:text="${@tall.antall(g.antall())}">1</td>
             <td th:text="${g.eksempel()}">melding</td>
         </tr>
         <tr class="funn-alle" th:if="${g.antall() > 1}">
@@ -37,6 +61,8 @@
     <!-- Imported usage against invoiced usage (specs/002 US2); was its own page before specs/006. -->
     <section class="seksjon" id="bruksdata" th:if="${avstemming != null}" th:with="a=${avstemming}" aria-labelledby="bruksdata-tittel">
         <h2 class="ds-heading" data-size="xs" id="bruksdata-tittel">Avstemming bruksdata</h2>
+        <p class="ds-paragraph bred">Denne avstemmingen brukes for å kontrollere at alle bruksdata har kommet med på
+            fakturagrunnlaget. Her hensyntas ikke prisliste eller kostnad som skal faktureres.</p>
         <p class="ds-paragraph liten" th:if="${a.kilde() != null}"
            th:text="|Bruksdata fra import ${a.kilde().id()} (${a.kilde().kilde()}, ${a.kilde().filnavn()}), lastet ${#temporals.format(a.kilde().lastetAt(), 'dd.MM.yyyy HH:mm')} av ${a.kilde().lastetAv()}.|">
             Bruksdata fra import …</p>
@@ -54,19 +80,19 @@
         <table class="ds-table" data-size="sm" data-hover>
             <thead>
             <tr><th>Produkt</th><th>Type</th>
-                <th class="hoyre">Importert rader</th><th class="hoyre">Importert sum</th>
-                <th class="hoyre">Fakturert linjer</th><th class="hoyre">Fakturert sum</th>
+                <th class="hoyre">Importerte rader fra datavarehus</th><th class="hoyre">Importert bruksdata fra datavarehus</th>
+                <th class="hoyre">Fakturerte linjer</th><th class="hoyre">Fakturert bruksdata</th>
                 <th class="hoyre">Ikke fakturert</th></tr>
             </thead>
             <tbody>
             <tr th:each="r : ${a.rader()}" th:classappend="${r.harDifferanse()} ? 'avvik'">
                 <td th:text="${r.produktNavn()}">Melding</td>
                 <td th:text="${r.type()} ?: 'ingen bruk'">BRUKSVOLUM</td>
-                <td class="hoyre" th:text="${r.importertRader()}">0</td>
-                <td class="hoyre" th:text="${#numbers.formatDecimal(r.importertSum(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
-                <td class="hoyre" th:text="${r.fakturertLinjer()}">0</td>
-                <td class="hoyre" th:text="${#numbers.formatDecimal(r.fakturertSum(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
-                <td class="hoyre" th:text="${r.ikkeFakturertRader()}">0</td>
+                <td class="hoyre" th:text="${@tall.antall(r.importertRader())}">0</td>
+                <td class="hoyre" th:text="${@tall.mengde(r.importertSum())}">0,00</td>
+                <td class="hoyre" th:text="${@tall.antall(r.fakturertLinjer())}">0</td>
+                <td class="hoyre" th:text="${@tall.mengde(r.fakturertSum())}">0,00</td>
+                <td class="hoyre" th:text="${@tall.antall(r.ikkeFakturertRader())}">0</td>
             </tr>
             </tbody>
         </table>
@@ -77,15 +103,15 @@
             <table class="ds-table" data-size="sm" data-hover>
                 <thead>
                 <tr><th>Organisasjonsnummer</th><th>Produkt</th><th>Type</th>
-                    <th class="hoyre">Antall</th><th class="hoyre">Beløp</th><th>Årsak</th></tr>
+                    <th class="hoyre">Antall</th><th class="hoyre">Beløp (eksl. mva)</th><th>Årsak</th></tr>
                 </thead>
                 <tbody>
                 <tr th:each="u : ${a.ikkeFakturert()}">
                     <td th:text="${u.organisasjonsnummer()}">999999999</td>
                     <td th:text="${u.produktKode()}">melding</td>
                     <td th:text="${u.type()}">BRUKSVOLUM</td>
-                    <td class="hoyre" th:text="${u.antall()} ?: '—'">—</td>
-                    <td class="hoyre" th:text="${u.belop()} ?: '—'">—</td>
+                    <td class="hoyre" th:text="${@tall.mengde(u.antall())}">—</td>
+                    <td class="hoyre" th:text="${@tall.belop(u.belop())}">—</td>
                     <td><strong th:if="${u.kode() != null}" th:text="|${u.kode()}: |">KODE: </strong><span th:text="${u.melding()}">melding</span></td>
                 </tr>
                 </tbody>
@@ -113,11 +139,11 @@
                 <thead><tr><th></th><th class="hoyre">LG04-fil</th><th class="hoyre">Kjøring</th></tr></thead>
                 <tbody>
                 <tr><th scope="row">Ordrer</th>
-                    <td class="hoyre" th:text="${a.antallOrdrerFil()}">0</td>
-                    <td class="hoyre" th:text="${a.antallOrdrerKjoring()}">0</td></tr>
-                <tr><th scope="row">Beløp</th>
-                    <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopFil(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
-                    <td class="hoyre" th:text="${#numbers.formatDecimal(a.belopKjoring(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
+                    <td class="hoyre" th:text="${@tall.antall(a.antallOrdrerFil())}">0</td>
+                    <td class="hoyre" th:text="${@tall.antall(a.antallOrdrerKjoring())}">0</td></tr>
+                <tr><th scope="row">Beløp (eksl. mva)</th>
+                    <td class="hoyre" th:text="${@tall.belop(a.belopFil())}">0,00</td>
+                    <td class="hoyre" th:text="${@tall.belop(a.belopKjoring())}">0,00</td></tr>
                 </tbody>
             </table>
             <p class="ds-paragraph liten" th:if="${a.kilde().name() == 'LAGRET'}"

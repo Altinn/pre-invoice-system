@@ -90,6 +90,9 @@ importerer Bruksdata, og kjører alt under Kjøringer.
 
 ---
 
+> **Tall og mva:** alle beløp i forsystemet er **eksl. mva** — mva legges til av regnskap. Beløp vises
+> som `1 234 567,89`, antall som `1 234 567`. Enhetspriser vises med alle desimaler (f.eks. `0,0375`).
+
 ## 4. Produkter
 
 **Hva:** de seks produktene som faktureres (`melding`, `formidling`, `varsling`, `autorisasjon`,
@@ -102,7 +105,7 @@ regnskapskodene som må stå på hvert produkt før grunnlaget kan eksporteres.
 |---|---|
 | Kode / Navn | Produktets id og visningsnavn. |
 | Enhet | Måleenhet (standard «transaksjon»). |
-| Konto / Dim 1, 2, 4 / Artikkel-id | Kontering (regnskap). **Er tom («—») til Økonomi leverer verdiene.** Når Økonomi har bekreftet hva dimensjonene er, får kolonnene navn, f.eks. «Dim 1 (koststed)». |
+| Konto / Dim1 Koststed, Dim2 Prosjekt/formål, Dim4 Kappost / Artikkel-id | Kontering (regnskap), satt per produkt og kan endres ved behov. Manglende kontering blokkerer fakturering. |
 | Aktiv | Om produktet er i bruk. Inaktive produkter står nederst i lista. |
 
 - **Rediger** (per rad) → åpner redigeringssiden.
@@ -112,7 +115,7 @@ regnskapskodene som må stå på hvert produkt før grunnlaget kan eksporteres.
 **Rediger-siden:**
 
 - **Navn**, **Enhet** — kan endres.
-- **Kontering** (feltgruppe): Artikkel-id, Konto, Dim 1, Dim 2, Dim 4. Dette er regnskapskodene som
+- **Kontering** (feltgruppe): Artikkel-id, Konto, Dim1, Dim2, Dim4. Dette er regnskapskodene som
   havner i LG04-fila. **La stå tomt til Økonomi bekrefter** — tomme verdier gir et blokkerende
   kontrollfunn ved generering, så du kan ikke ved et uhell fakturere med feil koder.
 - **Aktiv** — avhukning.
@@ -248,12 +251,14 @@ periode,organisasjonsnummer,produktkode,type,antall,belop
 
 **Forhåndsvisning (før noe lagres):**
 
-- **Summer per produkt** — antall rader og summer, så du kan sammenligne med fila.
+- **Summer per produkt** — produktnavn, antall rader og summer, så du kan sammenligne med fila.
 - **Avviste rader** — hver feil med linjenummer og årsak (ukjent produkt, feil orgnr, feil periode,
   duplikat, negativ verdi …).
 - **Alt-eller-ingenting:** har fila **én** avvist rad, kan den ikke importeres — rett fila og last opp
   på nytt. Ingenting lagres før alt er gyldig.
-- **Bekreft import** (vises bare når alt er OK) lagrer bruken. **Avbryt** forkaster forhåndsvisningen.
+- **Bekreft import** (vises bare når alt er OK) lagrer bruken. **En bekreftet import kan ikke slettes
+  eller endres** — siden minner om det rett over knappen. **Avbryt** forkaster forhåndsvisningen.
+- Når bruken er importert, er neste steg **Kjøringer** (lenke nederst på Bruksdata-siden).
 
 **Re-import:** laster du opp samme periode på nytt, **erstattes** perioden — de gamle radene slettes og
 den forrige importen merkes `AVVIST`.
@@ -335,15 +340,17 @@ stateDiagram-v2
   | Tilleggstekst | Skiller delte kundenummer. |
   | Mottaker (orgnr) | Hvem som mottar (avvikende mottaker hvis satt, ellers kundens orgnr). |
   | Sum | Sum av linjene. |
-  | **Linjer** | Åpner faktura­detaljene (drill-down). |
+  | **Linjer** | Åpner faktura­detaljene (drill-down): kundenavn, referanse, linjene og en sumrad nederst. |
 
 - **Handlinger:**
   - Når **GENERERT**: **Godkjenn** (deaktivert hvis det finnes blokkerende funn) og **Forkast**.
   - Når **GODKJENT**: **Eksporter** og **Forkast**.
 - **Eksportfiler** (etter eksport): tabell med type, filnavn, SHA-256 og **Last ned**.
 
-**Avstemming bruksdata:** sammenligner bruksdataene kjøringen ble bygget fra med det som ble
-fakturert, per produkt og type (volum sammenlignes på antall, Azure/SMS-kostnader på beløp). Under
+**Avstemming bruksdata:** kontrollerer at alle bruksdata har kommet med på fakturagrunnlaget — den
+ser ikke på prisliste eller kostnad. Den sammenligner bruksdataene kjøringen ble bygget fra (importerte
+rader og importert bruksdata fra datavarehus) med det som ble fakturert (fakturerte linjer og fakturert
+bruksdata), per produkt og type (volum sammenlignes på antall, Azure/SMS-kostnader på beløp). Under
 tabellen står hver bruksdatarad som *ikke* ble fakturert, med årsaken — kontrollfunnet som stoppet
 den (f.eks. `MANGLER_KUNDE`). Står det «All bruksdata er med i fakturagrunnlaget», er ingenting
 utelatt. Aktive produkter uten bruk i perioden vises med 0, så et manglende produkt synes. Siden viser
@@ -424,7 +431,9 @@ sequenceDiagram
 ## 11. Kontrollfunn
 
 Kontrollene kjøres automatisk ved generering. **Blokkerende** funn hindrer godkjenning; **advarsler**
-er kun til informasjon.
+er kun til informasjon. På fanen **Kontroller** forklarer «Hva betyr alvorlighet?» og «Hva betyr
+kodene?» (også lenket fra kolonneoverskriftene) hver kode kort; kolonnen **Beskrivelse** viser et
+eksempel på meldingen.
 
 | Kode | Alvor | Betyr | Slik løser du det |
 |---|---|---|---|

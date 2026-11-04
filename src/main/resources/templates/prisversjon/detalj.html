@@ -32,7 +32,7 @@
     <table class="ds-table" data-size="sm" data-hover>
         <caption class="ds-sr-only">Enhetspriser</caption>
         <thead>
-        <tr><th>Produkt</th><th>Kode</th><th class="hoyre">Enhetspris</th></tr>
+        <tr><th>Produkt</th><th>Kode</th><th class="hoyre">Enhetspris (eksl. mva)</th></tr>
         </thead>
         <tbody>
         <tr th:each="p : ${produkter}" th:with="pris=${prisPerProdukt.get(p.id())}">
@@ -51,7 +51,7 @@
                            th:attr="aria-label=|Enhetspris for ${p.navn()}|">
                     <button class="ds-button" data-variant="secondary" data-size="sm" type="submit">Lagre</button>
                 </form>
-                <span th:unless="${utkast}" th:text="${pris} ?: '—'">0.00</span>
+                <span th:unless="${utkast}" th:text="${@tall.pris(pris)}">0.00</span>
             </td>
         </tr>
         </tbody>

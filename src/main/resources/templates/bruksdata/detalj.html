@@ -17,7 +17,7 @@
         Periode <strong th:text="${import.periode()}">2027-01-01</strong> ·
         kilde <span th:text="${import.kilde()}">CSV</span> ·
         status <span th:text="${import.status()}">VALIDERT</span> ·
-        <span th:text="${import.antallRader()}">42</span> rader ·
+        <span th:text="${@tall.antall(import.antallRader())}">42</span> rader ·
         lastet av <span th:text="${import.lastetAv()}">dev</span>
     </p>
     <p class="ds-paragraph liten" th:if="${import.harRaadata()}">
@@ -40,15 +40,15 @@
 
     <table class="ds-table" data-size="sm" data-hover th:if="${fv == null}">
         <thead>
-        <tr><th>Orgnr</th><th>Produkt-id</th><th>Type</th><th class="hoyre">Antall</th><th class="hoyre">Beløp</th></tr>
+        <tr><th>Orgnr</th><th>Produkt-id</th><th>Type</th><th class="hoyre">Antall</th><th class="hoyre">Beløp (eksl. mva)</th></tr>
         </thead>
         <tbody>
         <tr th:each="r : ${rader}">
             <td th:text="${r.organisasjonsnummer()}">123456789</td>
             <td th:text="${r.produktId()}">1</td>
             <td th:text="${r.type()}">BRUKSVOLUM</td>
-            <td class="hoyre" th:text="${r.antall()} ?: '—'">100.00</td>
-            <td class="hoyre" th:text="${r.belop()} ?: '—'">—</td>
+            <td class="hoyre" th:text="${@tall.mengde(r.antall())}">100,00</td>
+            <td class="hoyre" th:text="${@tall.belop(r.belop())}">—</td>
         </tr>
         <tr th:if="${rader.isEmpty()}">
             <td colspan="5" class="tom">Ingen rader.</td>

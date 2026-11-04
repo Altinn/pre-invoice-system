@@ -16,11 +16,16 @@
         </ol>
     </nav>
     <h1 class="ds-heading" data-size="lg" th:text="|Faktura ordre ${faktura.ordreNr()}|">Faktura</h1>
-    <p class="ds-paragraph liten">
+    <p class="ds-paragraph">
+        <strong th:text="${faktura.kundenavn()}">Kunde</strong> ·
         Kundenummer <strong th:text="${faktura.kundenummer()}">100200</strong> ·
         mottaker orgnr <span th:text="${faktura.fakturamottakerOrgnr()}">123456789</span> ·
-        sum <strong th:text="${#numbers.formatDecimal(faktura.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</strong> ·
+        sum eksl. mva <strong th:text="${@tall.belop(faktura.sumBelop())}">0,00</strong> ·
         uuid <code th:text="${faktura.fakturaUuid()}">…</code>
+    </p>
+    <p class="ds-paragraph liten">Referanse:
+        <th:block th:if="${referanser.isEmpty()}">ingen referanse</th:block>
+        <th:block th:each="r, st : ${referanser}"><span th:text="${r}">REF</span><th:block th:unless="${st.last}">, </th:block></th:block>
     </p>
 
     <div class="seksjon" th:if="${!funn.isEmpty()}">
@@ -33,8 +38,8 @@
     <table class="ds-table" data-size="sm" data-hover>
         <thead>
         <tr>
-            <th>Produkt</th><th>Beskrivelse</th><th>Servicekode</th><th>Ref.</th>
-            <th class="hoyre">Antall</th><th class="hoyre">Enhetspris</th><th class="hoyre">Beløp</th>
+            <th>Produkt</th><th>Beskrivelse</th><th>Servicekode</th>
+            <th class="hoyre">Antall</th><th class="hoyre">Enhetspris</th><th class="hoyre">Beløp (eksl. mva)</th>
             <th class="hoyre">Bruksdata-id</th><th class="hoyre">Pris-id</th>
         </tr>
         </thead>
@@ -43,17 +48,23 @@
             <td th:text="${produktNavn.containsKey(l.produktId()) ? produktNavn.get(l.produktId()) : l.produktId()}">Melding</td>
             <td th:text="${l.beskrivelse()}">Bruk av melding januar 2027</td>
             <td th:text="${l.servicekode()} ?: '—'">—</td>
-            <td th:text="${l.fakturareferanse()} ?: '—'">—</td>
-            <td class="hoyre" th:text="${l.antall()} ?: '—'">100.00</td>
-            <td class="hoyre" th:text="${l.enhetspris()} ?: '—'">1.2500</td>
-            <td class="hoyre" th:text="${l.belop()}">125.00</td>
+            <td class="hoyre" th:text="${@tall.mengde(l.antall())}">100,00</td>
+            <td class="hoyre" th:text="${@tall.pris(l.enhetspris())}">1,25</td>
+            <td class="hoyre" th:text="${@tall.belop(l.belop())}">125,00</td>
             <td class="hoyre" th:text="${l.bruksdataId()} ?: '—'">5</td>
             <td class="hoyre" th:text="${l.prisId()} ?: '—'">3</td>
         </tr>
         <tr th:if="${linjer.isEmpty()}">
-            <td colspan="9" class="tom">Ingen linjer.</td>
+            <td colspan="8" class="tom">Ingen linjer.</td>
         </tr>
         </tbody>
+        <tfoot th:unless="${linjer.isEmpty()}">
+        <tr class="sumrad">
+            <th scope="row" colspan="5">Sum eksl. mva</th>
+            <td class="hoyre"><strong th:text="${@tall.belop(faktura.sumBelop())}">0,00</strong></td>
+            <td colspan="2"></td>
+        </tr>
+        </tfoot>
     </table>
 </main>
 </body>

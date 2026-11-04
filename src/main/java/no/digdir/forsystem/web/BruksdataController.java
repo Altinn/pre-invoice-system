@@ -5,10 +5,14 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import jakarta.servlet.http.HttpSession;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
+import no.digdir.forsystem.registry.Produkt;
+import no.digdir.forsystem.registry.ProduktService;
 import no.digdir.forsystem.usage.BruksdataImport;
 import no.digdir.forsystem.usage.BruksdataKandidatService;
 import no.digdir.forsystem.usage.Bruksdatafil;
@@ -22,6 +26,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,12 +44,20 @@ class BruksdataController {
     private final UsageImportService service;
     private final DwhImportService dwh;
     private final BruksdataKandidatService kandidater;
+    private final ProduktService produkter;
 
     BruksdataController(UsageImportService service, DwhImportService dwh,
-                        BruksdataKandidatService kandidater) {
+                        BruksdataKandidatService kandidater, ProduktService produkter) {
         this.service = service;
         this.dwh = dwh;
         this.kandidater = kandidater;
+        this.produkter = produkter;
+    }
+
+    /** Product code → registry name, so the preview names products as the registry does (specs/010 FR-005). */
+    @ModelAttribute("produktnavn")
+    Map<String, String> produktnavn() {
+        return produkter.alle().stream().collect(Collectors.toMap(Produkt::kode, Produkt::navn));
     }
 
     @GetMapping
