@@ -123,7 +123,8 @@
 Buntnummer: ${a != null and a.buntnummer() != null ? a.buntnummer() : 'ukjent'}
 Periode: ${sammendrag.periode()} (${sammendrag.periode().norskLabel()})
 Antall fakturaer: ${fraFil ? a.antallOrdrerFil() : sammendrag.antallFakturaer()}
-Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')} kr (eksl./inkl. mva uavklart)|">…</pre>
+Samlet beløp eksl. mva: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')} kr
+Samlet beløp inkl. mva: ${#numbers.formatDecimal(sammendrag.sumInklMva(), 1, 'WHITESPACE', 2, 'COMMA')} kr|">…</pre>
             <div class="rad ikke-utskrift">
                 <button class="ds-button" data-color="accent" type="button"
                         onclick="navigator.clipboard.writeText(document.getElementById('epost').innerText); this.textContent='Kopiert';">Kopier tallene</button>
@@ -162,11 +163,13 @@ Samlet beløp: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 
         <tbody>
         <tr><th scope="row">Periode</th><td class="hoyre" th:text="${sammendrag.periode()}">2027-01</td></tr>
         <tr><th scope="row">Antall fakturaer</th><td class="hoyre" th:text="${sammendrag.antallFakturaer()}">0</td></tr>
-        <tr><th scope="row">Antall LG04-ordrer <span class="liten">(én ordre per fakturalinje, OQ-1)</span></th>
+        <tr><th scope="row">Antall LG04-ordrer <span class="liten">(én per faktura, flere ved ulike referanser)</span></th>
             <td class="hoyre" th:text="${antallOrdrer}">0</td></tr>
         <tr><th scope="row">Antall linjer</th><td class="hoyre" th:text="${sammendrag.antallLinjer()}">0</td></tr>
-        <tr><th scope="row">Sum beløp <span class="liten">(eksl./inkl. mva uavklart)</span></th>
+        <tr><th scope="row">Sum beløp eksl. mva</th>
             <td class="hoyre" th:text="${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
+        <tr><th scope="row">Sum beløp inkl. mva <span class="liten">(25 %, beregnet per faktura)</span></th>
+            <td class="hoyre" th:text="${#numbers.formatDecimal(sammendrag.sumInklMva(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
         </tbody>
     </table>
     <div class="ds-alert" data-color="danger" th:unless="${sammendrag.konsistent()}">

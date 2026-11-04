@@ -62,11 +62,41 @@ class Lg04SkriverTest {
     }
 
     @Test
-    void value1IsMinus100WithoutQuantity() {
-        Lg04Ordre o = new Lg04Ordre("1", "ref", "", "t", 1, "u", "a", "b", "20270206",
-                List.of(new Lg04Ordrelinje("3030", "20010", null, null, null, "Applikasjonsinfrastruktur",
-                        "12345", null)));
-        assertThat(skriver.renderLinje2(o, 1).substring(4224, 4244).trim()).isEqualTo("-100");
+    void value1IsBlankWithoutQuantity() {
+        // Blank means 1.0 in Unit4 (LG04_55 value_1); FEL's -100 is only FEL's own import-error marker.
+        assertThat(skriver.renderLinje2(ordreMedAntall(null), 1).substring(4224, 4244)).isBlank();
+    }
+
+    @Test
+    void value1IsZeroForZeroQuantity() {
+        assertThat(skriver.renderLinje2(ordreMedAntall(BigDecimal.ZERO), 1).substring(4224, 4244))
+                .isEqualTo("                   0");
+    }
+
+    @Test
+    void value1RoundsToHundredths() {
+        assertThat(skriver.renderLinje2(ordreMedAntall(new BigDecimal("2.5")), 1).substring(4224, 4244).trim())
+                .isEqualTo("250");
+        assertThat(skriver.renderLinje2(ordreMedAntall(new BigDecimal("1.005")), 1).substring(4224, 4244).trim())
+                .isEqualTo("101");
+    }
+
+    @Test
+    void headerAndFooterTextAreCutAt120() {
+        String lang = "x".repeat(118) + "AB" + "overflow!!";
+        Lg04Ordre o = new Lg04Ordre("1", "ref", "", lang, 1, lang, "a", "b", "20270206",
+                List.of(new Lg04Ordrelinje("3030", "20010", null, null, null, "Melding", "100", BigDecimal.ONE)));
+        for (String linje : List.of(skriver.renderLinje1(o), skriver.renderLinje2(o, 1), skriver.renderLinje3(o, 1))) {
+            assertThat(linje.substring(2509, 2629)).isEqualTo(lang.substring(0, 120));
+            assertThat(linje.substring(2629, 2749)).isEqualTo(lang.substring(0, 120));
+            assertThat(linje.charAt(2749)).isEqualTo(' ');
+        }
+    }
+
+    private static Lg04Ordre ordreMedAntall(BigDecimal antall) {
+        return new Lg04Ordre("1", "ref", "", "t", 1, "u", "a", "b", "20270206",
+                List.of(new Lg04Ordrelinje("3030", "20009", null, null, null, "Applikasjonsinfrastruktur",
+                        "12345", antall)));
     }
 
     @Test

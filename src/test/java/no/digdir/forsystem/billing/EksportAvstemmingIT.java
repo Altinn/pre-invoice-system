@@ -75,6 +75,23 @@ class EksportAvstemmingIT extends BillingFixture {
         }).when(lg04).bygg(anyList());
     }
 
+    /** FEL: mva per invoice (sum × 1.25, rounded to øre), then summed — not the total × 1.25. */
+    @Test
+    void inklMvaIsRoundedPerInvoice() {
+        settKontoAlle();
+        Long v = aktivVersjon(LocalDate.of(2027, 1, 1), null).id();
+        pris(v, "melding", "10.0100");
+        regel(kunde("100000001", "Kunde A", "AKTIV", null).id(), "KN1", null, null, null);
+        regel(kunde("100000002", "Kunde B", "AKTIV", null).id(), "KN2", null, null, null);
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
+        bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
+        var s = tjeneste.sammendrag(tjeneste.generer(JAN).id());
+
+        assertThat(s.sumBelop()).isEqualByComparingTo("20.02");
+        assertThat(s.sumInklMva()).isEqualByComparingTo("25.02");   // 12.51 + 12.51; 20.02 × 1.25 would be 25.03
+    }
+
     @Test
     void summaryAndExpectedOrdersComeFromTheRun() {
         var kj = godkjentKjoring();
@@ -162,8 +179,10 @@ class EksportAvstemmingIT extends BillingFixture {
 
         mvc.perform(get("/kjoringer/{id}", kj.id()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(org.hamcrest.Matchers.containsString("eksl./inkl. mva uavklart")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("uavklart"))))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Til e-post til regnskap")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Samlet beløp eksl. mva: 23,00 kr")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Samlet beløp inkl. mva: 28,75 kr")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Område: Altinn")))
                 .andExpect(content().string(org.hamcrest.Matchers.matchesPattern("(?s).*Buntnummer: \\d{8}\\n.*")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Antall fakturaer: 1")))

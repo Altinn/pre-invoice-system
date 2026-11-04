@@ -5,8 +5,10 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -384,6 +386,17 @@ public class FakturakjoringService {
                 funnListe.add(advarsel(ctx.kjoringId, faktura.id(), Kontrollkode.NULLBELOP,
                         "Fakturaen har minst én linje med beløp 0"));
             }
+            // LG04 carries one reference pair per order, so the export splits this invoice (specs/008 FR-009).
+            // Same key as the export's grouping (EksportService.byggOrdrer), so warning and file agree.
+            Set<List<String>> referanser = new LinkedHashSet<>();
+            data.linjer.forEach(l -> referanser.add(Arrays.asList(l.fakturareferanse, l.bestillingsnummer)));
+            if (referanser.size() > 1) {
+                String liste = referanser.stream().map(r -> referansetekst(r.get(0), r.get(1)))
+                        .collect(Collectors.joining("; "));
+                funnListe.add(advarsel(ctx.kjoringId, faktura.id(), Kontrollkode.DELT_REFERANSE,
+                        "Fakturaen har " + referanser.size() + " ulike referanser (" + liste + ") og blir "
+                                + referanser.size() + " fakturaer i Unit4"));
+            }
             sumPerKunde.merge(data.kunde.id(), sum, BigDecimal::add);
             forsteFakturaPerKunde.putIfAbsent(data.kunde.id(), faktura.id());
         }
@@ -509,14 +522,18 @@ public class FakturakjoringService {
         int antallLinjer = 0;
         BigDecimal sumLinjer = BigDecimal.ZERO;
         BigDecimal sumFakturaer = BigDecimal.ZERO;
+        BigDecimal sumInklMva = BigDecimal.ZERO;
         for (Faktura f : fs) {
             sumFakturaer = sumFakturaer.add(f.sumBelop());
+            sumInklMva = sumInklMva.add(
+                    f.sumBelop().multiply(Kjoringssammendrag.MVA_FAKTOR).setScale(2, RoundingMode.HALF_UP));
             for (Fakturalinje l : linjer.findByFakturaIdOrderById(f.id())) {
                 antallLinjer++;
                 sumLinjer = sumLinjer.add(l.belop());
             }
         }
-        return new Kjoringssammendrag(new Periode(kj.periode()), fs.size(), antallLinjer, sumLinjer, sumFakturaer);
+        return new Kjoringssammendrag(new Periode(kj.periode()), fs.size(), antallLinjer, sumLinjer, sumFakturaer,
+                sumInklMva);
     }
 
     /**
@@ -644,6 +661,14 @@ public class FakturakjoringService {
         return referanser.stream().filter(r -> produktId.equals(r.produktId())).findFirst()
                 .or(() -> referanser.stream().filter(r -> r.produktId() == null).findFirst())
                 .orElse(null);
+    }
+
+    private static String referansetekst(String fakturareferanse, String bestillingsnummer) {
+        if (fakturareferanse == null && bestillingsnummer == null) {
+            return "ingen referanse";
+        }
+        return (fakturareferanse == null ? "–" : fakturareferanse)
+                + (bestillingsnummer == null ? "" : " / " + bestillingsnummer);
     }
 
     private static String beskrivKostnad(String type, Produkt p, Periode periode) {

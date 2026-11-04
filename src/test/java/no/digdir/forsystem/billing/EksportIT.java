@@ -44,6 +44,13 @@ class EksportIT extends BillingFixture {
     }
 
     @Test
+    void anInvoiceWithOneReferenceHasNoSplitWarning() {
+        var kj = approvedMultiLineRun();
+        var faktura = tjeneste.fakturaer(kj.id()).get(0);
+        assertThat(tjeneste.funnForFaktura(faktura.id())).noneMatch(f -> "DELT_REFERANSE".equals(f.kode()));
+    }
+
+    @Test
     void exportProducesAllFourArtifactsAndSetsEksportert() {
         var kj = approvedMultiLineRun();
         eksport.eksporter(kj.id());
@@ -93,8 +100,18 @@ class EksportIT extends BillingFixture {
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);
         bruk(imp, JAN, "100000001", "formidling", Bruksdatatype.BRUKSVOLUM, "10", null);
         var kj = tjeneste.generer(JAN);
-        tjeneste.godkjenn(kj.id());
+        var faktura = tjeneste.fakturaer(kj.id()).get(0);
         assertThat(tjeneste.fakturaer(kj.id())).hasSize(1);
+        // A visible warning before approval, not a block (FR-009).
+        assertThat(tjeneste.funnForFaktura(faktura.id()))
+                .filteredOn(f -> "DELT_REFERANSE".equals(f.kode()))
+                .singleElement()
+                .satisfies(f -> {
+                    assertThat(f.alvorlighet()).isEqualTo("ADVARSEL");
+                    assertThat(f.melding()).contains("REF-MELDING").contains("ingen referanse")
+                            .contains("2 fakturaer i Unit4");
+                });
+        tjeneste.godkjenn(kj.id());
 
         eksport.eksporter(kj.id());
         Eksportfil lg04 = tjeneste.eksportfiler(kj.id()).stream()

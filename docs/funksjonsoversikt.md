@@ -125,6 +125,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-CTRL-07 | NULLBELOP (warning) | Invoice has a zero-amount line. | `FakturakjoringService` | — | docs/04 P3 |
 | F-CTRL-08 | NY_KUNDE (warning) | Customer not invoiced in the previous period. | `FakturakjoringService` | — | docs/04 P3 |
 | F-CTRL-10 | AKTIV_KUNDE_UTEN_BRUK (warning) | Active customer with no usage row in the period. | `FakturakjoringService` | — | specs/003, BF1 T10 |
+| F-CTRL-11 | DELT_REFERANSE (warning) | Invoice lines carry different references; the LG04 export splits the invoice into one order per reference. | `FakturakjoringService` | — |
 | F-CTRL-09 | Findings surfaced in UI | Blocking + warnings shown on the run and per-faktura. | GET `/kjoringer/{id}` | LESER | docs/04 P3 |
 
 ## Approval & state machine — fakturakjøring
@@ -146,7 +147,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-EXP-01 | Export from GODKJENT only | Export allowed only from GODKJENT; sets EKSPORTERT. | POST `/kjoringer/{id}/eksporter` · `EksportService` | GODKJENNER | docs/04 P4 |
 | F-EXP-02 | LG04 fixed-width writer | 4324-char lines, fields at fixed byte offsets; byte-identical to FEL's Altinn sample. | `export.lg04.Lg04Skriver` | — | docs/05 golden |
 | F-EXP-03 | LG04 Windows-1252, no iconv | Written directly as Windows-1252. | `Lg04Eksport` | — | docs/02 |
-| F-EXP-04 | LG04 assembly (one order per invoice) | One header line per invoice, then one line pair per product numbered 1, 2, 3…; split by fakturareferanse/bestillingsnummer if they differ within an invoice. | `EksportService.byggOrdrer` | — | OQ-1 |
+| F-EXP-04 | LG04 assembly (one order per invoice) | One header line per invoice, then one line pair per product numbered 1, 2, 3…; split by fakturareferanse/bestillingsnummer if they differ within an invoice (warned as DELT_REFERANSE). VALUE_1 blank without quantity. | `EksportService.byggOrdrer` | — | OQ-1 |
 | F-EXP-05 | Øre conversion in export only | ×100, round half-up, only here. | `EksportService` | — | docs/02 |
 | F-EXP-06 | Kontering from product | account/dims/article from produkt (not hardcoded). | `EksportService` | — | docs/04 P4 |
 | F-EXP-07 | Responsible from config | LG04 responsible persons from `EksportKonfig` (placeholders until OQ-2). | `EksportKonfig` | — | OQ-2 |

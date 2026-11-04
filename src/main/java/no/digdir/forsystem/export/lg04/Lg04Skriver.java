@@ -28,8 +28,7 @@ public final class Lg04Skriver {
     private static final String STATUS = "N";
     private static final String BELOP_SATT = "1";
     private static final String SEKVENSNR = "8";
-    // TODO(OQ-23): FEL writes -100 when there is no quantity (cost lines); its meaning in Unit4 is unconfirmed.
-    private static final String VERDI_1_UTEN_ANTALL = "-100";
+    private static final int TEKSTFELT = 120;   // long_info1 and long_info2 are c120 (LG04_55)
     private static final String LINJE_NULL = "0";
 
     /** Header line (line number 0): references, recipient, order metadata. */
@@ -81,8 +80,8 @@ public final class Lg04Skriver {
 
     /** Fields every line of the order carries. */
     private static void felles(char[] buf, Lg04Ordre o) {
-        plasser(buf, 2509, padRight(nn(o.tekst()), 120));
-        plasser(buf, 2629, padRight(nn(o.url()), 120));
+        plasser(buf, 2509, fast(o.tekst(), TEKSTFELT));
+        plasser(buf, 2629, fast(o.url(), TEKSTFELT));
         plasser(buf, 3130, padRight(String.valueOf(o.ordreNr()), 15));
         plasser(buf, 3145, ORDRETYPE);
         plasser(buf, 3410, STATUS);
@@ -91,12 +90,21 @@ public final class Lg04Skriver {
         plasser(buf, 4259, BILAGSTYPE);
     }
 
-    /** VALUE_1: the quantity in hundredths, as FEL's program writes it. */
+    /**
+     * VALUE_1: the quantity in hundredths. Blank without a quantity (cost lines) — Unit4 then uses 1.0
+     * (LG04_55 value_1). FEL writes -100 there, but only as its own import-error marker.
+     */
     private static String verdi1(BigDecimal antall) {
-        if (antall == null || antall.signum() == 0) {
-            return VERDI_1_UTEN_ANTALL;
+        if (antall == null) {
+            return "";
         }
         return antall.movePointRight(2).setScale(0, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    /** Exactly {@code bredde} characters: padded, or cut so it never spills into the next field. */
+    private static String fast(String s, int bredde) {
+        String v = padRight(nn(s), bredde);
+        return v.substring(0, bredde);
     }
 
     private static char[] tomLinje() {
