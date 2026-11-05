@@ -86,6 +86,47 @@
             </ul>
         </ds-pagination>
     </div>
+
+    <div class="rad ikke-utskrift">
+        <a class="ds-button" data-variant="secondary" data-size="sm"
+           th:href="@{/kjoringer/{id}/fakturaliste.xlsx(id=${kjoring.id()})}">Last ned fakturalisten (XLSX)</a>
+        <a class="ds-button" data-variant="tertiary" data-size="sm"
+           th:href="@{/kjoringer/{id}/fakturaliste.csv(id=${kjoring.id()})}">CSV</a>
+    </div>
+
+    <!-- Customers whose monthly total was not over the price version's threshold (specs/011, OQ-22): no
+         invoice, listed here so Økonomi can check them before approval. Correction runs have no threshold. -->
+    <section id="under-terskel" class="seksjon" aria-labelledby="under-terskel-tittel" th:unless="${kjoring.erKorrigering()}"
+             th:with="ut=${underTerskel}">
+        <h2 class="ds-heading" data-size="xs" id="under-terskel-tittel">Faktureres ikke (under terskelverdi)</h2>
+        <p class="ds-paragraph liten" th:if="${ut.isEmpty()}">Ingen kunder var under terskelverdien.</p>
+        <th:block th:unless="${ut.isEmpty()}">
+            <p class="ds-paragraph liten"
+               th:text="|Kunder med samlet ${@tall.belop(ut[0].terskelverdi())} kr eksl. mva eller mindre i perioden får ingen faktura. ${@tall.antall(ut.size())} fakturaer er holdt utenfor.|">
+                Kunder under terskelverdien får ingen faktura.</p>
+            <table class="ds-table" data-size="sm" data-hover>
+                <thead>
+                <tr><th>Kunde</th><th>Orgnr</th><th>Kundenummer</th>
+                    <th class="hoyre">Sum (eksl. mva)</th><th class="hoyre">Kundens sum (eksl. mva)</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="u : ${ut}">
+                    <td th:text="${u.kundenavn()}">Kunde</td>
+                    <td th:text="${u.organisasjonsnummer()}">123456789</td>
+                    <td th:text="${u.kundenummer()}">1001</td>
+                    <td class="hoyre" th:text="${@tall.belop(u.sumBelop())}">0,00</td>
+                    <td class="hoyre" th:text="${@tall.belop(u.kundesum())}">0,00</td>
+                </tr>
+                </tbody>
+            </table>
+            <div class="rad ikke-utskrift">
+                <a class="ds-button" data-variant="secondary" data-size="sm"
+                   th:href="@{/kjoringer/{id}/under-terskel.xlsx(id=${kjoring.id()})}">Last ned listen (XLSX)</a>
+                <a class="ds-button" data-variant="tertiary" data-size="sm"
+                   th:href="@{/kjoringer/{id}/under-terskel.csv(id=${kjoring.id()})}">CSV</a>
+            </div>
+        </th:block>
+    </section>
 </main>
 </body>
 </html>

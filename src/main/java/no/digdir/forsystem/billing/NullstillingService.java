@@ -85,13 +85,14 @@ public class NullstillingService {
                 select raadata_url from bruksdata_import where periode = ? and raadata_url is not null
                 """.formatted(KJORINGER), String.class, p, p);
 
-        // Children before parents, along the foreign keys of V4/V8/V9/V10.
+        // Children before parents, along the foreign keys of V4/V8/V9/V10/V14.
         jdbc.update("delete from lg04_avstemming where kjoring_id in (" + KJORINGER + ")", p);
         jdbc.update("""
                 delete from kontrollfunn_bruksdata
                  where kontrollfunn_id in (select id from kontrollfunn where kjoring_id in (%s))
                     or bruksdata_id in (select id from bruksdata where import_id in (%s))
                 """.formatted(KJORINGER, IMPORTER), p, p);
+        jdbc.update("delete from faktura_under_terskel where kjoring_id in (" + KJORINGER + ")", p);
         jdbc.update("delete from kontrollfunn where kjoring_id in (" + KJORINGER + ")", p);
         jdbc.update("delete from fakturalinje where faktura_id in (select id from faktura where kjoring_id in ("
                 + KJORINGER + "))", p);

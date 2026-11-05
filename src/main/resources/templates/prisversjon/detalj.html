@@ -29,6 +29,26 @@
             produkter og at datointervallet ikke overlapper en annen aktiv versjon.</p>
     </div>
 
+    <!-- Invoice threshold (specs/011, OQ-22): part of the price model, locked on activation like the prices. -->
+    <section id="terskelverdi" aria-labelledby="terskelverdi-tittel" class="seksjon">
+        <h2 class="ds-heading" data-size="xs" id="terskelverdi-tittel">Terskelverdi</h2>
+        <p class="ds-paragraph liten bred">Kunder med samlet beløp for måneden lik eller under terskelverdien får
+            ingen faktura. Beløpet summeres per kunde (organisasjonsnummer) over alle produkter og kundenumre.</p>
+        <form th:if="${utkast}" th:action="@{/prisversjoner/{id}/terskelverdi(id=${versjon.id()})}" method="post"
+              class="rad ikke-utskrift">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <div class="ds-field">
+                <label class="ds-label" for="terskelverdi-felt">Terskelverdi (kr eksl. mva per kunde per måned)</label>
+                <input class="ds-input felt-smal" id="terskelverdi-felt" name="terskelverdi" type="number"
+                       step="0.01" min="0" required th:value="${versjon.terskelverdi()}">
+            </div>
+            <button class="ds-button" data-variant="secondary" type="submit">Lagre terskelverdi</button>
+        </form>
+        <p class="ds-paragraph" th:unless="${utkast}">
+            <strong th:text="${versjon.terskelverdi() != null} ? |${@tall.belop(versjon.terskelverdi())} kr eksl. mva per kunde per måned| : 'Ingen terskelverdi'">40,00 kr</strong>
+            <span class="liten">· låst etter aktivering</span></p>
+    </section>
+
     <table class="ds-table" data-size="sm" data-hover>
         <caption class="ds-sr-only">Enhetspriser</caption>
         <thead>

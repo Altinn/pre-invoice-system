@@ -27,7 +27,11 @@ public enum Kontrollkode {
             "Kunden har aktiv avtale, men ingen bruk i perioden. Sjekk at ingen bruk mangler."),
     /** The invoice's lines carry different fakturareferanse/bestillingsnummer, so LG04 splits it into several orders. */
     DELT_REFERANSE(Alvorlighet.ADVARSEL,
-            "Linjene har ulik fakturareferanse eller bestillingsnummer, så kunden får én faktura i Unit4 per referanse.");
+            "Linjene har ulik fakturareferanse eller bestillingsnummer, så kunden får én faktura i Unit4 per referanse."),
+    /** Customers whose monthly total is not over the price version's threshold get no invoice (specs/011, OQ-22). */
+    UNDER_TERSKEL(Alvorlighet.ADVARSEL,
+            "Kundens samlede beløp i perioden er ikke over terskelverdien i prisversjonen, så kunden faktureres ikke "
+                    + "denne måneden. Se listen under Fakturaer.");
 
     private final Alvorlighet alvorlighet;
     private final String definisjon;

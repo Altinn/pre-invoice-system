@@ -60,6 +60,12 @@ class PrisversjonController {
         return "redirect:/prisversjoner/" + id;
     }
 
+    @PostMapping("/{id}/terskelverdi")
+    String settTerskelverdi(@PathVariable Long id, @RequestParam BigDecimal terskelverdi) {
+        prisversjoner.settTerskelverdi(id, terskelverdi);
+        return "redirect:/prisversjoner/" + id + "#terskelverdi";
+    }
+
     @PostMapping("/{id}/aktiver")
     String aktiver(@PathVariable Long id) {
         prisversjoner.aktiver(id);
