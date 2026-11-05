@@ -20,6 +20,7 @@ import no.digdir.forsystem.billing.Eksportfil;
 import no.digdir.forsystem.billing.EksportfilRepository;
 import no.digdir.forsystem.billing.Faktura;
 import no.digdir.forsystem.billing.FakturaUnderTerskel;
+import no.digdir.forsystem.billing.FakturaUtenReferanse;
 import no.digdir.forsystem.billing.FakturakjoringService;
 import no.digdir.forsystem.billing.Fakturakjoring;
 import no.digdir.forsystem.billing.Fakturalinje;
@@ -185,8 +186,9 @@ public class EksportService {
     }
 
     /**
-     * The run's invoices, or the would-be invoices it left out under the threshold (specs/011), as CSV or
-     * XLSX — one row per invoice, so Økonomi can sort and filter both lists. Changes nothing; logged.
+     * The run's invoices, the would-be invoices it left out under the threshold (specs/011), or the invoices
+     * without fakturareferanse (specs/012), as CSV or XLSX — one row per invoice, so Økonomi can sort and
+     * filter the lists. Changes nothing; logged.
      */
     @Transactional   // not read-only: it writes the LASTET_NED audit row
     public Nedlasting liste(Long kjoringId, String liste, String format) {
@@ -214,6 +216,16 @@ public class EksportService {
                 for (FakturaUnderTerskel u : kjoringer.underTerskel(kjoringId)) {
                     rader.add(Arrays.asList(periode, u.kundenummer(), u.kundenavn(), u.organisasjonsnummer(),
                             u.tilleggstekst(), u.antallLinjer(), u.sumBelop(), u.kundesum(), u.terskelverdi()));
+                }
+            }
+            case "uten-fakturareferanse" -> {
+                navn = "uten-fakturareferanse";
+                kolonner = List.of("periode", "ordre", "kundenummer", "kundenavn", "organisasjonsnummer",
+                        "produkter_uten_fakturareferanse", "linjer_uten_fakturareferanse", "sum_eksl_mva");
+                for (FakturaUtenReferanse u : kjoringer.utenFakturareferanse(kjoringId)) {
+                    rader.add(Arrays.asList(periode, u.ordreNr(), u.kundenummer(), u.kundenavn(),
+                            u.organisasjonsnummer(), String.join(", ", u.produkter()), u.antallLinjer(),
+                            u.sumBelop()));
                 }
             }
             default -> throw new Regelbrudd("Ukjent liste: " + liste);

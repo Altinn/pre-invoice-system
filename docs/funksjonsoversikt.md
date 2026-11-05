@@ -112,6 +112,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-GEN-16 | Usage reconciliation view | Per product × type: imported vs invoiced (rows, sum); every usage row kept off the invoice with the finding that blocked it (linked at generation); active products without usage listed. | GET `/kjoringer/{id}/avstemming` · `BruksdataavstemmingService` | LESER | specs/002 US2, BF1 T06/T10 |
 | F-GEN-17 | Customer name snapshot | `faktura.kundenavn` frozen at generation; older invoices show the registry name marked «(nåværende navn)». | `FakturakjoringService.kundenavn` | — | specs/002 D9 |
 | F-GEN-18 | Invoice threshold | Ordinary runs give no invoice to a customer whose total over all its would-be invoices is not over the version's threshold; they are stored as `faktura_under_terskel`, listed on the Fakturaer tab and downloadable (CSV/XLSX) together with the invoice list. Correction runs are exempt. | `FakturakjoringService.bygg`, GET `/kjoringer/{id}/{fakturaliste,under-terskel}.{csv,xlsx}` | LESER (view), FORVALTER (generate) | specs/011, OQ-22 |
+| F-GEN-19 | Bestillingsnummer fallback | An empty or blank bestillingsnummer is snapshotted as the line's fakturareferanse; the registry is unchanged. Never adds an LG04 split. | `FakturakjoringService.Referansepar` | — | specs/012 |
 | F-GEN-14 | Run + faktura screens | Run overview (invoices + findings) and faktura drill-down to lines/bruksdata. | GET `/kjoringer/{id}`, `/kjoringer/{id}/faktura/{fid}` | LESER | docs/04 P3 |
 
 ## Controls — kontrollfunn
@@ -129,6 +130,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-CTRL-10 | AKTIV_KUNDE_UTEN_BRUK (warning) | Active customer with no usage row in the period. | `FakturakjoringService` | — | specs/003, BF1 T10 |
 | F-CTRL-11 | DELT_REFERANSE (warning) | Invoice lines carry different references; the LG04 export splits the invoice into one order per reference. | `FakturakjoringService` | — |
 | F-CTRL-13 | UNDER_TERSKEL (warning) | One per run when customers are left out under the threshold: count, total and threshold; linked to every left-out usage row so the usage reconciliation explains them. | `FakturakjoringService` | — | specs/011, OQ-22 |
+| F-CTRL-14 | MANGLER_FAKTURAREFERANSE (warning) + list | One per invoice with a line without fakturareferanse (customer, orgnr, kundenummer, products). The Kontroller tab lists those invoices under «Fakturaer uten fakturareferanse», downloadable as CSV/XLSX. | `FakturakjoringService.utenFakturareferanse`, GET `/kjoringer/{id}/uten-fakturareferanse.{csv,xlsx}` | LESER | specs/012, OQ-15, OQ-24 |
 | F-CTRL-09 | Findings surfaced in UI | Blocking + warnings shown on the run and per-faktura. | GET `/kjoringer/{id}` | LESER | docs/04 P3 |
 | F-CTRL-12 | Control codes explained | Kontroller tab explains both severities and every code (definition and severity live on `Kontrollkode`); generation refuses a code raised with the wrong severity. | `Kontrollkode`, `kjoring/kontroller.html` | LESER | specs/010 |
 
@@ -232,3 +234,5 @@ Facts not yet decided; the design stays safe while they are open (never invent a
 | OQ-8 | DFØ delivery channel + receipts; LG04 line separator | F-EXP-*, N-05 |
 | OQ-9 | PDF retention / hosting | F-EXP-08, N-09 |
 | OQ-10 | orgnr ↔ kundenummer mapping | F-GEN-04, F-REG-KUN-09/10 |
+| OQ-15 | Mandatory customer fields (fakturareferanse as warning for now) | F-CTRL-14 |
+| OQ-24 | Fakturareferanse: product-row inheritance; run list vs registry-wide list | F-CTRL-14, F-REG-KUN-07 |

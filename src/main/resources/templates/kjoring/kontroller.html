@@ -57,6 +57,40 @@
         </tbody>
     </table>
 
+    <!-- Invoices with lines lacking «Deres referanse» (specs/012 FR-003): the customers to get a reference for. -->
+    <section class="seksjon" id="uten-fakturareferanse" aria-labelledby="uten-fakturareferanse-tittel"
+             th:with="ur=${utenFakturareferanse}">
+        <h2 class="ds-heading" data-size="xs" id="uten-fakturareferanse-tittel">Fakturaer uten fakturareferanse</h2>
+        <p class="ds-paragraph liten" th:if="${ur.isEmpty()}">Alle fakturaene har fakturareferanse (Deres referanse).</p>
+        <th:block th:unless="${ur.isEmpty()}">
+            <p class="ds-paragraph liten bred"
+               th:text="|${@tall.antall(ur.size())} fakturaer har linjer uten fakturareferanse (Deres referanse). Legg inn referansen på kunden under Kunder og generer kjøringen på nytt. Mangler bare bestillingsnummer, brukes fakturareferansen.|">
+                Fakturaer uten fakturareferanse.</p>
+            <table class="ds-table" data-size="sm" data-hover>
+                <thead>
+                <tr><th>Kunde</th><th>Orgnr</th><th>Kundenummer</th><th>Produkter uten referanse</th>
+                    <th class="hoyre">Sum (eksl. mva)</th><th></th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="u : ${ur}">
+                    <td th:text="${u.kundenavn()}">Kunde</td>
+                    <td th:text="${u.organisasjonsnummer()}">123456789</td>
+                    <td th:text="${u.kundenummer()}">1001</td>
+                    <td th:text="${u.alleLinjer()} ? |Alle (${#strings.listJoin(u.produkter(), ', ')})| : ${#strings.listJoin(u.produkter(), ', ')}">Melding</td>
+                    <td class="hoyre" th:text="${@tall.belop(u.sumBelop())}">0,00</td>
+                    <td class="hoyre"><a class="ds-link"
+                           th:href="@{/kjoringer/{id}/faktura/{fid}(id=${kjoring.id()},fid=${u.fakturaId()})}">Linjer</a></td>
+                </tr>
+                </tbody>
+            </table>
+            <div class="rad ikke-utskrift">
+                <a class="ds-button" data-variant="secondary" data-size="sm"
+                   th:href="@{/kjoringer/{id}/uten-fakturareferanse.xlsx(id=${kjoring.id()})}">Last ned listen (XLSX)</a>
+                <a class="ds-button" data-variant="tertiary" data-size="sm"
+                   th:href="@{/kjoringer/{id}/uten-fakturareferanse.csv(id=${kjoring.id()})}">CSV</a>
+            </div>
+        </th:block>
+    </section>
 
     <!-- Imported usage against invoiced usage (specs/002 US2); was its own page before specs/006. -->
     <section class="seksjon" id="bruksdata" th:if="${avstemming != null}" th:with="a=${avstemming}" aria-labelledby="bruksdata-tittel">

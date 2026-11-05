@@ -28,6 +28,13 @@ public enum Kontrollkode {
     /** The invoice's lines carry different fakturareferanse/bestillingsnummer, so LG04 splits it into several orders. */
     DELT_REFERANSE(Alvorlighet.ADVARSEL,
             "Linjene har ulik fakturareferanse eller bestillingsnummer, så kunden får én faktura i Unit4 per referanse."),
+    /**
+     * At least one line of the invoice has no fakturareferanse («Deres referanse») — Økonomi's kickoff wish,
+     * raised like AKTIV_KUNDE_UTEN_BRUK (specs/012). A warning until the mandatory-field list says otherwise (OQ-15).
+     */
+    MANGLER_FAKTURAREFERANSE(Alvorlighet.ADVARSEL,
+            "Minst én linje på fakturaen har ingen fakturareferanse (Deres referanse). Se listen «Fakturaer uten "
+                    + "fakturareferanse» nedenfor, og legg inn referansen i kunderegisteret."),
     /** Customers whose monthly total is not over the price version's threshold get no invoice (specs/011, OQ-22). */
     UNDER_TERSKEL(Alvorlighet.ADVARSEL,
             "Kundens samlede beløp i perioden er ikke over terskelverdien i prisversjonen, så kunden faktureres ikke "

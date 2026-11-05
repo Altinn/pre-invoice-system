@@ -306,12 +306,11 @@ public class FakturakjoringService {
                 beskrivelse = beskrivKostnad(b.type(), p, ctx.periode);
             }
 
-            KundeReferanse ref = velgReferanse(
-                    referanserByKunde.getOrDefault(k.id(), List.of()), p.id());
+            Referansepar ref = Referansepar.av(velgReferanse(
+                    referanserByKunde.getOrDefault(k.id(), List.of()), p.id()));
             var linje = new LinjeUtkast(p.id(), p.kode(), b.type(), beskrivelse, antall, enhetspris, belop,
                     prisId, ctx.korrigering ? null : b.id(), ctx.korrigering ? b.id() : null, regel.servicekode(),
-                    ref == null ? null : ref.fakturareferanse(),
-                    ref == null ? null : ref.bestillingsnummer());
+                    ref.fakturareferanse(), ref.bestillingsnummer());
 
             Gruppe g = new Gruppe(k.id(), regel.kundenummer());
             grupper.computeIfAbsent(g, x -> new Gruppedata(k, regel.tilleggstekst())).linjer.add(linje);
@@ -433,6 +432,15 @@ public class FakturakjoringService {
                 funnListe.add(advarsel(ctx.kjoringId, faktura.id(), Kontrollkode.DELT_REFERANSE,
                         "Fakturaen har " + referanser.size() + " ulike referanser (" + liste + ") og blir "
                                 + referanser.size() + " fakturaer i Unit4"));
+            }
+            // Missing «Deres referanse» (specs/012): one warning per invoice, naming the customer and products,
+            // since the Kontroller tab shows findings as text. The list below the findings has the same rows.
+            List<String> utenReferanse = data.linjer.stream().filter(l -> l.fakturareferanse == null)
+                    .map(l -> produktById.get(l.produktId).navn()).distinct().toList();
+            if (!utenReferanse.isEmpty()) {
+                funnListe.add(advarsel(ctx.kjoringId, faktura.id(), Kontrollkode.MANGLER_FAKTURAREFERANSE,
+                        data.kunde.virksomhetsnavn() + " (" + data.kunde.organisasjonsnummer() + "), kundenummer "
+                                + g.kundenummer + ": ingen fakturareferanse for " + String.join(", ", utenReferanse)));
             }
             sumPerKunde.merge(data.kunde.id(), sum, BigDecimal::add);
             forsteFakturaPerKunde.putIfAbsent(data.kunde.id(), faktura.id());
@@ -602,6 +610,37 @@ public class FakturakjoringService {
         return fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
     }
 
+    /**
+     * The run's invoices with lines that have no fakturareferanse (specs/012), in invoice order — the
+     * customers Økonomi has to get a «Deres referanse» for. Only invoiced customers: those left out under the
+     * threshold or without usage are not on an invoice this month. TODO(OQ-24): Økonomi to say whether a
+     * registry-wide list of all active customers is wanted as well.
+     */
+    @Transactional(readOnly = true)
+    public List<FakturaUtenReferanse> utenFakturareferanse(Long kjoringId) {
+        Map<Long, String> produktnavn = new LinkedHashMap<>();
+        produkter.findAllByOrderByKode().forEach(p -> produktnavn.put(p.id(), p.navn()));
+        List<Faktura> fs = fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
+        Map<Long, String> navn = kundenavn(fs);
+        Map<Long, String> orgnrByKunde = new LinkedHashMap<>();
+        List<FakturaUtenReferanse> ut = new ArrayList<>();
+        for (Faktura f : fs) {
+            List<Fakturalinje> alle = linjer.findByFakturaIdOrderById(f.id());
+            List<Fakturalinje> uten = alle.stream().filter(l -> l.fakturareferanse() == null).toList();
+            if (uten.isEmpty()) {
+                continue;
+            }
+            String orgnr = orgnrByKunde.computeIfAbsent(f.kundeId(),
+                    id -> kunder.findById(id).map(Kunde::organisasjonsnummer).orElse(""));
+            List<String> produktliste = uten.stream()
+                    .map(l -> produktnavn.getOrDefault(l.produktId(), String.valueOf(l.produktId())))
+                    .distinct().toList();
+            ut.add(new FakturaUtenReferanse(f.id(), f.ordreNr(), navn.get(f.id()), orgnr, f.kundenummer(),
+                    produktliste, uten.size(), uten.size() == alle.size(), f.sumBelop()));
+        }
+        return ut;
+    }
+
     /** Headline figures for the run page and the covering email (specs/002 FR-001..003). */
     @Transactional(readOnly = true)
     public Kjoringssammendrag sammendrag(Long kjoringId) {
@@ -745,6 +784,9 @@ public class FakturakjoringService {
                 .orElse(null);
     }
 
+    // A product-specific row replaces the customer default as a whole, also when its fakturareferanse is empty;
+    // the line then has no fakturareferanse and gets MANGLER_FAKTURAREFERANSE. TODO(OQ-24): Økonomi to confirm
+    // that an empty field on a product row should not inherit the customer default.
     private static KundeReferanse velgReferanse(List<KundeReferanse> referanser, Long produktId) {
         return referanser.stream().filter(r -> produktId.equals(r.produktId())).findFirst()
                 .or(() -> referanser.stream().filter(r -> r.produktId() == null).findFirst())
@@ -812,6 +854,29 @@ public class FakturakjoringService {
         Gruppedata(Kunde kunde, String tilleggstekst) {
             this.kunde = kunde;
             this.tilleggstekst = tilleggstekst;
+        }
+    }
+
+    /**
+     * The reference pair a line is snapshotted with. When bestillingsnummer is empty it takes the fakturareferanse
+     * (Økonomi, kickoff; specs/012 FR-005): done here, at generation, so the registry keeps what CRM/the DWH
+     * delivered and a later fix to the fakturareferanse is picked up by regenerating. The rule maps the pair
+     * (r, ∅) to (r, r), so two lines whose pairs differed before can only become equal — it never adds an
+     * LG04 split (DELT_REFERANSE), and removes the split between (r, ∅) and (r, r).
+     */
+    record Referansepar(String fakturareferanse, String bestillingsnummer) {
+
+        static Referansepar av(KundeReferanse ref) {
+            if (ref == null) {
+                return new Referansepar(null, null);
+            }
+            String fakturareferanse = tomTilNull(ref.fakturareferanse());
+            String bestillingsnummer = tomTilNull(ref.bestillingsnummer());
+            return new Referansepar(fakturareferanse, bestillingsnummer != null ? bestillingsnummer : fakturareferanse);
+        }
+
+        private static String tomTilNull(String s) {
+            return s == null || s.isBlank() ? null : s;
         }
     }
 

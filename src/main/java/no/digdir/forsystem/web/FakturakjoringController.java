@@ -113,6 +113,7 @@ class FakturakjoringController {
         model.addAttribute("antallValgteEndringer", fane.kjoring().erKorrigering()
                 ? kjoringer.valgteEndringIder(id).size() : 0);
         model.addAttribute("lg04Avstemming", eksport.avstemmingFor(id).orElse(null));
+        model.addAttribute("utenFakturareferanse", kjoringer.utenFakturareferanse(id));
         return "kjoring/kontroller";
     }
 
@@ -213,8 +214,11 @@ class FakturakjoringController {
                 .body(n.innhold());
     }
 
-    /** The invoice list, or the would-be invoices left out under the threshold, as a spreadsheet (specs/011). */
-    @GetMapping("/{id}/{liste:fakturaliste|under-terskel}.{format:csv|xlsx}")
+    /**
+     * The invoice list, the would-be invoices left out under the threshold (specs/011) or the invoices without
+     * fakturareferanse (specs/012), as a spreadsheet.
+     */
+    @GetMapping("/{id}/{liste:fakturaliste|under-terskel|uten-fakturareferanse}.{format:csv|xlsx}")
     ResponseEntity<byte[]> liste(@PathVariable Long id, @PathVariable String liste, @PathVariable String format) {
         EksportService.Nedlasting n = eksport.liste(id, liste, format);
         return ResponseEntity.ok()
