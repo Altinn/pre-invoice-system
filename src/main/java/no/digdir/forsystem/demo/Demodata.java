@@ -91,6 +91,8 @@ class Demodata implements ApplicationRunner {
         // Normal customer, several products under one kundenummer.
         Long oslo = kunder.opprett("958935420", "Oslo kommune", null, Avtalestatus.AKTIV).id();
         kunder.leggTilRegel(oslo, "KN-1001", null, null, null);
+        // Fakturareferanse without bestillingsnummer: the invoice gets the reference in both fields (specs/012).
+        kunder.leggTilReferanse(oslo, null, "DEMO-OSLO-REF", null);
 
         // Deviating recipient: usage on one org, invoiced to another legal entity.
         Long helgeland = kunder.opprett("912345678", "Digitale Helgeland", "964338442", Avtalestatus.AKTIV).id();

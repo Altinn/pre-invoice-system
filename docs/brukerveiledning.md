@@ -201,6 +201,13 @@ navn, gyldig fra, evt. gyldig til).
    - Legg til med produkt (valgfritt), fakturareferanse og bestillingsnummer → **Legg til**. Fjern
      med **Slett**.
    - Begge feltene kan være **høyst 25 tegn** – det er plassen de har på fakturaen i Unit4.
+   - **Står bestillingsnummer tomt**, får fakturaen fakturareferansen som bestillingsnummer
+     («— (fakturareferansen brukes)» i tabellen). Det skjer når kjøringen genereres; registeret
+     endres ikke, så retter du fakturareferansen, følger bestillingsnummeret med neste gang du
+     genererer. Har kunden ulike referanser per produkt, deles fakturaen fortsatt (se `DELT_REFERANSE`).
+   - Mangler **fakturareferanse** (Deres referanse), får fakturaen en advarsel
+     `MANGLER_FAKTURAREFERANSE` (se kapittel 11). En produktrad uten fakturareferanse overstyrer
+     standarden – produktet får da ingen fakturareferanse.
 3. **Kundenummerregler** — kobler kunden til Unit4-kundenummer.
    - **Én faktura per kundenummer.** Har en kunde to kundenummer (f.eks. ulik **servicekode** per
      produkt, som Utdanningsdirektoratet), blir det to fakturaer.
@@ -329,6 +336,8 @@ stateDiagram-v2
   ordrer og samme beløp som kjøringen («LG04 stemmer med fakturagrunnlaget»). **Kontroller arkivert
   LG04 på nytt** leser den lagrede fila på nytt og sjekker at den ikke er endret.
 - **Avstemming bruksdata** — se under.
+- **Fakturaer uten fakturareferanse** (fanen *Kontroller*, under kontrollfunnene) — fakturaene som har
+  linjer uten «Deres referanse», med nedlasting som XLSX/CSV. Se kapittel 11.
 - **Last ned fakturagrunnlag (XLSX, for Excel)** / **(CSV)** — alle fakturalinjene i et regneark, også
   *før* godkjenning. Filnavnet inneholder status (f.eks. `fakturagrunnlag-2027-01-GENERERT.xlsx`), så et
   utkast ikke forveksles med det godkjente grunnlaget. Nedlastingen endrer ingenting, men logges.
@@ -458,7 +467,14 @@ eksempel på meldingen.
 | `NY_KUNDE` | Advarsel | Kunden ble ikke fakturert forrige periode. | Bekreft at ny kunde er forventet. |
 | `AKTIV_KUNDE_UTEN_BRUK` | Advarsel | Kunden har aktiv avtale, men ingen bruk i perioden. En forventet tjenesteeier kan mangle i grunnlaget. | Sjekk om fraværet er riktig (ingen fakturerbar bruk), eller om bruken mangler i datavarehuset. |
 | `UNDER_TERSKEL` | Advarsel | Én eller flere kunder har samlet beløp for måneden lik eller under terskelverdien og faktureres ikke. Meldingen viser antall kunder, samlet beløp og terskelverdien. | Se listen *Faktureres ikke (under terskelverdi)* under Fakturaer. Bruken deres vises som «ikke fakturert» i Avstemming bruksdata med denne koden som årsak. |
+| `MANGLER_FAKTURAREFERANSE` | Advarsel | Minst én linje på fakturaen har ingen fakturareferanse (Deres referanse). Én advarsel per faktura, med kunde, orgnr, kundenummer og produktene som mangler. Kunden kan avvise en faktura uten referanse. | Se listen **Fakturaer uten fakturareferanse** under kontrollfunnene (kan lastes ned som XLSX/CSV). Legg inn referansen på kunden under **Kunder**, forkast og generer på nytt. |
 | `DELT_REFERANSE` | Advarsel | Linjene på fakturaen har ulik fakturareferanse/bestillingsnummer. LG04 kan bare ha én referanse per ordre, så kunden får én faktura i Unit4 per referanse. | Sjekk at det er ønsket. Skal kunden ha én faktura, fjern den produktspesifikke referansen i kunderegisteret og generer på nytt. |
+
+**Fakturaer uten fakturareferanse:** under kontrollfunnene på fanen **Kontroller** står fakturaene i
+kjøringen som har linjer uten fakturareferanse: kunde, orgnr, kundenummer, hvilke produkter som mangler
+referanse («Alle» når ingen linjer har den), sum og en lenke til linjene. **Last ned listen (XLSX)** /
+**CSV** gir samme liste i et regneark. Kunder som ikke faktureres denne måneden (under terskelverdi eller
+uten bruk) er ikke med.
 
 **Etter å ha rettet:** forkast kjøringen, rett dataene, og generer på nytt. Funnene beregnes på nytt.
 

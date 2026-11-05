@@ -56,7 +56,8 @@
 
     <!-- Fakturareferanser -->
     <h2 class="ds-heading" data-size="xs">Fakturareferanser</h2>
-    <p class="ds-paragraph liten">Uten produkt = standard for kunden; en produktrad overstyrer.</p>
+    <p class="ds-paragraph liten">Uten produkt = standard for kunden; en produktrad overstyrer. Står
+        bestillingsnummer tomt, får fakturaen fakturareferansen som bestillingsnummer.</p>
     <table class="ds-table" data-size="sm" data-hover>
         <thead>
         <tr><th>Produkt</th><th>Fakturareferanse</th><th>Bestillingsnummer</th><th></th></tr>
@@ -65,7 +66,7 @@
         <tr th:each="r : ${referanser}">
             <td th:text="${r.produktId() != null ? (produktNavn.containsKey(r.produktId()) ? produktNavn.get(r.produktId()) : r.produktId()) : '(standard)'}">(standard)</td>
             <td th:text="${r.fakturareferanse()} ?: '—'">—</td>
-            <td th:text="${r.bestillingsnummer()} ?: '—'">—</td>
+            <td th:text="${r.bestillingsnummer() != null} ? ${r.bestillingsnummer()} : (${r.fakturareferanse() != null} ? '— (fakturareferansen brukes)' : '—')">—</td>
             <td class="hoyre">
                 <form th:action="@{/referanser/{rid}/slett(rid=${r.id()})}" method="post">
                     <th:block th:replace="~{layout :: csrf}"></th:block>

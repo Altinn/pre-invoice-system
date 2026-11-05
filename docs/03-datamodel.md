@@ -171,7 +171,7 @@ create table fakturalinje (
     bruksdata_id      bigint references bruksdata,  -- traceability to the usage basis
     servicekode       text,
     fakturareferanse  text,                         -- snapshot at generation
-    bestillingsnummer text                          -- snapshot at generation
+    bestillingsnummer text                          -- snapshot at generation; empty → fakturareferanse (specs/012)
 );
 
 create table kontrollfunn (

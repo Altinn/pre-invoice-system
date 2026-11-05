@@ -29,6 +29,7 @@ class KjoringNesteStegIT extends BillingFixture {
         pris(v, "melding", "1.0000");
         Long k = kunde("100000001", "Kunde", "AKTIV", null).id();
         regel(k, "KN1", null, null, null);
+        referanse(k, null, "REF-1", null);   // no MANGLER_FAKTURAREFERANSE (specs/012)
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);
         for (int i = 0; i < ukjente; i++) {
