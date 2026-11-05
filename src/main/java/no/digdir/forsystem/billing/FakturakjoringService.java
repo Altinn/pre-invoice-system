@@ -127,16 +127,18 @@ public class FakturakjoringService {
 
     @Transactional
     public Fakturakjoring generer(Periode periode) {
+        // Missing usage is reported before a missing price version: it is the step users skip, and a
+        // month with neither used to say only «Ingen aktiv prisversjon» (kickoff: «feil i feilmelding»).
+        Long importId = usage.gjeldendeImport(periode).map(BruksdataImport::id).orElse(null);
+        List<Bruksdata> bruk = usage.bruksdataFor(periode);
+        if (importId == null || bruk.isEmpty()) {
+            throw new Regelbrudd("Ingen bruksdata for " + periode + " — importer bruk først.");
+        }
         Prisversjon versjon = aktivVersjonFor(periode);
         versjoner.laas(periode.førsteDag());
         if (kjoringer.existsByPeriodeAndStatusNot(periode.førsteDag(), Kjoringstatus.FORKASTET.name())) {
             throw new Regelbrudd("Det finnes allerede en aktiv kjøring for " + periode
                     + ". Forkast den før du genererer på nytt.");
-        }
-        Long importId = usage.gjeldendeImport(periode).map(BruksdataImport::id).orElse(null);
-        List<Bruksdata> bruk = usage.bruksdataFor(periode);
-        if (importId == null || bruk.isEmpty()) {
-            throw new Regelbrudd("Ingen bruksdata for " + periode + " — importer bruk først.");
         }
 
         int kjoringVersjon = versjoner.neste(periode.førsteDag());
