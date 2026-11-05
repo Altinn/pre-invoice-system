@@ -286,6 +286,29 @@ alter table fakturakjoring add constraint fakturakjoring_tekster_satt check (
     or (topptekst is not null and bunntekst is not null and var_referanse is not null));
 ```
 
+## V14 — invoice threshold (specs/011-terskelverdi)
+
+```sql
+-- Kroner ex. mva per customer per month; NULL = no threshold. Locked with the version on activation.
+alter table prisversjon add column terskelverdi numeric(12,2) check (terskelverdi >= 0);
+update prisversjon set terskelverdi = 40.00;
+
+-- Would-be invoices a run left out because the customer's total was not over the threshold. No faktura
+-- row exists for them; the run's UNDER_TERSKEL finding links their usage (kontrollfunn_bruksdata).
+create table faktura_under_terskel (
+    id bigint generated always as identity primary key,
+    kjoring_id bigint not null references fakturakjoring,
+    kunde_id bigint not null references kunde,
+    organisasjonsnummer text not null, kundenavn text not null, kundenummer text not null,
+    tilleggstekst text,
+    sum_belop numeric(12,2) not null, antall_linjer integer not null check (antall_linjer >= 1),
+    kundesum numeric(12,2) not null,
+    terskelverdi numeric(12,2) not null check (kundesum <= terskelverdi),
+    kontrollfunn_id bigint not null references kontrollfunn,
+    unique (kjoring_id, kunde_id, kundenummer)
+);
+```
+
 ## Design decisions (preserve these)
 
 1. **Traceability is structural**: `fakturalinje → bruksdata` (which usage),

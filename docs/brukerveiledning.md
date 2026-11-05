@@ -164,6 +164,11 @@ navn, gyldig fra, evt. gyldig til).
   - **ingen annen aktiv versjon overlapper** samme datointervall.
   Er noe galt, får du en tydelig melding og aktivering stoppes.
 - **Arkiver** (kun når aktiv): pensjonerer versjonen.
+- **Terskelverdi** — kunder med samlet beløp for måneden **lik eller under** terskelverdien får ingen
+  faktura. Beløpet summeres per kunde (organisasjonsnummer) over alle produkter og kundenumre, eksl. mva.
+  En ny versjon starter på **40,00 kr**. Den kan endres mens versjonen er **UTKAST** (**Lagre
+  terskelverdi**), og låses ved aktivering, som prisene. Skal terskelverdien endres for et år som
+  allerede har en aktiv versjon, må det lages en ny prisversjon.
 
 > **Sammenheng:** generering bruker den **aktive** prisversjonen som dekker den valgte perioden.
 > Bruksvolum × enhetspris = beløp på fakturalinjen.
@@ -342,6 +347,12 @@ stateDiagram-v2
   | Sum | Sum av linjene. |
   | **Linjer** | Åpner faktura­detaljene (drill-down): kundenavn, referanse, linjene og en sumrad nederst. |
 
+  **Last ned fakturalisten (XLSX/CSV)** gir samme liste som regneark, én rad per faktura.
+- **Faktureres ikke (under terskelverdi)** — under fakturalisten på fanen *Fakturaer*: kundene som
+  ikke får faktura fordi samlet beløp for måneden er lik eller under terskelverdien i prisversjonen,
+  med kundenummer, beløp og kundens samlede sum. Listen kan lastes ned som XLSX/CSV. Beløpene faller
+  bort og overføres ikke til neste måned. Korrigeringskjøringer har ingen terskel.
+
 - **Handlinger:**
   - Når **GENERERT**: **Godkjenn** (deaktivert hvis det finnes blokkerende funn) og **Forkast**.
   - Når **GODKJENT**: **Eksporter** og **Forkast**.
@@ -446,6 +457,7 @@ eksempel på meldingen.
 | `NULLBELOP` | Advarsel | Fakturaen har en linje med beløp 0. | Vurder om linjen skal være med. |
 | `NY_KUNDE` | Advarsel | Kunden ble ikke fakturert forrige periode. | Bekreft at ny kunde er forventet. |
 | `AKTIV_KUNDE_UTEN_BRUK` | Advarsel | Kunden har aktiv avtale, men ingen bruk i perioden. En forventet tjenesteeier kan mangle i grunnlaget. | Sjekk om fraværet er riktig (ingen fakturerbar bruk), eller om bruken mangler i datavarehuset. |
+| `UNDER_TERSKEL` | Advarsel | Én eller flere kunder har samlet beløp for måneden lik eller under terskelverdien og faktureres ikke. Meldingen viser antall kunder, samlet beløp og terskelverdien. | Se listen *Faktureres ikke (under terskelverdi)* under Fakturaer. Bruken deres vises som «ikke fakturert» i Avstemming bruksdata med denne koden som årsak. |
 | `DELT_REFERANSE` | Advarsel | Linjene på fakturaen har ulik fakturareferanse/bestillingsnummer. LG04 kan bare ha én referanse per ordre, så kunden får én faktura i Unit4 per referanse. | Sjekk at det er ønsket. Skal kunden ha én faktura, fjern den produktspesifikke referansen i kunderegisteret og generer på nytt. |
 
 **Etter å ha rettet:** forkast kjøringen, rett dataene, og generer på nytt. Funnene beregnes på nytt.

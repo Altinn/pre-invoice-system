@@ -19,6 +19,7 @@ import no.digdir.forsystem.archive.FileArchive;
 import no.digdir.forsystem.billing.Eksportfil;
 import no.digdir.forsystem.billing.EksportfilRepository;
 import no.digdir.forsystem.billing.Faktura;
+import no.digdir.forsystem.billing.FakturaUnderTerskel;
 import no.digdir.forsystem.billing.FakturakjoringService;
 import no.digdir.forsystem.billing.Fakturakjoring;
 import no.digdir.forsystem.billing.Fakturalinje;
@@ -180,6 +181,53 @@ public class EksportService {
         };
         audit.logg(Handling.LASTET_NED, "FAKTURAKJORING", kjoringId,
                 Map.of("periode", kj.periode().toString(), "format", format.toUpperCase(), "status", kj.status()));
+        return n;
+    }
+
+    /**
+     * The run's invoices, or the would-be invoices it left out under the threshold (specs/011), as CSV or
+     * XLSX — one row per invoice, so Økonomi can sort and filter both lists. Changes nothing; logged.
+     */
+    @Transactional   // not read-only: it writes the LASTET_NED audit row
+    public Nedlasting liste(Long kjoringId, String liste, String format) {
+        Fakturakjoring kj = kjoringer.hent(kjoringId);
+        String periode = kj.periode().toString().substring(0, 7);
+        List<String> kolonner;
+        List<List<Object>> rader = new ArrayList<>();
+        String navn;
+        switch (liste) {
+            case "fakturaliste" -> {
+                navn = "fakturaer";
+                kolonner = List.of("periode", "ordre", "kundenummer", "kundenavn", "fakturamottaker",
+                        "tilleggstekst", "sum_eksl_mva");
+                List<Faktura> fakturaer = kjoringer.fakturaer(kjoringId);
+                Map<Long, String> kundenavn = kjoringer.kundenavn(fakturaer);
+                for (Faktura f : fakturaer) {
+                    rader.add(Arrays.asList(periode, f.ordreNr(), f.kundenummer(), kundenavn.get(f.id()),
+                            f.fakturamottakerOrgnr(), f.tilleggstekst(), f.sumBelop()));
+                }
+            }
+            case "under-terskel" -> {
+                navn = "under-terskel";
+                kolonner = List.of("periode", "kundenummer", "kundenavn", "organisasjonsnummer", "tilleggstekst",
+                        "antall_linjer", "sum_eksl_mva", "kundens_sum_eksl_mva", "terskelverdi");
+                for (FakturaUnderTerskel u : kjoringer.underTerskel(kjoringId)) {
+                    rader.add(Arrays.asList(periode, u.kundenummer(), u.kundenavn(), u.organisasjonsnummer(),
+                            u.tilleggstekst(), u.antallLinjer(), u.sumBelop(), u.kundesum(), u.terskelverdi()));
+                }
+            }
+            default -> throw new Regelbrudd("Ukjent liste: " + liste);
+        }
+        String filnavn = navn + "-" + periode + (kj.erKorrigering() ? "-v" + kj.versjon() : "") + "-" + kj.status();
+        Nedlasting n = switch (format) {
+            case "csv" -> new Nedlasting(filnavn + ".csv", "text/csv", regneark.csv(kolonner, rader));
+            case "xlsx" -> new Nedlasting(filnavn + ".xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    regneark.xlsx(navn, kolonner, rader));
+            default -> throw new Regelbrudd("Ukjent format: " + format + " (csv eller xlsx)");
+        };
+        audit.logg(Handling.LASTET_NED, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString(),
+                "liste", navn, "format", format.toUpperCase(), "status", kj.status()));
         return n;
     }
 

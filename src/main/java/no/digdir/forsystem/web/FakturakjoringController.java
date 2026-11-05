@@ -130,6 +130,7 @@ class FakturakjoringController {
         var fane = fane(id, model);
         model.addAttribute("utvalg", Fakturautvalg.av(fane.fakturaer(), kjoringer.kundenavn(fane.fakturaer()),
                 q, sorter, side));
+        model.addAttribute("underTerskel", kjoringer.underTerskel(id));
         return "kjoring/fakturaer";
     }
 
@@ -206,6 +207,16 @@ class FakturakjoringController {
     @GetMapping("/{id}/fakturagrunnlag.{format:csv|xlsx}")
     ResponseEntity<byte[]> fakturagrunnlag(@PathVariable Long id, @PathVariable String format) {
         EksportService.Nedlasting n = eksport.regneark(id, format);
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf(n.mediatype()))
+                .header("Content-Disposition", ContentDisposition.attachment().filename(n.filnavn()).build().toString())
+                .body(n.innhold());
+    }
+
+    /** The invoice list, or the would-be invoices left out under the threshold, as a spreadsheet (specs/011). */
+    @GetMapping("/{id}/{liste:fakturaliste|under-terskel}.{format:csv|xlsx}")
+    ResponseEntity<byte[]> liste(@PathVariable Long id, @PathVariable String liste, @PathVariable String format) {
+        EksportService.Nedlasting n = eksport.liste(id, liste, format);
         return ResponseEntity.ok()
                 .contentType(MediaType.valueOf(n.mediatype()))
                 .header("Content-Disposition", ContentDisposition.attachment().filename(n.filnavn()).build().toString())

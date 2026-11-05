@@ -68,6 +68,7 @@ public class FakturakjoringService {
     private final KontrollfunnRepository funn;
     private final EksportfilRepository eksportfiler;
     private final KontrollfunnBruksdataRepository funnBruksdata;
+    private final FakturaUnderTerskelRepository underTerskel;
     private final ProduktRepository produkter;
     private final PrisRepository priser;
     private final PrisversjonRepository prisversjoner;
@@ -86,6 +87,7 @@ public class FakturakjoringService {
     FakturakjoringService(FakturakjoringRepository kjoringer, FakturaRepository fakturaer,
                           FakturalinjeRepository linjer, KontrollfunnRepository funn,
                           EksportfilRepository eksportfiler, KontrollfunnBruksdataRepository funnBruksdata,
+                          FakturaUnderTerskelRepository underTerskel,
                           ProduktRepository produkter, PrisRepository priser,
                           PrisversjonRepository prisversjoner, KundeRepository kunder,
                           KundeReferanseRepository referanser, KundenummerRegelRepository regler,
@@ -101,6 +103,7 @@ public class FakturakjoringService {
         this.funn = funn;
         this.eksportfiler = eksportfiler;
         this.funnBruksdata = funnBruksdata;
+        this.underTerskel = underTerskel;
         this.produkter = produkter;
         this.priser = priser;
         this.prisversjoner = prisversjoner;
@@ -354,6 +357,37 @@ public class FakturakjoringService {
                                     + ") har aktiv avtale, men ingen bruk i perioden")));
         }
 
+        // Threshold (specs/011, OQ-22): a customer whose total over all its would-be invoices is not over the
+        // price version's threshold gets no invoice. Its groups leave `grupper` before any invoice is made, so
+        // nothing downstream (LG04, PDF, sums) sees them; they are kept as faktura_under_terskel rows and
+        // explained by one UNDER_TERSKEL finding linked to their usage. Correction runs carry signed
+        // differences against an exported run and are exempt.
+        BigDecimal terskel = ctx.versjon.terskelverdi();
+        Map<Long, BigDecimal> kundesum = new LinkedHashMap<>();
+        Map<Gruppe, Gruppedata> underTerskelGrupper = new LinkedHashMap<>();
+        Integer underTerskelFunn = null;
+        if (!ctx.korrigering && terskel != null) {
+            grupper.forEach((g, data) -> kundesum.merge(g.kundeId(), sum(data.linjer), BigDecimal::add));
+            grupper.keySet().stream()
+                    .filter(g -> kundesum.get(g.kundeId()).compareTo(terskel) <= 0)
+                    .sorted(Comparator.comparing((Gruppe g) -> grupper.get(g).kunde.organisasjonsnummer())
+                            .thenComparing(Gruppe::kundenummer))
+                    .toList()
+                    .forEach(g -> underTerskelGrupper.put(g, grupper.remove(g)));
+            if (!underTerskelGrupper.isEmpty()) {
+                List<Long> kunder = underTerskelGrupper.keySet().stream().map(Gruppe::kundeId).distinct().toList();
+                BigDecimal total = kunder.stream().map(kundesum::get).reduce(BigDecimal.ZERO, BigDecimal::add);
+                underTerskelFunn = funnListe.size();
+                utelattePerFunn.put(underTerskelFunn, underTerskelGrupper.values().stream()
+                        .flatMap(d -> d.linjer.stream()).map(LinjeUtkast::bruksdataId).toList());
+                funnListe.add(advarsel(ctx.kjoringId, null, Kontrollkode.UNDER_TERSKEL,
+                        (kunder.size() == 1 ? "1 kunde" : kunder.size() + " kunder")
+                                + " har samlet " + kroner(terskel) + " kr eksl. mva eller mindre i perioden og "
+                                + "faktureres ikke (til sammen " + kroner(total) + " kr eksl. mva). Terskelverdien er "
+                                + kroner(terskel) + " kr i prisversjonen «" + ctx.versjon.navn() + "»."));
+            }
+        }
+
         // Create invoices in deterministic order and assign ordre_nr.
         List<Gruppe> sorterteGrupper = new ArrayList<>(grupper.keySet());
         sorterteGrupper.sort(Comparator
@@ -366,7 +400,7 @@ public class FakturakjoringService {
         for (Gruppe g : sorterteGrupper) {
             Gruppedata data = grupper.get(g);
             data.linjer.sort(Comparator.comparing((LinjeUtkast l) -> l.produktKode).thenComparing(l -> l.type));
-            BigDecimal sum = data.linjer.stream().map(l -> l.belop).reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal sum = sum(data.linjer);
             if (sum.abs().compareTo(MAKS_FAKTURABELOP) > 0) {
                 // faktura.sum_belop is numeric(12,2); fail with a reason instead of a DB overflow (500).
                 throw new Regelbrudd("Fakturaen til " + data.kunde.virksomhetsnavn() + " ("
@@ -414,6 +448,23 @@ public class FakturakjoringService {
                     ider.forEach(id -> lenker.add(new KontrollfunnBruksdata(lagret.get(indeks).id(), id))));
         }
         funnBruksdata.lagre(lenker);
+        if (underTerskelFunn != null) {
+            Long funnId = lagret.get(underTerskelFunn).id();
+            List<FakturaUnderTerskel> rader = new ArrayList<>();
+            underTerskelGrupper.forEach((g, d) -> rader.add(new FakturaUnderTerskel(null, ctx.kjoringId,
+                    d.kunde.id(), d.kunde.organisasjonsnummer(), d.kunde.virksomhetsnavn(), g.kundenummer(),
+                    d.tilleggstekst, sum(d.linjer), d.linjer.size(), kundesum.get(g.kundeId()), terskel, funnId)));
+            underTerskel.saveAll(rader);
+        }
+    }
+
+    private static BigDecimal sum(List<LinjeUtkast> linjer) {
+        return linjer.stream().map(LinjeUtkast::belop).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** An amount in a finding's text, Norwegian style: 40,00. */
+    private static String kroner(BigDecimal belop) {
+        return belop.setScale(2, RoundingMode.HALF_UP).toPlainString().replace('.', ',');
     }
 
     private void leggTilForrigePeriodeAdvarsler(Byggekontekst ctx, Map<Long, BigDecimal> sumPerKunde,
@@ -538,6 +589,12 @@ public class FakturakjoringService {
     @Transactional(readOnly = true)
     public Fakturakjoring hent(Long id) {
         return kjoringer.findById(id).orElseThrow(() -> new Regelbrudd("Fant ikke kjøring " + id));
+    }
+
+    /** The would-be invoices the run left out under the threshold (specs/011), by orgnr and kundenummer. */
+    @Transactional(readOnly = true)
+    public List<FakturaUnderTerskel> underTerskel(Long kjoringId) {
+        return underTerskel.findByKjoringIdOrderByOrganisasjonsnummerAscKundenummerAsc(kjoringId);
     }
 
     @Transactional(readOnly = true)

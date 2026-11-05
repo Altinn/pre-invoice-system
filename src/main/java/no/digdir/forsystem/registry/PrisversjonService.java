@@ -1,7 +1,9 @@
 package no.digdir.forsystem.registry;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -84,7 +86,8 @@ public class PrisversjonService {
             throw new Regelbrudd("Gyldig til kan ikke være før gyldig fra");
         }
         Prisversjon lagret = prisversjoner.save(new Prisversjon(
-                null, navn, gyldigFra, gyldigTil, PrisversjonStatus.UTKAST.name()));
+                null, navn, gyldigFra, gyldigTil, PrisversjonStatus.UTKAST.name(),
+                Prisversjon.STANDARD_TERSKELVERDI));
         audit.logg(Handling.OPPRETTET, ENTITET, lagret.id(), Map.of("navn", navn));
         return lagret;
     }
@@ -106,6 +109,27 @@ public class PrisversjonService {
                 Map.of("prisId", lagret.id(), "produktId", produktId, "enhetspris", enhetspris));
     }
 
+    /**
+     * Set the invoice threshold of an UTKAST version (specs/011): kroner ex. mva, at least 0. Locked from
+     * activation on, like the prices, so a period is always generated with the same rule.
+     */
+    public void settTerskelverdi(Long prisversjonId, BigDecimal terskelverdi) {
+        Prisversjon versjon = hent(prisversjonId);
+        if (versjon.statusEnum() != PrisversjonStatus.UTKAST) {
+            throw new Regelbrudd("Terskelverdien kan bare endres i et utkast (versjonen er " + versjon.status() + ")");
+        }
+        if (terskelverdi == null || terskelverdi.signum() < 0) {
+            throw new Regelbrudd("Terskelverdien må være 0 eller mer");
+        }
+        BigDecimal ny = terskelverdi.setScale(2, RoundingMode.HALF_UP);
+        prisversjoner.save(new Prisversjon(versjon.id(), versjon.navn(), versjon.gyldigFra(), versjon.gyldigTil(),
+                versjon.status(), ny));
+        Map<String, Object> detaljer = new LinkedHashMap<>();
+        detaljer.put("terskelverdiFra", versjon.terskelverdi());
+        detaljer.put("terskelverdiTil", ny);
+        audit.logg(Handling.ENDRET, ENTITET, prisversjonId, detaljer);
+    }
+
     public void aktiver(Long id) {
         Prisversjon versjon = hent(id);
         if (versjon.statusEnum() != PrisversjonStatus.UTKAST) {
@@ -114,9 +138,7 @@ public class PrisversjonService {
         sjekkIngenOverlappendeAktiv(versjon);
         sjekkAlleAktiveProdukterHarPris(versjon);
 
-        prisversjoner.save(new Prisversjon(
-                versjon.id(), versjon.navn(), versjon.gyldigFra(), versjon.gyldigTil(),
-                PrisversjonStatus.AKTIV.name()));
+        prisversjoner.save(versjon.medStatus(PrisversjonStatus.AKTIV));
         audit.logg(Handling.AKTIVERTE, ENTITET, id, Map.of("navn", versjon.navn()));
     }
 
@@ -125,9 +147,7 @@ public class PrisversjonService {
         if (versjon.statusEnum() != PrisversjonStatus.AKTIV) {
             throw new Regelbrudd("Bare en aktiv versjon kan arkiveres (versjonen er " + versjon.status() + ")");
         }
-        prisversjoner.save(new Prisversjon(
-                versjon.id(), versjon.navn(), versjon.gyldigFra(), versjon.gyldigTil(),
-                PrisversjonStatus.ARKIVERT.name()));
+        prisversjoner.save(versjon.medStatus(PrisversjonStatus.ARKIVERT));
         audit.logg(Handling.ARKIVERTE, ENTITET, id, Map.of("navn", versjon.navn()));
     }
 
