@@ -133,6 +133,8 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-CTRL-14 | MANGLER_FAKTURAREFERANSE (warning) + list | One per invoice with a line without fakturareferanse (customer, orgnr, kundenummer, products). The Kontroller tab lists those invoices under «Fakturaer uten fakturareferanse», downloadable as CSV/XLSX. | `FakturakjoringService.utenFakturareferanse`, GET `/kjoringer/{id}/uten-fakturareferanse.{csv,xlsx}` | LESER | specs/012, OQ-15, OQ-24 |
 | F-CTRL-09 | Findings surfaced in UI | Blocking + warnings shown on the run and per-faktura. | GET `/kjoringer/{id}` | LESER | docs/04 P3 |
 | F-CTRL-12 | Control codes explained | Kontroller tab explains both severities and every code (definition and severity live on `Kontrollkode`); generation refuses a code raised with the wrong severity. | `Kontrollkode`, `kjoring/kontroller.html` | LESER | specs/010 |
+| F-CTRL-15 | Accept warnings («Funn akseptert») | A FORVALTER or GODKJENNER ticks off an ADVARSEL finding while the run is GENERERT, per finding or for every warning of one code; who and when are stored on the finding (`akseptert_av`/`akseptert_at`) and each change is logged on the run (`AKSEPTERTE_FUNN` / `ANGRET_AKSEPT`). Blocking findings cannot be accepted (service and DB check). Accepted warnings no longer count on the Kontroller badge or the run list; the Oversikt says «N advarsler, gjennomgått og sjekket ut. Hindrer ikke godkjenning». Frozen from approval on; a regenerated run starts with none accepted. | `FakturakjoringService.settAksept`/`settAkseptForKode`, POST `/kjoringer/{id}/kontrollfunn/{funnId}/aksept`, POST `/kjoringer/{id}/kontrollfunn/aksept` | FORVALTER, GODKJENNER | specs/013 |
+| F-CTRL-16 | Kontroller lists downloadable | Kontrollfunn (with acceptance), Avstemming bruksdata (per product and type) and Ikke fakturert as CSV/XLSX from the Kontroller tab; logged `LASTET_NED`. Correction runs have no usage reconciliation to download. | `EksportService.liste`, GET `/kjoringer/{id}/{kontrollfunn,avstemming-bruksdata,ikke-fakturert}.{csv,xlsx}` | LESER | specs/013 |
 
 ## Approval & state machine — fakturakjøring
 
@@ -140,7 +142,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 |---|---|---|---|---|---|
 | F-APPR-01 | Status GENERERT→GODKJENT→EKSPORTERT | Run lifecycle. | `FakturakjoringService` | — | docs/04 P3 |
 | F-APPR-02 | Approve | Move GENERERT → GODKJENT. | POST `/kjoringer/{id}/godkjenn` | GODKJENNER | docs/04 P3 |
-| F-APPR-03 | Blocking prevents approval | Approval blocked while any BLOKKERENDE finding exists. | `FakturakjoringService.godkjenn` | — | docs/04 P3 |
+| F-APPR-03 | Findings gate approval | Approval blocked while any BLOKKERENDE finding exists or any ADVARSEL is not accepted. | `FakturakjoringService.godkjenn` | — | docs/04 P3, specs/013 |
 | F-APPR-04 | Forkast (pre-export) | Discard a GENERERT/GODKJENT run. | POST `/kjoringer/{id}/forkast` | FORVALTER | docs/04 P3 |
 | F-APPR-05 | One active run per period | Partial unique index; re-run requires forkasting the previous. | Flyway `V4` + `FakturakjoringService` | — | docs/03 §3 |
 | F-APPR-06 | Exported run immutable | An EKSPORTERT run cannot be forkastet. | `FakturakjoringService.forkast` | — | docs/04 P3 |

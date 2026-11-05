@@ -41,6 +41,23 @@ abstract class BillingFixture extends IntegrationTest {
     @Autowired BruksdataImportRepository importer;
     @Autowired BruksdataRepository bruksdata;
 
+    /**
+     * Accept every open warning, then approve — what a reviewer does before «Godkjenn» since specs/013.
+     * Tests that check the approval gate itself call {@code tjeneste.godkjenn} directly.
+     */
+    void godkjennEtterAksept(Long kjoringId) {
+        aksepterAlleAdvarsler(kjoringId);
+        tjeneste.godkjenn(kjoringId);
+    }
+
+    void aksepterAlleAdvarsler(Long kjoringId) {
+        tjeneste.funn(kjoringId).stream()
+                .filter(Kontrollfunn::aapenAdvarsel)
+                .map(Kontrollfunn::kode)
+                .distinct()
+                .forEach(kode -> tjeneste.settAkseptForKode(kjoringId, kode, true));
+    }
+
     Long produktId(String kode) {
         return produkter.findByKode(kode).orElseThrow().id();
     }

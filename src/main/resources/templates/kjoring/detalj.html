@@ -44,9 +44,13 @@
                     <span th:text="|${antallBlokkerende} blokkerende funn må løses før godkjenning.|">Blokkerende funn.</span>
                     <a class="ds-link" th:href="@{/kjoringer/{id}/kontroller(id=${kjoring.id()})} + '#kontrollfunn'">Se kontrollfunn</a></li>
 
-                <li class="ok" th:if="${antallAdvarsler == 0}"><span class="ds-sr-only">OK: </span>Ingen advarsler.</li>
-                <li class="advarsel" th:if="${antallAdvarsler > 0}"><span class="ds-sr-only">Advarsel: </span>
-                    <span th:text="|${antallAdvarsler} advarsler å se gjennom. De hindrer ikke godkjenning.|">Advarsler.</span>
+                <!-- Warnings must be ticked off on Kontroller before approval (specs/013, Økonomi's kickoff row 34). -->
+                <li class="ok" th:if="${funnstatus.antallAapne() == 0 and funnstatus.antallAksepterte() == 0}"><span class="ds-sr-only">OK: </span>Ingen advarsler.</li>
+                <li class="advarsel" th:if="${funnstatus.antallAapne() > 0}"><span class="ds-sr-only">Gjenstår: </span>
+                    <span th:text="|${funnstatus.aapneTekst()} er ikke sjekket ut. Se på dem og kryss av «Funn akseptert» før godkjenning.|">Advarsler.</span>
+                    <a class="ds-link" th:href="@{/kjoringer/{id}/kontroller(id=${kjoring.id()})} + '#kontrollfunn'">Se kontrollfunn</a></li>
+                <li class="ok" th:if="${funnstatus.antallAksepterte() > 0}"><span class="ds-sr-only">OK: </span>
+                    <span th:text="|${funnstatus.akseptertTekst()}, gjennomgått og sjekket ut. Hindrer ikke godkjenning.|">Advarsler sjekket ut.</span>
                     <a class="ds-link" th:href="@{/kjoringer/{id}/kontroller(id=${kjoring.id()})} + '#kontrollfunn'">Se kontrollfunn</a></li>
             </ul>
             <!-- Each action opens a confirmation dialog first (specs/004 FR-012); without JS it submits directly. -->
@@ -54,7 +58,7 @@
                 <form th:action="@{/kjoringer/{id}/godkjenn(id=${kjoring.id()})}" method="post">
                     <th:block th:replace="~{layout :: csrf}"></th:block>
                     <button class="ds-button" data-color="accent" type="submit" data-bekreft="bekreft-godkjenn"
-                            th:disabled="${harBlokkerende}">Godkjenn</button>
+                            th:disabled="${!funnstatus.kanGodkjennes()}">Godkjenn</button>
                     <dialog class="ds-dialog" id="bekreft-godkjenn" closedby="any" aria-labelledby="bekreft-godkjenn-tittel">
                         <h2 class="ds-heading" data-size="xs" id="bekreft-godkjenn-tittel" th:text="|Godkjenne kjøringen for ${maaned}?|">Bekreft</h2>
                         <p class="ds-paragraph">Etter godkjenning kan kjøringen eksporteres til regnskap. Den kan fortsatt forkastes før eksport.</p>
@@ -67,8 +71,10 @@
                 </form>
                 <th:block th:replace="~{:: forkast}"></th:block>
             </div>
-            <p th:if="${harBlokkerende}" class="ds-paragraph liten">
+            <p th:if="${funnstatus.antallBlokkerende() > 0}" class="ds-paragraph liten">
                 Godkjenning er låst til de blokkerende funnene er løst (forkast, rett data, generer på nytt).</p>
+            <p th:if="${funnstatus.antallBlokkerende() == 0 and funnstatus.antallAapne() > 0}" class="ds-paragraph liten">
+                Godkjenning er låst til alle advarsler er sjekket ut på fanen Kontroller.</p>
         </th:block>
 
         <th:block th:if="${status == 'GODKJENT'}">

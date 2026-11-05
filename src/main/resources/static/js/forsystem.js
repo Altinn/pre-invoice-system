@@ -85,6 +85,18 @@
         oppdaterEndringsutvalg(skjema);
     });
 
+    // ---- «Funn akseptert» checkboxes submit at once (specs/013) -----------------------------
+    // Each checkbox sits in its own POST form; ticking it is the action. Without this file the
+    // form's <noscript> «Lagre» button submits it.
+
+    document.addEventListener('change', function (e) {
+        if (!e.target.matches('input[data-auto-send]')) return;
+        var skjema = e.target.form;
+        if (!skjema) return;
+        if (typeof skjema.requestSubmit === 'function') skjema.requestSubmit();
+        else skjema.submit();
+    });
+
     // ---- Confirmation before irreversible actions (FR-012/013) ------------------------------
     // <button type="submit" data-bekreft="dialog-id"> opens that <dialog> instead of submitting.
     // The dialog sits inside the same <form>; its own submit button performs the action.

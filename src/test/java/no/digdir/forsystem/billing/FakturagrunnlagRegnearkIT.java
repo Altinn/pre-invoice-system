@@ -139,7 +139,7 @@ class FakturagrunnlagRegnearkIT extends BillingFixture {
     @WithMockUser(username = "godkjenner", roles = {"LESER", "GODKJENNER"})
     void archivedExportSpreadsheetHasTheSameColumnsAsTheDownload() throws Exception {
         var kj = generert();
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         eksport.eksporter(kj.id());
         Eksportfil arkivert = eksportfiler.findByKjoringIdOrderByType(kj.id()).stream()
                 .filter(f -> "CSV".equals(f.type())).findFirst().orElseThrow();

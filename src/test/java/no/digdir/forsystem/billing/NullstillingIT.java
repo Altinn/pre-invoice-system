@@ -71,7 +71,7 @@ class NullstillingIT extends BillingFixture {
     private Fakturakjoring eksportert(Periode periode) throws IOException {
         importer(periode);
         var kj = tjeneste.generer(periode);
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         eksport.eksporter(kj.id());
         return kj;
     }

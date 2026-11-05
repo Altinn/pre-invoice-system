@@ -58,7 +58,7 @@ class EksportAvstemmingIT extends BillingFixture {
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);
         bruk(imp, JAN, "100000001", "formidling", Bruksdatatype.BRUKSVOLUM, "10", null);
         var kj = tjeneste.generer(JAN);
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         return kj;
     }
 

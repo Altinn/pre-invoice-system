@@ -91,7 +91,7 @@ class KjoringFanerIT extends BillingFixture {
     @Test
     void historikkenViserKjoringensHendelserNyesteForst() throws Exception {
         var kj = kjoring(0);
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         String html = hent("/kjoringer/{id}/historikk", kj.id());
         assertThat(html).contains(">GODKJENTE<", ">GENERERTE<");
         assertThat(html.indexOf(">GODKJENTE<")).isLessThan(html.indexOf(">GENERERTE<"));

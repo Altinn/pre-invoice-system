@@ -49,7 +49,7 @@ class KjoringBekreftelseIT extends BillingFixture {
     @Test
     void godkjentKjoringBekrefterEksport() throws Exception {
         var kj = generertKjoring();
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         mvc.perform(get("/kjoringer/{id}", kj.id()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-bekreft=\"bekreft-eksporter\"")))

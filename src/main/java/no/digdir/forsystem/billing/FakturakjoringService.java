@@ -515,10 +515,83 @@ public class FakturakjoringService {
         if (funn.existsByKjoringIdAndAlvorlighet(kjoringId, Alvorlighet.BLOKKERENDE.name())) {
             throw new Regelbrudd("Kjøringen har blokkerende kontrollfunn og kan ikke godkjennes");
         }
+        long aapne = antallAapneAdvarsler(kjoringId);
+        if (aapne > 0) {
+            throw new Regelbrudd(aapne + (aapne == 1 ? " advarsel er" : " advarsler er")
+                    + " ikke sjekket ut. Kryss av «Funn akseptert» på fanen Kontroller før kjøringen godkjennes.");
+        }
         String bruker = brukerContext.naavaerendeBruker();
         kjoringer.save(kj.medStatus(Kjoringstatus.GODKJENT.name(), bruker, OffsetDateTime.now()));
         audit.logg(Handling.GODKJENTE, "FAKTURAKJORING", kjoringId, Map.of(
                 "periode", kj.periode().toString(), "versjon", kj.versjon(), "type", kj.type()));
+    }
+
+    // ---- Accepting warnings (specs/013) ------------------------------------------------------
+
+    /**
+     * Mark one warning of a GENERERT run as accepted («Funn akseptert»), or remove the mark. Blocking findings
+     * cannot be accepted — they are fixed by correcting the data and generating again. Logged on the run.
+     */
+    @Transactional
+    public void settAksept(Long kjoringId, Long funnId, boolean akseptert) {
+        Fakturakjoring kj = hentForAksept(kjoringId);
+        Kontrollfunn f = funn.findById(funnId)
+                .filter(x -> kjoringId.equals(x.kjoringId()))
+                .orElseThrow(() -> new Regelbrudd("Fant ikke kontrollfunn " + funnId + " i kjøringen"));
+        if (f.blokkerende()) {
+            throw new Regelbrudd("Blokkerende funn kan ikke aksepteres. Rett dataene og generer kjøringen på nytt.");
+        }
+        endreAksept(kj, f.kode(), List.of(f), akseptert);
+    }
+
+    /**
+     * Accept (or un-accept) every warning of one code in a GENERERT run in one audited action — the group row's
+     * checkbox. Refused for a blocking code.
+     */
+    @Transactional
+    public void settAkseptForKode(Long kjoringId, String kode, boolean akseptert) {
+        Fakturakjoring kj = hentForAksept(kjoringId);
+        List<Kontrollfunn> gruppe = funn.findByKjoringIdAndKodeOrderById(kjoringId, kode);
+        if (gruppe.isEmpty()) {
+            throw new Regelbrudd("Kjøringen har ingen kontrollfunn med kode " + kode);
+        }
+        if (gruppe.stream().anyMatch(Kontrollfunn::blokkerende)) {
+            throw new Regelbrudd("Blokkerende funn kan ikke aksepteres. Rett dataene og generer kjøringen på nytt.");
+        }
+        endreAksept(kj, kode, gruppe, akseptert);
+    }
+
+    /** The run, row-locked like approval so an acceptance change and an approval never interleave. */
+    private Fakturakjoring hentForAksept(Long kjoringId) {
+        Fakturakjoring kj = hentForOppdatering(kjoringId);
+        if (!Kjoringstatus.GENERERT.name().equals(kj.status())) {
+            throw new Regelbrudd("Kontrollfunn kan bare sjekkes ut mens kjøringen venter på godkjenning (status er "
+                    + kj.status() + ")");
+        }
+        return kj;
+    }
+
+    private void endreAksept(Fakturakjoring kj, String kode, List<Kontrollfunn> kandidater, boolean akseptert) {
+        List<Kontrollfunn> endres = kandidater.stream().filter(f -> f.erAkseptert() != akseptert).toList();
+        if (endres.isEmpty()) {
+            return;
+        }
+        String bruker = brukerContext.naavaerendeBruker();
+        OffsetDateTime naa = OffsetDateTime.now();
+        funn.saveAll(endres.stream().map(f -> akseptert ? f.medAksept(bruker, naa) : f.utenAksept()).toList());
+        Map<String, Object> detaljer = new LinkedHashMap<>();
+        detaljer.put("periode", kj.periode().toString());
+        detaljer.put("versjon", kj.versjon());
+        detaljer.put("kode", kode);
+        detaljer.put("antall", endres.size());
+        detaljer.put("funnIder", endres.stream().map(Kontrollfunn::id).toList());
+        audit.logg(akseptert ? Handling.AKSEPTERTE_FUNN : Handling.ANGRET_AKSEPT, "FAKTURAKJORING", kj.id(), detaljer);
+    }
+
+    /** Warnings not yet accepted: they hold back approval (specs/013). */
+    @Transactional(readOnly = true)
+    public long antallAapneAdvarsler(Long kjoringId) {
+        return funn.countByKjoringIdAndAlvorlighetAndAkseptertAtIsNull(kjoringId, Alvorlighet.ADVARSEL.name());
     }
 
     /**

@@ -57,6 +57,7 @@ class WebKjoringRoleIT extends BillingFixture {
     void godkjennerCanApprove() throws Exception {
         renFixture();
         var kj = tjeneste.generer(JAN);
+        aksepterAlleAdvarsler(kj.id());
         mvc.perform(post("/kjoringer/{id}/godkjenn", kj.id()).with(csrf()))
                 .andExpect(status().is3xxRedirection());
     }

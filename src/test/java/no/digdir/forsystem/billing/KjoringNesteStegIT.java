@@ -87,7 +87,7 @@ class KjoringNesteStegIT extends BillingFixture {
     @Test
     void godkjentTilbyrEksport() throws Exception {
         var kj = kjoring(0);
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         var panel = panel(side(kj.id()));
         assertThat(panel).contains("Neste steg: eksporter til regnskap", "Godkjent av",
                 "data-bekreft=\"bekreft-eksporter\"", "data-bekreft=\"bekreft-forkast\"");

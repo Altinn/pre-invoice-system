@@ -63,9 +63,9 @@ class FakturakjoringController {
         // Size and problems per run, so the list says which run needs attention (specs/006 FR-012).
         model.addAttribute("kjoringer", kjoringer.alle().stream().map(k -> {
             var sammendrag = kjoringer.sammendrag(k.id());
-            var funn = kjoringer.funn(k.id());
+            var status = Funnstatus.av(kjoringer.funn(k.id()));
             return new Kjoringsrad(k, sammendrag.antallFakturaer(), sammendrag.sumBelop(),
-                    antall(funn, "BLOKKERENDE"), antall(funn, "ADVARSEL"));
+                    status.antallBlokkerende(), status.antallAapne(), status.antallAksepterte());
         }).toList());
         nullstilling.ifPresent(n -> model.addAttribute("nullstillbare", n.perioderMedData()));
         return "kjoring/liste";
@@ -96,7 +96,6 @@ class FakturakjoringController {
                         ? avstemming.forKjoring(id) : null);
         model.addAttribute("antallValgteEndringer",
                 kjoring.erKorrigering() ? kjoringer.valgteEndringIder(id).size() : 0);
-        model.addAttribute("harBlokkerende", kjoringer.harBlokkerende(id));
         model.addAttribute("sammendrag", kjoringer.sammendrag(id));
         model.addAttribute("antallOrdrer", eksport.forventetAntallOrdrer(id));
         model.addAttribute("lg04Avstemming", eksport.avstemmingFor(id).orElse(null));
@@ -115,6 +114,25 @@ class FakturakjoringController {
         model.addAttribute("lg04Avstemming", eksport.avstemmingFor(id).orElse(null));
         model.addAttribute("utenFakturareferanse", kjoringer.utenFakturareferanse(id));
         return "kjoring/kontroller";
+    }
+
+    /**
+     * Tick or untick «Funn akseptert» on one warning (specs/013). An unticked checkbox sends no
+     * {@code akseptert}, which reads as false.
+     */
+    @PostMapping("/{id}/kontrollfunn/{funnId}/aksept")
+    String aksept(@PathVariable Long id, @PathVariable Long funnId,
+                  @RequestParam(defaultValue = "false") boolean akseptert) {
+        kjoringer.settAksept(id, funnId, akseptert);
+        return "redirect:/kjoringer/" + id + "/kontroller#funn-" + funnId;
+    }
+
+    /** Tick or untick «Funn akseptert» on a group row: every warning of the code in the run (specs/013). */
+    @PostMapping("/{id}/kontrollfunn/aksept")
+    String akseptForKode(@PathVariable Long id, @RequestParam String kode,
+                         @RequestParam(defaultValue = "false") boolean akseptert) {
+        kjoringer.settAkseptForKode(id, kode, akseptert);
+        return "redirect:/kjoringer/" + id + "/kontroller#gruppe-" + kode;
     }
 
     /** The usage reconciliation moved into the Kontroller tab; old links land there (specs/006 FR-004). */
@@ -154,20 +172,21 @@ class FakturakjoringController {
     private record Fane(Fakturakjoring kjoring, List<Faktura> fakturaer, List<Kontrollfunn> funn) {
     }
 
-    /** The run and the counts every tab's header shows: invoices, blocking findings, warnings. */
+    /**
+     * The run and the counts every tab's header shows: invoices, blocking findings, and warnings not yet
+     * accepted (specs/013) — an accepted warning no longer counts on the Kontroller badge.
+     */
     private Fane fane(Long id, Model model) {
         var kjoring = kjoringer.hent(id);
         var fakturaer = kjoringer.fakturaer(id);
         var funn = kjoringer.funn(id);
+        var status = Funnstatus.av(funn);
         model.addAttribute("kjoring", kjoring);
         model.addAttribute("antallFakturaer", fakturaer.size());
-        model.addAttribute("antallBlokkerende", antall(funn, "BLOKKERENDE"));
-        model.addAttribute("antallAdvarsler", antall(funn, "ADVARSEL"));
+        model.addAttribute("funnstatus", status);
+        model.addAttribute("antallBlokkerende", status.antallBlokkerende());
+        model.addAttribute("antallAdvarsler", status.antallAapne());
         return new Fane(kjoring, fakturaer, funn);
-    }
-
-    private static long antall(List<Kontrollfunn> funn, String alvorlighet) {
-        return funn.stream().filter(f -> alvorlighet.equals(f.alvorlighet())).count();
     }
 
     /**
@@ -215,10 +234,10 @@ class FakturakjoringController {
     }
 
     /**
-     * The invoice list, the would-be invoices left out under the threshold (specs/011) or the invoices without
-     * fakturareferanse (specs/012), as a spreadsheet.
+     * The invoice list, the would-be invoices left out under the threshold (specs/011), the invoices without
+     * fakturareferanse (specs/012), or a list from the Kontroller tab (specs/013), as a spreadsheet.
      */
-    @GetMapping("/{id}/{liste:fakturaliste|under-terskel|uten-fakturareferanse}.{format:csv|xlsx}")
+    @GetMapping("/{id}/{liste:fakturaliste|under-terskel|uten-fakturareferanse|kontrollfunn|avstemming-bruksdata|ikke-fakturert}.{format:csv|xlsx}")
     ResponseEntity<byte[]> liste(@PathVariable Long id, @PathVariable String liste, @PathVariable String format) {
         EksportService.Nedlasting n = eksport.liste(id, liste, format);
         return ResponseEntity.ok()

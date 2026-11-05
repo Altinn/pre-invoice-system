@@ -287,7 +287,7 @@ Her skjer selve faktureringen. En **kjøring** (fakturakjøring) er én runde fo
 ```mermaid
 stateDiagram-v2
     [*] --> GENERERT: Generer
-    GENERERT --> GODKJENT: Godkjenn (ingen blokkerende funn)
+    GENERERT --> GODKJENT: Godkjenn (ingen blokkerende funn, alle advarsler sjekket ut)
     GODKJENT --> EKSPORTERT: Eksporter
     GENERERT --> FORKASTET: Forkast
     GODKJENT --> FORKASTET: Forkast
@@ -335,7 +335,8 @@ stateDiagram-v2
 - **LG04-avstemming** (når kjøringen er EKSPORTERT) — viser at LG04-fila har nøyaktig like mange
   ordrer og samme beløp som kjøringen («LG04 stemmer med fakturagrunnlaget»). **Kontroller arkivert
   LG04 på nytt** leser den lagrede fila på nytt og sjekker at den ikke er endret.
-- **Avstemming bruksdata** — se under.
+- **Avstemming bruksdata** — se under. Tabellen *Per produkt og type* og listen *Ikke fakturert* kan
+  lastes ned som XLSX/CSV rett under hver tabell på fanen *Kontroller*.
 - **Fakturaer uten fakturareferanse** (fanen *Kontroller*, under kontrollfunnene) — fakturaene som har
   linjer uten «Deres referanse», med nedlasting som XLSX/CSV. Se kapittel 11.
 - **Last ned fakturagrunnlag (XLSX, for Excel)** / **(CSV)** — alle fakturalinjene i et regneark, også
@@ -343,7 +344,8 @@ stateDiagram-v2
   utkast ikke forveksles med det godkjente grunnlaget. Nedlastingen endrer ingenting, men logges.
   Beløp, antall og enhetspris er tall i Excel, så du kan summere dem.
 - **Blokkerende kontrollfunn** (rød) — må løses før godkjenning.
-- **Advarsler** (gul) — til info, stopper deg ikke.
+- **Advarsler** (gul) — trenger ikke rettes, men må **sjekkes ut** (kryss av «Funn akseptert» på fanen
+  *Kontroller*) før kjøringen kan godkjennes. Se kapittel 11.
 - **Fakturaer** — én rad per faktura:
 
   | Kolonne | Betydning |
@@ -363,7 +365,8 @@ stateDiagram-v2
   bort og overføres ikke til neste måned. Korrigeringskjøringer har ingen terskel.
 
 - **Handlinger:**
-  - Når **GENERERT**: **Godkjenn** (deaktivert hvis det finnes blokkerende funn) og **Forkast**.
+  - Når **GENERERT**: **Godkjenn** (deaktivert hvis det finnes blokkerende funn eller advarsler som ikke
+    er sjekket ut) og **Forkast**.
   - Når **GODKJENT**: **Eksporter** og **Forkast**.
 - **Eksportfiler** (etter eksport): tabell med type, filnavn, SHA-256 og **Last ned**.
 
@@ -425,10 +428,13 @@ Den komplette rutinen for å fakturere forrige måned (roller i parentes):
    Sjekk **Tekster på fakturaen** (topptekst, bunntekst, Vår referanse) og endre dem om Økonomi vil
    ha noe annet denne måneden — de låses ved godkjenning.
 4. **Løs blokkerende funn** hvis noen: rett dataene, **Forkast** kjøringen, og **Generer** på nytt.
-5. **Godkjenn** (GODKJENNER): **Godkjenn** når det ikke er blokkerende funn.
-6. **Eksporter** (GODKJENNER): **Eksporter**. Sjekk at **LG04-avstemming** sier at fila stemmer, og
+5. **Sjekk ut advarslene** (FORVALTER eller GODKJENNER): på fanen *Kontroller*, se på hver advarsel og
+   kryss av **Funn akseptert**. Oversikten sier da «N advarsler, gjennomgått og sjekket ut. Hindrer ikke
+   godkjenning».
+6. **Godkjenn** (GODKJENNER): **Godkjenn** når det ikke er blokkerende funn og alle advarsler er sjekket ut.
+7. **Eksporter** (GODKJENNER): **Eksporter**. Sjekk at **LG04-avstemming** sier at fila stemmer, og
    **Last ned** LG04 + PDF-zip + CSV/XLSX.
-7. **Send til DFØ** (manuelt): send LG04-fila videre med tallene fra **Til e-post til regnskap**;
+8. **Send til DFØ** (manuelt): send LG04-fila videre med tallene fra **Til e-post til regnskap**;
    distribuer PDF-ene til tjenesteeierne.
 
 ```mermaid
@@ -441,6 +447,7 @@ sequenceDiagram
     F->>S: Generer kjøring (periode)
     S-->>F: Fakturaer + kontrollfunn
     F->>S: (ved behov) forkast + rett + generer
+    G->>S: Sjekk ut advarsler (Funn akseptert)
     G->>S: Godkjenn
     G->>S: Eksporter + last ned LG04
     G->>D: Send LG04 manuelt
@@ -450,8 +457,9 @@ sequenceDiagram
 
 ## 11. Kontrollfunn
 
-Kontrollene kjøres automatisk ved generering. **Blokkerende** funn hindrer godkjenning; **advarsler**
-er kun til informasjon. På fanen **Kontroller** forklarer «Hva betyr alvorlighet?» og «Hva betyr
+Kontrollene kjøres automatisk ved generering. **Blokkerende** funn hindrer godkjenning til de er rettet;
+**advarsler** trenger ikke rettes, men hindrer godkjenning til noen har sjekket dem ut (se *Sjekke ut
+advarsler* nedenfor). På fanen **Kontroller** forklarer «Hva betyr alvorlighet?» og «Hva betyr
 kodene?» (også lenket fra kolonneoverskriftene) hver kode kort; kolonnen **Beskrivelse** viser et
 eksempel på meldingen.
 
@@ -476,7 +484,31 @@ referanse («Alle» når ingen linjer har den), sum og en lenke til linjene. **L
 **CSV** gir samme liste i et regneark. Kunder som ikke faktureres denne måneden (under terskelverdi eller
 uten bruk) er ikke med.
 
-**Etter å ha rettet:** forkast kjøringen, rett dataene, og generer på nytt. Funnene beregnes på nytt.
+**Sjekke ut advarsler («Funn akseptert»):** når du har sett på en advarsel og den er i orden, kryss av
+**Funn akseptert** i kolonnen til høyre på fanen **Kontroller**. FORVALTER og GODKJENNER kan krysse av;
+LESER kan ikke.
+
+- Én advarsel: kryss av på raden. Under avkrysningen står hvem som krysset av, og når.
+- Flere advarsler med samme kode: **Funn akseptert (alle N)** på raden sjekker ut alle på én gang. Under
+  **Vis alle …** kan du i stedet krysse av hver for seg; raden viser da «N av M akseptert».
+- Fjerner du krysset, er advarselen åpen igjen.
+- En sjekket ut advarsel teller ikke lenger på tallet ved fanen *Kontroller* og i listen over kjøringer.
+  Oversikten viser «N advarsler, gjennomgått og sjekket ut. Hindrer ikke godkjenning».
+- **Godkjenn** er grå til alle advarsler er sjekket ut.
+- Blokkerende funn kan ikke sjekkes ut. De må rettes: forkast, rett dataene og generer på nytt.
+- Hver avkrysning og hvert fjernet kryss står i kjøringens **Historikk** (`AKSEPTERTE_FUNN` /
+  `ANGRET_AKSEPT`) med bruker, tidspunkt og hvilke funn.
+- Avkrysningene låses når kjøringen godkjennes. En kjøring som genereres på nytt, starter uten avkrysninger.
+  Det samme gjelder korrigeringskjøringer.
+
+**Last ned listene:** under kontrollfunnene gir **Last ned kontrollfunn (XLSX)** / **CSV** alle funnene,
+én rad per funn, med alvorlighet, kode, beskrivelse, faktura (ordre, kundenummer, kundenavn) og om funnet
+er akseptert, av hvem og når. Avstemming bruksdata og Ikke fakturert har egne nedlastinger under tabellene.
+Nedlastingene logges i Historikk. PDF får du med nettleserens **Skriv ut → Lagre som PDF**: siden skrives
+ut uten menyer og knapper.
+
+**Etter å ha rettet:** forkast kjøringen, rett dataene, og generer på nytt. Funnene beregnes på nytt, og
+ingen advarsler er sjekket ut i den nye kjøringen.
 
 ---
 
@@ -497,7 +529,7 @@ Samlet oversikt over statusene i systemet:
 
 | Symptom | Årsak / løsning |
 |---|---|
-| **Kan ikke godkjenne** (knappen er grå) | Kjøringen har blokkerende funn. Løs dem (se §11), forkast + generer på nytt. |
+| **Kan ikke godkjenne** (knappen er grå) | Kjøringen har blokkerende funn, eller advarsler som ikke er sjekket ut. Blokkerende: løs dem (se §11), forkast + generer på nytt. Advarsler: kryss av «Funn akseptert» på fanen *Kontroller*. |
 | **«Ingen aktiv prisversjon dekker perioden»** | Aktiver en prisversjon som dekker perioden (§5). |
 | **«Ingen bruksdata for perioden»** | Importer bruk for perioden først (§7). |
 | **Import blokkeres** | Det finnes en ikke-forkastet kjøring for perioden. Forkast den, importer på nytt. |

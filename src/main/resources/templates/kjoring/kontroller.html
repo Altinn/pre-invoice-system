@@ -16,8 +16,9 @@
         <div>
             <p class="ds-paragraph" data-size="sm"><strong>Blokkerende:</strong> må rettes før kjøringen kan
                 godkjennes. Rett registeret og generer kjøringen på nytt.</p>
-            <p class="ds-paragraph" data-size="sm"><strong>Advarsel:</strong> bør sjekkes, men hindrer ikke
-                godkjenning.</p>
+            <p class="ds-paragraph" data-size="sm"><strong>Advarsel:</strong> trenger ikke rettes, men må
+                sjekkes ut: se på funnet og kryss av «Funn akseptert». Kjøringen kan ikke godkjennes før alle
+                advarsler er sjekket ut. Hvem som krysset av, og når, står i Historikk.</p>
         </div>
     </details>
     <details class="ds-details bred" data-variant="tinted" id="om-koder">
@@ -33,29 +34,84 @@
             </dl>
         </div>
     </details>
-    <table class="ds-table funn" data-size="sm" th:unless="${funngrupper.isEmpty()}">
+    <!-- «Funn akseptert» (specs/013): a warning is ticked off by a named user before approval; a blocking
+         finding cannot be — it is fixed by regenerating. Each checkbox is its own audited POST. -->
+    <p class="ds-paragraph liten bred" th:if="${funnstatus.antallAapne() > 0}"
+       th:text="|${funnstatus.aapneTekst()} er ikke sjekket ut. Kryss av «Funn akseptert» når du har sett på dem. Kjøringen kan ikke godkjennes før alle advarsler er sjekket ut.|">
+        Advarsler ikke sjekket ut.</p>
+    <p class="ds-paragraph liten bred" th:if="${funnstatus.antallAapne() == 0 and funnstatus.antallAksepterte() > 0}">
+        Alle advarslene er gjennomgått og sjekket ut.</p>
+    <table class="ds-table funn" data-size="sm" th:unless="${funngrupper.isEmpty()}"
+           th:with="laast=${kjoring.status() != 'GENERERT'}">
         <thead>
         <tr><th><a class="ds-link" href="#om-alvorlighet">Alvorlighet</a></th><th><a class="ds-link" href="#om-koder">Kode</a></th>
-            <th class="hoyre">Antall</th><th>Beskrivelse</th></tr>
+            <th class="hoyre">Antall</th><th>Beskrivelse</th><th>Funn akseptert</th></tr>
         </thead>
-        <tbody th:each="g : ${funngrupper}">
+        <tbody th:each="g : ${funngrupper}" th:id="|gruppe-${g.kode()}|">
         <tr>
             <td><span class="ds-tag" data-size="sm" th:data-color="${g.blokkerende()} ? 'danger' : 'warning'"
                       th:text="${g.blokkerende()} ? 'Blokkerende' : 'Advarsel'">Blokkerende</span></td>
             <td><code th:text="${g.kode()}">MANGLER_KUNDE</code></td>
             <td class="hoyre" th:text="${@tall.antall(g.antall())}">1</td>
             <td th:text="${g.eksempel()}">melding</td>
+            <td class="aksept">
+                <span class="liten" th:if="${g.blokkerende()}">Kan ikke aksepteres. Rett dataene og generer på nytt.</span>
+                <th:block th:unless="${g.blokkerende()}">
+                    <form method="post" class="aksept-skjema" hx-swap="innerHTML show:none"
+                          th:action="${g.antall() == 1}
+                              ? @{/kjoringer/{id}/kontrollfunn/{fid}/aksept(id=${kjoring.id()},fid=${g.forste().id()})}
+                              : @{/kjoringer/{id}/kontrollfunn/aksept(id=${kjoring.id()})}">
+                        <th:block th:replace="~{layout :: csrf}"></th:block>
+                        <input type="hidden" name="kode" th:value="${g.kode()}" th:if="${g.antall() > 1}">
+                        <ds-field class="ds-field" data-size="sm">
+                            <input class="ds-input" type="checkbox" name="akseptert" value="true" data-auto-send
+                                   th:id="|aksept-${g.kode()}|" th:checked="${g.alleAkseptert()}" th:disabled="${laast}">
+                            <label class="ds-label" th:for="|aksept-${g.kode()}|"
+                                   th:text="${g.antall() == 1} ? 'Funn akseptert' : |Funn akseptert (alle ${g.antall()})|">Funn akseptert</label>
+                        </ds-field>
+                        <noscript><button class="ds-button" data-variant="secondary" data-size="sm" type="submit"
+                                          th:disabled="${laast}">Lagre</button></noscript>
+                    </form>
+                    <span class="liten" th:if="${g.delvisAkseptert()}"
+                          th:text="|${g.antallAkseptert()} av ${g.antall()} akseptert|">2 av 5 akseptert</span>
+                    <span class="liten" th:if="${g.antall() == 1 and g.forste().erAkseptert()}"
+                          th:text="|Akseptert av ${g.forste().akseptertAv()}, ${#temporals.format(g.forste().akseptertAt(), 'dd.MM.yyyy HH:mm')}|">Akseptert av dev</span>
+                </th:block>
+            </td>
         </tr>
         <tr class="funn-alle" th:if="${g.antall() > 1}">
-            <td colspan="4">
-                <details class="ds-details">
+            <td colspan="5">
+                <details class="ds-details" th:open="${g.delvisAkseptert()}">
                     <summary th:text="|Vis alle ${g.antall()} ${g.kode()}|">Vis alle</summary>
-                    <ul class="ds-list"><li th:each="m : ${g.meldinger()}" th:text="${m}">melding</li></ul>
+                    <ul class="ds-list funnliste">
+                        <li th:each="f : ${g.funn()}" th:id="|funn-${f.id()}|">
+                            <form method="post" class="aksept-skjema" hx-swap="innerHTML show:none" th:unless="${g.blokkerende()}"
+                                  th:action="@{/kjoringer/{id}/kontrollfunn/{fid}/aksept(id=${kjoring.id()},fid=${f.id()})}">
+                                <th:block th:replace="~{layout :: csrf}"></th:block>
+                                <ds-field class="ds-field" data-size="sm">
+                                    <input class="ds-input" type="checkbox" name="akseptert" value="true" data-auto-send
+                                           th:id="|aksept-funn-${f.id()}|" th:checked="${f.erAkseptert()}" th:disabled="${laast}">
+                                    <label class="ds-label" th:for="|aksept-funn-${f.id()}|" th:text="${f.melding()}">melding</label>
+                                </ds-field>
+                                <noscript><button class="ds-button" data-variant="secondary" data-size="sm" type="submit"
+                                                  th:disabled="${laast}">Lagre</button></noscript>
+                            </form>
+                            <span th:if="${g.blokkerende()}" th:text="${f.melding()}">melding</span>
+                            <span class="liten" th:if="${f.erAkseptert()}"
+                                  th:text="|Akseptert av ${f.akseptertAv()}, ${#temporals.format(f.akseptertAt(), 'dd.MM.yyyy HH:mm')}|">Akseptert av dev</span>
+                        </li>
+                    </ul>
                 </details>
             </td>
         </tr>
         </tbody>
     </table>
+    <div class="rad ikke-utskrift" th:unless="${funngrupper.isEmpty()}">
+        <a class="ds-button" data-variant="secondary" data-size="sm"
+           th:href="@{/kjoringer/{id}/kontrollfunn.xlsx(id=${kjoring.id()})}">Last ned kontrollfunn (XLSX)</a>
+        <a class="ds-button" data-variant="tertiary" data-size="sm"
+           th:href="@{/kjoringer/{id}/kontrollfunn.csv(id=${kjoring.id()})}">CSV</a>
+    </div>
 
     <!-- Invoices with lines lacking «Deres referanse» (specs/012 FR-003): the customers to get a reference for. -->
     <section class="seksjon" id="uten-fakturareferanse" aria-labelledby="uten-fakturareferanse-tittel"
@@ -131,6 +187,12 @@
             </tbody>
         </table>
         <p class="ds-paragraph liten">Volumtyper summeres på antall, kostnadstyper (Azure, SMS) på beløp.</p>
+        <div class="rad ikke-utskrift" th:unless="${a.rader().isEmpty()}">
+            <a class="ds-button" data-variant="secondary" data-size="sm"
+               th:href="@{/kjoringer/{id}/avstemming-bruksdata.xlsx(id=${kjoring.id()})}">Last ned avstemmingen (XLSX)</a>
+            <a class="ds-button" data-variant="tertiary" data-size="sm"
+               th:href="@{/kjoringer/{id}/avstemming-bruksdata.csv(id=${kjoring.id()})}">CSV</a>
+        </div>
 
         <div class="seksjon" th:if="${!a.ikkeFakturert().isEmpty()}">
             <h3 class="ds-heading" data-size="2xs">Ikke fakturert</h3>
@@ -150,6 +212,12 @@
                 </tr>
                 </tbody>
             </table>
+            <div class="rad ikke-utskrift">
+                <a class="ds-button" data-variant="secondary" data-size="sm"
+                   th:href="@{/kjoringer/{id}/ikke-fakturert.xlsx(id=${kjoring.id()})}">Last ned ikke fakturert (XLSX)</a>
+                <a class="ds-button" data-variant="tertiary" data-size="sm"
+                   th:href="@{/kjoringer/{id}/ikke-fakturert.csv(id=${kjoring.id()})}">CSV</a>
+            </div>
         </div>
     </section>
 

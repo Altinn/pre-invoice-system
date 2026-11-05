@@ -123,7 +123,7 @@ class TerskelverdiIT extends BillingFixture {
     @Test
     void leftOutCustomersAreNotInTheLg04File() {
         var kj = kjoringMedFireKunder();
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         eksport.eksporter(kj.id());
         Eksportfil lg04 = tjeneste.eksportfiler(kj.id()).stream()
                 .filter(f -> "LG04".equals(f.type())).findFirst().orElseThrow();
