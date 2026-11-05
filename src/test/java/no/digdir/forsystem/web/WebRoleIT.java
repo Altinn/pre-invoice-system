@@ -4,6 +4,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
@@ -87,5 +88,43 @@ class WebRoleIT extends IntegrationTest {
         mvc.perform(post("/produkter").with(csrf()).param("kode", "melding").param("navn", "Dobbel"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("finnes allerede")));
+    }
+
+    @Test
+    @WithMockUser(roles = {"LESER", "FORVALTER"})
+    void tilbakeFromAFailedBoostedFormReturnsToTheFormInOneClick() throws Exception {
+        // Kickoff: «Tilbakeknapp etter feilmelding fungerer ikke. Må trykke to ganger, og da kommer man
+        // tilbake til bruksdatasiden». htmx pushed the failed POST into history, so history.back() only
+        // reached the duplicate entry. Now the failure is not pushed and Tilbake links to the form's page.
+        mvc.perform(post("/kjoringer").with(csrf()).param("periode", "2031-03")
+                        .header("HX-Request", "true").header("HX-Boosted", "true")
+                        .header("HX-Current-URL", "http://localhost/kjoringer"))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string("HX-Push-Url", "false"))
+                .andExpect(content().string(containsString("Ingen bruksdata for 2031-03")))
+                .andExpect(content().string(containsString("href=\"/kjoringer\">Tilbake</a>")));
+    }
+
+    @Test
+    @WithMockUser(roles = {"LESER", "FORVALTER"})
+    void aMonthWithoutUsageSaysSoEvenWithoutAPriceVersion() throws Exception {
+        // Kickoff: «Feil i feilmelding (noen ganger) når fakturakjøring på periode uten bruksdata».
+        // 2031-03 has neither usage nor an active price version; the usage message must win.
+        mvc.perform(post("/kjoringer").with(csrf()).param("periode", "2031-03"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(containsString("Ingen bruksdata for 2031-03 — importer bruk først.")))
+                .andExpect(content().string(not(containsString("Ingen aktiv prisversjon"))));
+    }
+
+    @Test
+    @WithMockUser(roles = {"LESER", "FORVALTER"})
+    void tilbakeWithoutHtmxUsesTheRefererAndIgnoresOtherSites() throws Exception {
+        mvc.perform(post("/kjoringer").with(csrf()).param("periode", "2031-03")
+                        .header("Referer", "http://localhost/kjoringer?x=1"))
+                .andExpect(content().string(containsString("href=\"/kjoringer?x=1\">Tilbake</a>")));
+        mvc.perform(post("/kjoringer").with(csrf()).param("periode", "2031-03")
+                        .header("Referer", "https://example.com/phish"))
+                .andExpect(content().string(not(containsString("example.com"))))
+                .andExpect(content().string(containsString("history.back()")));
     }
 }

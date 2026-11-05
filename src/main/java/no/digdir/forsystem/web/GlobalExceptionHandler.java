@@ -1,6 +1,11 @@
 package no.digdir.forsystem.web;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Date;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 import no.digdir.forsystem.common.Regelbrudd;
 import org.slf4j.Logger;
@@ -26,9 +31,43 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(Regelbrudd.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    String regelbrudd(Regelbrudd e, Model model) {
+    String regelbrudd(Regelbrudd e, Model model, HttpServletRequest request, HttpServletResponse response) {
         model.addAttribute("melding", e.getMessage());
+        model.addAttribute("tilbake", tilbake(request));
+        if ("true".equals(request.getHeader("HX-Request"))) {
+            // A boosted form would push its failed POST into history, so history.back() only reached that
+            // duplicate entry and a second click left the page (kickoff: «må trykke to ganger»).
+            response.setHeader("HX-Push-Url", "false");
+        }
         return "feil";
+    }
+
+    /**
+     * Where «Tilbake» goes: the page the failed form was on (htmx's {@code HX-Current-URL}, else
+     * {@code Referer}), as a local path. Another site's address is never echoed into the page;
+     * then the button falls back to {@code history.back()}.
+     */
+    static String tilbake(HttpServletRequest request) {
+        String kilde = request.getHeader("HX-Current-URL");
+        if (kilde == null) {
+            kilde = request.getHeader("Referer");
+        }
+        if (kilde == null) {
+            return null;
+        }
+        try {
+            URI uri = new URI(kilde);
+            if (uri.getHost() != null && !uri.getHost().equalsIgnoreCase(request.getServerName())) {
+                return null;
+            }
+            String sti = uri.getRawPath();
+            if (sti == null || !sti.startsWith("/") || sti.startsWith("//")) {
+                return null;
+            }
+            return uri.getRawQuery() == null ? sti : sti + "?" + uri.getRawQuery();
+        } catch (URISyntaxException ugyldig) {
+            return null;
+        }
     }
 
     @ExceptionHandler(RuntimeException.class)

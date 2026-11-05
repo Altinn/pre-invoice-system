@@ -10,7 +10,9 @@
         <p th:text="${melding}">En regel ble brutt.</p>
     </div>
     <div class="rad">
-        <button class="ds-button" data-variant="secondary" type="button" onclick="history.back()">Tilbake</button>
+        <a class="ds-button" data-variant="secondary" th:if="${tilbake}" th:href="${tilbake}">Tilbake</a>
+        <button class="ds-button" data-variant="secondary" type="button" th:unless="${tilbake}"
+                onclick="history.back()">Tilbake</button>
         <a class="ds-button" data-variant="tertiary" th:href="@{/}">Til forsiden</a>
     </div>
 </main>
