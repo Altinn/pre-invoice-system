@@ -13,8 +13,8 @@ spring:
         provider:
           entra:
             issuer-uri: ${OIDC_ISSUER_URI}
-            # Record users by their username (normally the e-mail address), not Entra's opaque "sub" (specs/010 FR-011).
-            user-name-attribute: preferred_username
+            # No user-name-attribute: EntraBrukernavnUserService picks the username (preferred_username,
+            # then email, upn, sub; specs/010 FR-011). The setting would make a missing claim a 500.
 
 forsystem:
   korrigering:

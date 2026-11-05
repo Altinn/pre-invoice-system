@@ -173,7 +173,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 |---|---|---|---|---|---|
 | F-AUD-01 | Audit log (hendelseslogg) | Every state change recorded (who/what/when/details as jsonb); also stopped exports (`EKSPORT_STOPPET`) and spreadsheet downloads (`LASTET_NED`). | `common.AuditService`, GET `/hendelseslogg` | LESER | docs/02 |
 | F-SEC-01 | Roles LESER/FORVALTER/GODKJENNER | Authorization: writes require FORVALTER, approve/export require GODKJENNER, reads LESER. | `web.security.SecurityConfig` | — | docs/02 |
-| F-SEC-02 | OIDC login (prod) | OIDC against any issuer (Entra ID); wired when an issuer is configured. Users are recorded by `preferred_username`, not the opaque `sub` (specs/010). | `SecurityConfig` | — | docs/02 |
+| F-SEC-02 | OIDC login (prod) | OIDC against any issuer (Entra ID); wired when an issuer is configured. Users are recorded by `preferred_username`, else `email`, `upn`, then `sub` — a missing claim never fails the login (specs/010). | `SecurityConfig`, `EntraBrukernavnUserService` | — | docs/02 |
 | F-SEC-03 | Stubbed login (local) | Fixed dev user with all roles for offline use. | `StubAuthenticationFilter` (profile `local`) | — | docs/04 P0 |
 | F-SEC-04 | CSRF protection | CSRF enforced on forms; multipart handled via query-string token. A stale token (logged out or redeployed while the form was open) shows «Siden er utløpt» with a reload link; a missing role shows «Ingen tilgang». | `SecurityConfig`, `TilgangNektetHandler` | — | docs/04 P2 |
 | F-CORE-01 | Periode value type | Billing period is always an explicit first-of-month parameter, never derived from the clock. | `common.Periode` | — | docs/02 |
