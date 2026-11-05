@@ -24,6 +24,10 @@ public enum Handling {
     EKSPORT_STOPPET,
     /** A fakturagrunnlag spreadsheet was downloaded (also before approval); changes nothing. */
     LASTET_NED,
+    /** One or more warnings of a run were accepted («Funn akseptert», specs/013). */
+    AKSEPTERTE_FUNN,
+    /** The acceptance of one or more warnings was removed again (specs/013). */
+    ANGRET_AKSEPT,
     /** Test environments only: every run and usage import of a period was permanently deleted. */
     NULLSTILTE
 }

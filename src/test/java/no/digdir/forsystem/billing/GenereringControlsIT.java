@@ -115,7 +115,7 @@ class GenereringControlsIT extends BillingFixture {
         settKontoAlle();
         var ren = tjeneste.generer(JAN);
         assertThat(tjeneste.harBlokkerende(ren.id())).isFalse();
-        tjeneste.godkjenn(ren.id());
+        godkjennEtterAksept(ren.id());
         assertThat(tjeneste.hent(ren.id()).status()).isEqualTo("GODKJENT");
     }
 
@@ -149,7 +149,7 @@ class GenereringControlsIT extends BillingFixture {
         var ren = tjeneste.generer(JAN);
         assertThat(koder(ren.id())).contains("AKTIV_KUNDE_UTEN_BRUK");
         assertThat(tjeneste.harBlokkerende(ren.id())).isFalse();
-        tjeneste.godkjenn(ren.id());
+        godkjennEtterAksept(ren.id());
         assertThat(tjeneste.hent(ren.id()).status()).isEqualTo("GODKJENT");
     }
 

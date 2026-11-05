@@ -57,7 +57,7 @@ class E2eScenarioIT extends BillingFixture {
         assertThat(tjeneste.fakturaer(kj.id())).hasSize(1);
 
         // Approve.
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         assertThat(tjeneste.hent(kj.id()).status()).isEqualTo("GODKJENT");
 
         // Export.

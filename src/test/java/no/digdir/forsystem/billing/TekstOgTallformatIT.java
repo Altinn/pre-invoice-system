@@ -90,7 +90,7 @@ class TekstOgTallformatIT extends BillingFixture {
         var kj = storKjoring();
 
         String side = hent("/kjoringer/{id}/kontroller", kj.id());
-        assertThat(side).contains("Hva betyr alvorlighet?", "Hva betyr kodene?", "hindrer ikke");
+        assertThat(side).contains("Hva betyr alvorlighet?", "Hva betyr kodene?", "Funn akseptert");
         for (Kontrollkode k : Kontrollkode.values()) {
             assertThat(side).contains(k.name(), k.definisjon());
         }

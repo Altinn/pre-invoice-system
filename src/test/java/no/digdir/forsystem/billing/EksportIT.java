@@ -39,7 +39,7 @@ class EksportIT extends BillingFixture {
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);      // 3.00
         bruk(imp, JAN, "100000001", "formidling", Bruksdatatype.BRUKSVOLUM, "10", null);  // 20.00
         var kj = tjeneste.generer(JAN);
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         return kj;
     }
 
@@ -111,7 +111,7 @@ class EksportIT extends BillingFixture {
                     assertThat(f.melding()).contains("REF-MELDING").contains("ingen referanse")
                             .contains("2 fakturaer i Unit4");
                 });
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
 
         eksport.eksporter(kj.id());
         Eksportfil lg04 = tjeneste.eksportfiler(kj.id()).stream()

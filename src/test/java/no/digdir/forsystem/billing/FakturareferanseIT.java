@@ -69,7 +69,7 @@ class FakturareferanseIT extends BillingFixture {
 
     /** The LG04 order header lines (line number 0) of the exported run. */
     private List<String> lg04Hoder(Fakturakjoring kj) {
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         eksport.eksporter(kj.id());
         Eksportfil lg04 = tjeneste.eksportfiler(kj.id()).stream()
                 .filter(f -> "LG04".equals(f.type())).findFirst().orElseThrow();

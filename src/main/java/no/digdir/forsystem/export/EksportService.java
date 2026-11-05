@@ -9,13 +9,18 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import no.digdir.forsystem.archive.FileArchive;
+import no.digdir.forsystem.billing.Bruksdataavstemming;
+import no.digdir.forsystem.billing.BruksdataavstemmingService;
 import no.digdir.forsystem.billing.Eksportfil;
 import no.digdir.forsystem.billing.EksportfilRepository;
 import no.digdir.forsystem.billing.Faktura;
@@ -24,6 +29,7 @@ import no.digdir.forsystem.billing.FakturaUtenReferanse;
 import no.digdir.forsystem.billing.FakturakjoringService;
 import no.digdir.forsystem.billing.Fakturakjoring;
 import no.digdir.forsystem.billing.Fakturalinje;
+import no.digdir.forsystem.billing.Kontrollfunn;
 import no.digdir.forsystem.billing.Lg04Avstemming;
 import no.digdir.forsystem.billing.Lg04AvstemmingRepository;
 import no.digdir.forsystem.common.AuditService;
@@ -54,6 +60,7 @@ public class EksportService {
 
     private static final DateTimeFormatter BATCH = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final ZoneId OSLO = ZoneId.of("Europe/Oslo");
+    private static final DateTimeFormatter TIDSPUNKT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final FakturakjoringService kjoringer;
     private final ProduktRepository produkter;
@@ -67,6 +74,7 @@ public class EksportService {
     private final Lg04AvstemmingRepository avstemminger;
     private final FakturagrunnlagRegneark grunnlag;
     private final KorrigeringEksportKonfig korrigeringKonfig;
+    private final BruksdataavstemmingService bruksdataavstemming;
     private final Lg04Leser leser = new Lg04Leser();
 
     EksportService(FakturakjoringService kjoringer, ProduktRepository produkter, Lg04Eksport lg04,
@@ -74,7 +82,8 @@ public class EksportService {
                    EksportfilRepository eksportfiler, AuditService audit, BrukerContext brukerContext,
                    Lg04AvstemmingRepository avstemminger,
                    FakturagrunnlagRegneark grunnlag,
-                   KorrigeringEksportKonfig korrigeringKonfig) {
+                   KorrigeringEksportKonfig korrigeringKonfig,
+                   BruksdataavstemmingService bruksdataavstemming) {
         this.kjoringer = kjoringer;
         this.produkter = produkter;
         this.lg04 = lg04;
@@ -87,6 +96,7 @@ public class EksportService {
         this.avstemminger = avstemminger;
         this.grunnlag = grunnlag;
         this.korrigeringKonfig = korrigeringKonfig;
+        this.bruksdataavstemming = bruksdataavstemming;
     }
 
     /**
@@ -186,9 +196,10 @@ public class EksportService {
     }
 
     /**
-     * The run's invoices, the would-be invoices it left out under the threshold (specs/011), or the invoices
-     * without fakturareferanse (specs/012), as CSV or XLSX — one row per invoice, so Økonomi can sort and
-     * filter the lists. Changes nothing; logged.
+     * The run's invoices, the would-be invoices it left out under the threshold (specs/011), the invoices
+     * without fakturareferanse (specs/012), or the Kontroller tab's lists — findings with their acceptance,
+     * the usage reconciliation per product and type, and the usage not invoiced (specs/013) — as CSV or XLSX,
+     * so Økonomi can sort and filter them. Changes nothing; logged.
      */
     @Transactional   // not read-only: it writes the LASTET_NED audit row
     public Nedlasting liste(Long kjoringId, String liste, String format) {
@@ -228,6 +239,47 @@ public class EksportService {
                             u.sumBelop()));
                 }
             }
+            case "kontrollfunn" -> {
+                navn = "kontrollfunn";
+                kolonner = List.of("periode", "alvorlighet", "kode", "beskrivelse", "ordre", "kundenummer",
+                        "kundenavn", "funn_akseptert", "akseptert_av", "akseptert_tidspunkt");
+                List<Faktura> fakturaer = kjoringer.fakturaer(kjoringId);
+                Map<Long, Faktura> fakturaById = fakturaer.stream()
+                        .collect(Collectors.toMap(Faktura::id, Function.identity()));
+                Map<Long, String> kundenavn = kjoringer.kundenavn(fakturaer);
+                List<Kontrollfunn> funn = kjoringer.funn(kjoringId).stream()
+                        .sorted(Comparator.comparing((Kontrollfunn f) -> !f.blokkerende())
+                                .thenComparing(Kontrollfunn::kode).thenComparing(Kontrollfunn::id))
+                        .toList();
+                for (Kontrollfunn f : funn) {
+                    Faktura fa = f.fakturaId() == null ? null : fakturaById.get(f.fakturaId());
+                    rader.add(Arrays.asList(periode, f.alvorlighet(), f.kode(), f.melding(),
+                            fa == null ? null : fa.ordreNr(), fa == null ? null : fa.kundenummer(),
+                            fa == null ? null : kundenavn.get(fa.id()),
+                            f.blokkerende() ? null : (f.erAkseptert() ? "ja" : "nei"),
+                            f.akseptertAv(),
+                            f.akseptertAt() == null ? null
+                                    : TIDSPUNKT.format(f.akseptertAt().atZoneSameInstant(OSLO))));
+                }
+            }
+            case "avstemming-bruksdata" -> {
+                navn = "avstemming-bruksdata";
+                kolonner = List.of("periode", "produkt", "produktnavn", "type", "importerte_rader",
+                        "importert_bruksdata", "fakturerte_linjer", "fakturert_bruksdata", "ikke_fakturerte_rader");
+                for (Bruksdataavstemming.Rad r : avstemmingForListe(kj).rader()) {
+                    rader.add(Arrays.asList(periode, r.produktKode(), r.produktNavn(), r.type(), r.importertRader(),
+                            r.importertSum(), r.fakturertLinjer(), r.fakturertSum(), r.ikkeFakturertRader()));
+                }
+            }
+            case "ikke-fakturert" -> {
+                navn = "ikke-fakturert";
+                kolonner = List.of("periode", "organisasjonsnummer", "produkt", "type", "antall", "belop_eksl_mva",
+                        "kode", "arsak");
+                for (Bruksdataavstemming.IkkeFakturert u : avstemmingForListe(kj).ikkeFakturert()) {
+                    rader.add(Arrays.asList(periode, u.organisasjonsnummer(), u.produktKode(), u.type(), u.antall(),
+                            u.belop(), u.kode(), u.melding()));
+                }
+            }
             default -> throw new Regelbrudd("Ukjent liste: " + liste);
         }
         String filnavn = navn + "-" + periode + (kj.erKorrigering() ? "-v" + kj.versjon() : "") + "-" + kj.status();
@@ -241,6 +293,14 @@ public class EksportService {
         audit.logg(Handling.LASTET_NED, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString(),
                 "liste", navn, "format", format.toUpperCase(), "status", kj.status()));
         return n;
+    }
+
+    /** A correction run is built from chosen differences and has no usage reconciliation (specs/007). */
+    private Bruksdataavstemming avstemmingForListe(Fakturakjoring kj) {
+        if (kj.erKorrigering()) {
+            throw new Regelbrudd("En korrigeringskjøring har ingen avstemming av bruksdata. Se sammenligningen i stedet.");
+        }
+        return bruksdataavstemming.forKjoring(kj.id());
     }
 
     /**

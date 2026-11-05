@@ -86,7 +86,7 @@ class KjoringFakturateksterIT extends BillingFixture {
     @Test
     void exportWritesTheDefaultsOnEveryLine() {
         var kj = generertKjoring();
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         eksport.eksporter(kj.id());
 
         List<String> linjer = lg04Linjer(kj.id());
@@ -121,7 +121,7 @@ class KjoringFakturateksterIT extends BillingFixture {
                 "Nye priser fra mars: se samarbeid.digdir.no", "\"periode\"", "2027-01-01");
         assertThat(json).doesNotContain("topptekst", "varReferanse");
 
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         eksport.eksporter(kj.id());
         assertThat(lg04Linjer(kj.id())).allSatisfy(l -> assertThat(l.substring(2629, 2749).stripTrailing())
                 .isEqualTo("Nye priser fra mars: se samarbeid.digdir.no"));
@@ -163,7 +163,7 @@ class KjoringFakturateksterIT extends BillingFixture {
     @Test
     void textsAreLockedOnceApproved() {
         var kj = generertKjoring();
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         assertThatThrownBy(() -> tjeneste.endreTekster(kj.id(), new Fakturatekster("Ny", "Ny", "Ny")))
                 .isInstanceOf(Regelbrudd.class).hasMessageContaining("låst etter godkjenning");
         assertThat(tjeneste.hent(kj.id()).tekster()).isEqualTo(Fakturatekster.standard(JAN));
@@ -173,7 +173,7 @@ class KjoringFakturateksterIT extends BillingFixture {
     @Test
     void textsAreLockedOnExportedAndDiscardedRuns() {
         var eksportert = generertKjoring();
-        tjeneste.godkjenn(eksportert.id());
+        godkjennEtterAksept(eksportert.id());
         eksport.eksporter(eksportert.id());
         assertThatThrownBy(() -> tjeneste.endreTekster(eksportert.id(), new Fakturatekster("Ny", "Ny", "Ny")))
                 .isInstanceOf(Regelbrudd.class).hasMessageContaining("låst");
@@ -212,7 +212,7 @@ class KjoringFakturateksterIT extends BillingFixture {
     @Test
     void theRunPageShowsTheTextsReadOnlyOnceApproved() throws Exception {
         var kj = generertKjoring();
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         mvc.perform(get("/kjoringer/{id}", kj.id()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Låst etter godkjenning")))

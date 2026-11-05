@@ -40,6 +40,22 @@ class FunngruppeTest {
     }
 
     @Test
+    void gruppenTellerAksepterteFunn() {
+        var akseptert = funn("ADVARSEL", "A", "a1").medAksept("okonomi", java.time.OffsetDateTime.now());
+        var gruppe = Funngruppe.av(List.of(akseptert, funn("ADVARSEL", "A", "a2"))).getFirst();
+        assertThat(gruppe.antallAkseptert()).isEqualTo(1);
+        assertThat(gruppe.delvisAkseptert()).isTrue();
+        assertThat(gruppe.alleAkseptert()).isFalse();
+
+        var status = Funnstatus.av(List.of(akseptert, funn("ADVARSEL", "A", "a2"), funn("BLOKKERENDE", "B", "b")));
+        assertThat(status).isEqualTo(new Funnstatus(1, 1, 1));
+        assertThat(status.kanGodkjennes()).isFalse();
+        assertThat(status.aapneTekst()).isEqualTo("1 advarsel");
+        assertThat(Funnstatus.advarsler(3)).isEqualTo("3 advarsler");
+        assertThat(Funnstatus.av(List.of(akseptert)).kanGodkjennes()).isTrue();
+    }
+
+    @Test
     void ingenFunnGirIngenGrupper() {
         assertThat(Funngruppe.av(List.of())).isEmpty();
     }

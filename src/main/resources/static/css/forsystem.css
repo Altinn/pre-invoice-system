@@ -195,6 +195,14 @@ pre.epost {
 /* Findings: one row per code; the "show all" row sits under its group. */
 .ds-table.funn > tbody > tr.funn-alle > td { padding-block-start: 0; }
 .ds-table.funn > tbody + tbody { border-top: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle); }
+/* «Funn akseptert» (specs/013): the checkbox and who ticked it, compact inside the table. */
+.ds-table.funn td.aksept { min-width: 12rem; }
+.ds-table.funn .aksept-skjema { margin: 0; }
+.ds-table.funn .aksept-skjema .ds-field { margin: 0; }
+.ds-table.funn td.aksept .liten { display: block; }
+.funnliste { list-style: none; padding-inline-start: 0; }
+.funnliste > li { margin-block-end: var(--ds-size-2); }
+.funnliste > li > .liten { display: block; margin-inline-start: var(--ds-size-8); }
 .filliste { margin: 0; }
 .periode::first-letter { text-transform: uppercase; }
 
@@ -277,6 +285,8 @@ pre.epost {
 
 @media print {
     .ikke-utskrift, .ds-skip-link, .ds-breadcrumbs, dialog, .side form { display: none !important; }
+    /* The «Funn akseptert» checkboxes are the state, not an action: keep them on paper (specs/013). */
+    .side .ds-table.funn form.aksept-skjema { display: block !important; }
     .side { max-width: none; padding: 0; }
 }
 

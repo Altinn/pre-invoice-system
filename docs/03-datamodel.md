@@ -309,6 +309,18 @@ create table faktura_under_terskel (
 );
 ```
 
+## V15 — accepted control findings (specs/013-kvittering-kontrollfunn)
+
+```sql
+-- A warning ticked off («Funn akseptert») before approval: current state only; every change is also
+-- in hendelseslogg (AKSEPTERTE_FUNN / ANGRET_AKSEPT). Blocking findings can never be accepted.
+alter table kontrollfunn
+    add column akseptert_av text,
+    add column akseptert_at timestamptz,
+    add constraint kontrollfunn_aksept_hel check ((akseptert_av is null) = (akseptert_at is null)),
+    add constraint kontrollfunn_aksept_bare_advarsel check (akseptert_at is null or alvorlighet = 'ADVARSEL');
+```
+
 ## Design decisions (preserve these)
 
 1. **Traceability is structural**: `fakturalinje → bruksdata` (which usage),

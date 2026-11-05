@@ -26,7 +26,7 @@ class KjoringStatemaskinIT extends BillingFixture {
     @Test
     void approveMovesGenerertToGodkjent() {
         var kj = renKjoring();
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         var etter = tjeneste.hent(kj.id());
         assertThat(etter.status()).isEqualTo("GODKJENT");
         assertThat(etter.godkjentAv()).isNotNull();
@@ -36,7 +36,7 @@ class KjoringStatemaskinIT extends BillingFixture {
     @Test
     void cannotApproveTwice() {
         var kj = renKjoring();
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         assertThatThrownBy(() -> tjeneste.godkjenn(kj.id()))
                 .isInstanceOf(Regelbrudd.class).hasMessageContaining("generert");
     }
@@ -58,7 +58,7 @@ class KjoringStatemaskinIT extends BillingFixture {
     @Test
     void exportedRunCannotBeForkastet() {
         var kj = renKjoring();
-        tjeneste.godkjenn(kj.id());
+        godkjennEtterAksept(kj.id());
         // Simulate export (Phase 4) by moving the run to EKSPORTERT directly.
         var g = tjeneste.hent(kj.id());
         kjoringer.save(new Fakturakjoring(g.id(), g.periode(), "EKSPORTERT", g.prisversjonId(), g.bruksdataImportId(),

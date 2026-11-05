@@ -3,7 +3,8 @@
 <!--
   Fragments shared by the run pages (specs/006 contracts/ui.md). Not a page itself.
   hode(fane)   breadcrumbs, title, status and the tab bar; fane is oversikt|kontroller|fakturaer|filer|historikk.
-               Needs kjoring, antallFakturaer, antallBlokkerende, antallAdvarsler in the model (controller fane()).
+               Needs kjoring, antallFakturaer, antallBlokkerende, antallAdvarsler in the model (controller fane());
+               antallAdvarsler counts only warnings not yet accepted (specs/013).
   status(s)    the run status as a plain-language tag.
   fremdrift(f) the progress strip.
 -->
@@ -38,7 +39,7 @@
                 <th:block th:if="${antallBlokkerende == 0 and antallAdvarsler > 0}">
                     <span class="ds-badge" data-color="warning" data-variant="base" aria-hidden="true"
                           th:attr="data-count=${antallAdvarsler}"></span>
-                    <span class="ds-sr-only" th:text="|(${antallAdvarsler} advarsler)|">(advarsler)</span>
+                    <span class="ds-sr-only" th:text="|(${antallAdvarsler} ${antallAdvarsler == 1 ? 'advarsel' : 'advarsler'} ikke sjekket ut)|">(advarsler)</span>
                 </th:block></a></li>
             <li><a th:href="@{/kjoringer/{id}/fakturaer(id=${kjoring.id()})}"
                    th:attr="aria-current=${fane == 'fakturaer'} ? 'page'">Fakturaer

@@ -44,6 +44,9 @@ class SecurityConfig {
                         // Approval and export are the GODKJENNER's job; other writes are FORVALTER's.
                         .requestMatchers(HttpMethod.POST, "/kjoringer/*/godkjenn").hasRole(Rolle.GODKJENNER)
                         .requestMatchers(HttpMethod.POST, "/kjoringer/*/eksporter").hasRole(Rolle.GODKJENNER)
+                        // Accepting warnings is review work both do (specs/013); approval stays GODKJENNER's.
+                        .requestMatchers(HttpMethod.POST, "/kjoringer/*/kontrollfunn/**")
+                        .hasAnyRole(Rolle.FORVALTER, Rolle.GODKJENNER)
                         .requestMatchers(HttpMethod.POST, "/**").hasRole(Rolle.FORVALTER)
                         .requestMatchers(HttpMethod.PUT, "/**").hasRole(Rolle.FORVALTER)
                         .requestMatchers(HttpMethod.PATCH, "/**").hasRole(Rolle.FORVALTER)
