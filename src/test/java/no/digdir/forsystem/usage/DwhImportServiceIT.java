@@ -163,7 +163,7 @@ class DwhImportServiceIT extends IntegrationTest {
         svar("januar-ok.json");
 
         assertThat(dwh.forhaandsvis(JAN).advarsler())
-                .anySatisfy(a -> assertThat(a).contains("formidling").contains("-85 %"));
+                .anySatisfy(a -> assertThat(a).startsWith("Formidling endret seg").contains("-85 %"));
     }
 
     @Test

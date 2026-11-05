@@ -99,4 +99,15 @@
         // dismiss sees the very same click as a click outside the dialog and closes it again.
         setTimeout(function () { dialog.showModal(); }, 0);
     });
+
+    // ---- Links to an explanation open it (specs/010 FR-008) --------------------------------
+    // A link to a closed <details> (e.g. the Kontroller tab's «Alvorlighet»/«Kode» headers) opens
+    // it before the browser scrolls there; without this file the link still scrolls to it.
+
+    document.addEventListener('click', function (e) {
+        var lenke = e.target.closest('a[href^="#"]');
+        if (!lenke) return;
+        var maal = document.getElementById(lenke.getAttribute('href').slice(1));
+        if (maal && maal.tagName === 'DETAILS') maal.open = true;
+    });
 })();

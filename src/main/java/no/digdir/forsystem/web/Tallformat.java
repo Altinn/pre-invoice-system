@@ -3,7 +3,7 @@ package no.digdir.forsystem.web;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
+import no.digdir.forsystem.common.Norsktall;
 import org.springframework.stereotype.Component;
 
 /**
@@ -18,7 +18,7 @@ public class Tallformat {
 
     /** An amount in kroner: two decimals, rounded half up. */
     public String belop(BigDecimal v) {
-        return v == null ? MANGLER : format("#,##0.00").format(v.setScale(2, RoundingMode.HALF_UP));
+        return v == null ? MANGLER : Norsktall.toDesimaler(v);
     }
 
     /** A count of rows, lines or invoices: whole, no decimals. */
@@ -40,14 +40,7 @@ public class Tallformat {
         return format("#,##0." + "0".repeat(desimaler)).format(v.setScale(desimaler, RoundingMode.HALF_UP));
     }
 
-    // DecimalFormat is not thread-safe, so each call gets its own.
     private static DecimalFormat format(String moenster) {
-        DecimalFormatSymbols s = new DecimalFormatSymbols();
-        s.setGroupingSeparator(' ');
-        s.setDecimalSeparator(',');
-        s.setMinusSign('-');
-        DecimalFormat f = new DecimalFormat(moenster, s);
-        f.setRoundingMode(RoundingMode.HALF_UP);
-        return f;
+        return Norsktall.format(moenster);
     }
 }

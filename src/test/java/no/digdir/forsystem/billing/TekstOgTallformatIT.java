@@ -128,6 +128,14 @@ class TekstOgTallformatIT extends BillingFixture {
     }
 
     @Test
+    void importPageNamesProductsInsteadOfIds() throws Exception {
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1234", null);
+        String side = hent("/bruksdata/{id}", imp);
+        assertThat(side).contains("<th>Produkt</th>", "<td>Melding</td>", "1 234,00").doesNotContain("Produkt-id");
+    }
+
+    @Test
     void previewNamesProductsFormatsNumbersAndWarnsBeforeConfirming() throws Exception {
         kunde("100000001", "Alfa kommune", "AKTIV", null);
         String csv = "periode,organisasjonsnummer,produktkode,type,antall,belop\n"

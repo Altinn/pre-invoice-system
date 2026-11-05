@@ -181,10 +181,26 @@ class TerskelverdiIT extends BillingFixture {
         mvc.perform(get("/kjoringer/{id}/fakturaer", kj.id()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Faktureres ikke (under terskelverdi)")))
+                .andExpect(content().string(containsString("2 fakturaer er holdt utenfor")))
                 .andExpect(content().string(containsString("Kunde A")))
                 .andExpect(content().string(containsString("23,50")))
                 .andExpect(content().string(containsString("/under-terskel.xlsx")))
                 .andExpect(content().string(containsString("/fakturaliste.xlsx")));
+    }
+
+    @Test
+    void oneLeftOutInvoiceIsSingular() throws Exception {
+        settKontoAlle();
+        Long v = versjonMedTerskel("40.00").id();
+        pris(v, "melding", "1.0000");
+        regel(kunde("100000001", "Kunde A", "AKTIV", null).id(), "KA", null, null, null);
+        regel(kunde("100000002", "Kunde B", "AKTIV", null).id(), "KB", null, null, null);
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
+        bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
+        var kj = tjeneste.generer(JAN);
+        mvc.perform(get("/kjoringer/{id}/fakturaer", kj.id()))
+                .andExpect(content().string(containsString("1 faktura er holdt utenfor")));
     }
 
     @Test

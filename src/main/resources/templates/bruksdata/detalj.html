@@ -40,12 +40,12 @@
 
     <table class="ds-table" data-size="sm" data-hover th:if="${fv == null}">
         <thead>
-        <tr><th>Orgnr</th><th>Produkt-id</th><th>Type</th><th class="hoyre">Antall</th><th class="hoyre">Beløp (eksl. mva)</th></tr>
+        <tr><th>Orgnr</th><th>Produkt</th><th>Type</th><th class="hoyre">Antall</th><th class="hoyre">Beløp (eksl. mva)</th></tr>
         </thead>
         <tbody>
         <tr th:each="r : ${rader}">
             <td th:text="${r.organisasjonsnummer()}">123456789</td>
-            <td th:text="${r.produktId()}">1</td>
+            <td th:text="${produktnavnPerId.get(r.produktId())} ?: ${r.produktId()}">Melding</td>
             <td th:text="${r.type()}">BRUKSVOLUM</td>
             <td class="hoyre" th:text="${@tall.mengde(r.antall())}">100,00</td>
             <td class="hoyre" th:text="${@tall.belop(r.belop())}">—</td>

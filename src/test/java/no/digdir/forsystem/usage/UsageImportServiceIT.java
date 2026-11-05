@@ -54,6 +54,20 @@ class UsageImportServiceIT extends IntegrationTest {
         assertThat(bruksdata.countByImportId(lagret.id())).isEqualTo(2);
     }
 
+    /** Month-over-month warnings name products and format numbers like the rest of the page (specs/010). */
+    @Test
+    void monthOverMonthWarningsUseNamesAndNorwegianNumbers() throws IOException {
+        service.importer(service.forhaandsvis(JAN, "jan.csv", inn(HEADER
+                + "2027-01-01,123456789,melding,BRUKSVOLUM,57500,\n"
+                + "2027-01-01,123456789,autorisasjon,BRUKSVOLUM,10,\n")));
+        Forhaandsvisning feb = service.forhaandsvis(Periode.av(2027, 2), "feb.csv", inn(HEADER
+                + "2027-02-01,123456789,melding,BRUKSVOLUM,1234567,\n"));
+
+        assertThat(feb.advarsler()).contains(
+                "Autorisasjon hadde bruk i januar 2027, men mangler nå",
+                "Melding endret seg +2047 % fra januar 2027 (57\u00a0500,00 → 1\u00a0234\u00a0567,00)");
+    }
+
     @Test
     void unknownProductIsRejected() throws IOException {
         var fv = service.forhaandsvis(JAN, "f.csv", inn(HEADER + "2027-01-01,123456789,finnesikke,BRUKSVOLUM,1,\n"));

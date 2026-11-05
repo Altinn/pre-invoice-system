@@ -191,6 +191,8 @@ class BruksdataController {
         BruksdataImport imp = service.hentImport(id);
         model.addAttribute("import", imp);
         model.addAttribute("rader", service.rader(id));
+        model.addAttribute("produktnavnPerId", produkter.alle().stream()
+                .collect(Collectors.toMap(Produkt::id, Produkt::navn)));
         kandidater.sisteSammenligningForKandidat(id)
                 .ifPresent(s -> model.addAttribute("sammenligning", s));
         if ("MOTTATT".equals(imp.status()) && "DWH".equals(imp.kilde())) {

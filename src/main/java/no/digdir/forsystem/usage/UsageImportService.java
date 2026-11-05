@@ -19,6 +19,7 @@ import no.digdir.forsystem.archive.FileArchive;
 import no.digdir.forsystem.common.AuditService;
 import no.digdir.forsystem.common.BrukerContext;
 import no.digdir.forsystem.common.Handling;
+import no.digdir.forsystem.common.Norsktall;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
 import no.digdir.forsystem.registry.Produkt;
@@ -275,11 +276,15 @@ public class UsageImportService {
         naa.forEach(s -> naaSummer.put(s.produktkode(), s));
 
         BigDecimal grense = BigDecimal.valueOf(dwh.avviksgrenseProsent());
+        // Named and formatted as on the rest of the page (specs/010 FR-001/FR-005): «Melding», «januar 2027», 1 234,00.
+        Map<String, String> navn = new LinkedHashMap<>();
+        produkter.findAllByOrderByKode().forEach(p -> navn.put(p.kode(), p.navn()));
+        String forrigeMaaned = periode.forrige().norskLabel();
         List<String> advarsler = new ArrayList<>();
         forrigeSummer.forEach((kode, f) -> {
             ProduktSum n = naaSummer.get(kode);
             if (n == null) {
-                advarsler.add("Produktet " + kode + " hadde bruk i " + periode.forrige() + ", men mangler nå");
+                advarsler.add(navn.getOrDefault(kode, kode) + " hadde bruk i " + forrigeMaaned + ", men mangler nå");
                 return;
             }
             BigDecimal før = f.sumAntall().add(f.sumBelop());
@@ -290,11 +295,16 @@ public class UsageImportService {
             BigDecimal prosent = etter.subtract(før).multiply(BigDecimal.valueOf(100))
                     .divide(før, 0, RoundingMode.HALF_UP);
             if (prosent.abs().compareTo(grense) > 0) {
-                advarsler.add("Produktet " + kode + " endret seg " + (prosent.signum() > 0 ? "+" : "") + prosent
-                        + " % fra " + periode.forrige() + " (" + før.toPlainString() + " → " + etter.toPlainString() + ")");
+                advarsler.add(navn.getOrDefault(kode, kode) + " endret seg " + (prosent.signum() > 0 ? "+" : "")
+                        + prosent + " % fra " + forrigeMaaned + " (" + udelt(før) + " → " + udelt(etter) + ")");
             }
         });
         return advarsler;
+    }
+
+    /** A number in running text: its thousands spaces are non-breaking, so «1 234 567,00» never wraps. */
+    private static String udelt(BigDecimal v) {
+        return Norsktall.toDesimaler(v).replace(' ', '\u00a0');
     }
 
     private List<ProduktSum> summer(List<Bruksdata> gyldige, Map<String, Long> kodeTilId) {
