@@ -46,6 +46,11 @@
   roles come from groups (`EntraGruppeRolleMapper`), so a change of identifier breaks no access.
 - **Alternatives**: Map `sub` to a name at display time. Rejected: it needs a user directory lookup
   (Graph API), which is an Azure SDK call outside an adapter, for no gain.
+- **Amended 2026-11-05**: the provider setting made `preferred_username` mandatory — a token
+  without it threw `IllegalArgumentException` in the login callback, a 500 that Entra's silent
+  sign-in turned into a loop on tt02. Replaced by `EntraBrukernavnUserService`, which picks
+  `preferred_username`, else `email`, `upn`, then `sub` (always present). Same names as before
+  for normal tokens; a missing claim now only gives a less friendly name.
 
 ## R4 — Warning wording for «Hent fra datavarehus»
 

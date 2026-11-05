@@ -56,8 +56,9 @@ class SecurityConfig {
 
         // Only wire OIDC login when an issuer is configured (prod). Local/test authenticate otherwise.
         if (clientRegistrations.isPresent()) {
-            http.oauth2Login(login -> login.userInfoEndpoint(userInfo ->
-                    userInfo.userAuthoritiesMapper(new EntraGruppeRolleMapper(grupper))));
+            http.oauth2Login(login -> login.userInfoEndpoint(userInfo -> userInfo
+                    .oidcUserService(new EntraBrukernavnUserService())
+                    .userAuthoritiesMapper(new EntraGruppeRolleMapper(grupper))));
         }
         // Local profile: auto-login the dev user right after the context is loaded.
         stubAuth.ifPresent(filter -> http.addFilterAfter(filter, SecurityContextHolderFilter.class));
