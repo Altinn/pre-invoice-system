@@ -3,28 +3,94 @@
 <head th:replace="~{layout :: head('Hendelseslogg')}"></head>
 <body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
 <th:block th:replace="~{layout :: topbar('hendelseslogg')}"></th:block>
-<main id="hovedinnhold" class="side" tabindex="-1">
+<!-- The whole audit trail (specs/014, Økonomi's kickoff row 24): filters, paging and spreadsheet download. -->
+<main id="hovedinnhold" class="side" tabindex="-1" th:with="r=${resultat}, f=${filter}">
     <h1 class="ds-heading" data-size="lg">Hendelseslogg</h1>
-    <p class="ds-paragraph ingress">De 200 nyeste endringene. Hver registerendring logges automatisk.</p>
+    <p class="ds-paragraph ingress">Alle endringer, nyeste først. Hver registerendring, import, generering,
+        godkjenning, eksport og nedlasting logges automatisk. Filtrer listen, eller last den ned som regneark
+        for å sortere og filtrere i Excel.</p>
+
+    <!-- A plain GET form (boosted): the filters end up in the URL, so a filtered view can be shared. -->
+    <form class="filterskjema ikke-utskrift" method="get" th:action="@{/hendelseslogg}" role="search"
+          aria-label="Filtrer hendelsesloggen">
+        <ds-field class="ds-field">
+            <label class="ds-label" for="fra">Fra dato</label>
+            <input class="ds-input" type="date" id="fra" name="fra" th:value="${f.fra()}">
+        </ds-field>
+        <ds-field class="ds-field">
+            <label class="ds-label" for="til">Til dato</label>
+            <input class="ds-input" type="date" id="til" name="til" th:value="${f.til()}">
+        </ds-field>
+        <ds-field class="ds-field">
+            <label class="ds-label" for="bruker">Bruker</label>
+            <input class="ds-input" type="search" id="bruker" name="bruker" th:value="${f.bruker()}" autocomplete="off">
+        </ds-field>
+        <ds-field class="ds-field">
+            <label class="ds-label" for="entitet">Entitet</label>
+            <select class="ds-input" id="entitet" name="entitet">
+                <option value="">Alle</option>
+                <option th:each="e : ${entiteter}" th:value="${e}" th:text="${e}" th:selected="${e == f.entitet()}">KUNDE</option>
+            </select>
+        </ds-field>
+        <ds-field class="ds-field">
+            <label class="ds-label" for="handling">Handling</label>
+            <select class="ds-input" id="handling" name="handling">
+                <option value="">Alle</option>
+                <option th:each="h : ${handlinger}" th:value="${h}" th:text="${h}" th:selected="${h == f.handling()}">ENDRET</option>
+            </select>
+        </ds-field>
+        <div class="rad">
+            <button class="ds-button" data-variant="primary" type="submit">Filtrer</button>
+            <a class="ds-button" data-variant="tertiary" th:href="@{/hendelseslogg}" th:unless="${f.erTom()}">Nullstill filter</a>
+        </div>
+    </form>
+
+    <div class="ds-alert bred" data-color="warning" th:unless="${f.gyldig()}">
+        <p>Fra-datoen er etter til-datoen. Rett datoene for å se hendelser.</p></div>
+
+    <div class="rad seksjon">
+        <p class="ds-paragraph liten" th:if="${r.totalt() > 0}"
+           th:text="|Viser ${@tall.antall(r.fraRad())}–${@tall.antall(r.tilRad())} av ${@tall.antall(r.totalt())} hendelser${f.erTom() ? '' : ' som passer filteret'}.|">
+            Viser 1–50 av 50 hendelser.</p>
+        <div class="rad ikke-utskrift" th:if="${r.totalt() > 0}">
+            <a class="ds-button" data-variant="secondary" data-size="sm" hx-boost="false"
+               th:href="@{/hendelseslogg.xlsx} + ${f.query()}"
+               th:text="${f.erTom()} ? 'Last ned hele loggen (XLSX)' : 'Last ned utvalget (XLSX)'">Last ned (XLSX)</a>
+            <a class="ds-button" data-variant="tertiary" data-size="sm" hx-boost="false"
+               th:href="@{/hendelseslogg.csv} + ${f.query()}">CSV</a>
+        </div>
+    </div>
 
     <table class="ds-table" data-size="sm" data-hover>
         <thead>
         <tr><th>Tidspunkt</th><th>Bruker</th><th>Handling</th><th>Entitet</th><th>Id</th><th>Detaljer</th></tr>
         </thead>
         <tbody>
-        <tr th:each="h : ${hendelser}">
-            <td th:text="${#strings.replace(#strings.substring(h.tidspunkt().toString(), 0, 19), 'T', ' ')}">2027-01-05 09:00:00</td>
+        <tr th:each="rad : ${rader}" th:with="h=${rad.hendelse()}">
+            <td class="ingen-bryting" th:text="${rad.tidspunkt()}">05.01.2027 09:00:00</td>
             <td th:text="${h.bruker()}">dev</td>
             <td><span class="ds-tag" data-color="neutral" th:text="${h.handling()}">ENDRET</span></td>
             <td th:text="${h.entitet()}">KUNDE</td>
             <td th:text="${h.entitetId()}">1</td>
-            <td><code th:text="${h.detaljer()} != null ? ${h.detaljer().json()} : ''"></code></td>
+            <td class="detaljer" th:text="${rad.detaljer()}">navn: Kunde AS</td>
         </tr>
-        <tr th:if="${hendelser.isEmpty()}">
+        <tr th:if="${rader.isEmpty() and f.erTom()}">
             <td colspan="6" class="tom">Ingen hendelser ennå.</td>
+        </tr>
+        <tr th:if="${rader.isEmpty() and !f.erTom()}">
+            <td colspan="6" class="tom">Ingen hendelser passer filteret.
+                <a class="ds-link" th:href="@{/hendelseslogg}">Nullstill filter</a></td>
         </tr>
         </tbody>
     </table>
+
+    <nav class="rad seksjon ikke-utskrift" aria-label="Sider i hendelsesloggen" th:if="${r.antallSider() > 1}">
+        <a class="ds-button" data-variant="tertiary" th:if="${r.harForrige()}"
+           th:href="@{/hendelseslogg} + ${f.query(r.side() - 1)}">Forrige</a>
+        <span class="ds-paragraph liten" th:text="|Side ${r.side()} av ${r.antallSider()}|">Side 1 av 3</span>
+        <a class="ds-button" data-variant="tertiary" th:if="${r.harNeste()}"
+           th:href="@{/hendelseslogg} + ${f.query(r.side() + 1)}">Neste</a>
+    </nav>
 </main>
 </body>
 </html>

@@ -5,19 +5,26 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 
 /**
  * CSV and XLSX of a run's invoice lines. Generic typed-matrix input (header + rows) so the column
  * semantics live in {@link FakturagrunnlagRegneark}. Numbers become numeric XLSX cells so Excel can sum
- * them (specs/002 D8); CSV stays comma-separated with {@code .} decimals for machines.
+ * them (specs/002 D8); CSV stays comma-separated with {@code .} decimals for machines. Date-times become
+ * date cells, and every sheet opens with a filter on the header row and the header frozen, so it can be
+ * sorted and filtered straight away (specs/014).
  */
 @Component
 public class RegnearkEksport {
+
+    private static final DateTimeFormatter TIDSPUNKT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public byte[] csv(List<String> header, List<List<Object>> rader) {
         StringBuilder sb = new StringBuilder();
@@ -34,6 +41,7 @@ public class RegnearkEksport {
             CellStyle heltall = stil(wb, "0");
             CellStyle toDesimaler = stil(wb, "#,##0.00");
             CellStyle fireDesimaler = stil(wb, "#,##0.0000");
+            CellStyle tidspunkt = stil(wb, "yyyy-mm-dd hh:mm:ss");
             var sheet = wb.createSheet(ark);
             var hodeRad = sheet.createRow(0);
             for (int i = 0; i < header.size(); i++) {
@@ -48,6 +56,9 @@ public class RegnearkEksport {
                     if (v instanceof BigDecimal b) {
                         celle.setCellValue(b.doubleValue());
                         celle.setCellStyle(b.scale() > 2 ? fireDesimaler : toDesimaler);
+                    } else if (v instanceof LocalDateTime t) {
+                        celle.setCellValue(t);
+                        celle.setCellStyle(tidspunkt);
                     } else if (v instanceof Number n) {
                         celle.setCellValue(n.doubleValue());
                         celle.setCellStyle(heltall);
@@ -55,6 +66,10 @@ public class RegnearkEksport {
                         celle.setCellValue(v == null ? "" : v.toString());
                     }
                 }
+            }
+            if (!header.isEmpty()) {
+                sheet.setAutoFilter(new CellRangeAddress(0, Math.max(0, rader.size()), 0, header.size() - 1));
+                sheet.createFreezePane(0, 1);
             }
             wb.write(ut);
             return ut.toByteArray();
@@ -72,6 +87,9 @@ public class RegnearkEksport {
     private static String tekst(Object v) {
         if (v == null) {
             return "";
+        }
+        if (v instanceof LocalDateTime t) {
+            return TIDSPUNKT.format(t);
         }
         return v instanceof BigDecimal b ? b.toPlainString() : v.toString();
     }

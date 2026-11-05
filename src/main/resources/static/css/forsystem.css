@@ -294,3 +294,9 @@ pre.epost {
 .kodeliste { margin: 0; }
 .kodeliste dt { margin-top: var(--ds-size-3); display: flex; gap: var(--ds-size-2); align-items: center; }
 .kodeliste dd { margin: var(--ds-size-1) 0 0; }
+
+/* Event log (specs/014): filters in a wrapping row, time on one line, long details wrap. */
+.filterskjema { display: flex; flex-wrap: wrap; gap: var(--ds-size-4); align-items: flex-end; }
+.filterskjema .ds-field { margin: 0; flex: 0 1 12rem; }
+td.ingen-bryting { white-space: nowrap; }
+td.detaljer { overflow-wrap: anywhere; max-width: 40rem; }
