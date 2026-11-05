@@ -410,6 +410,22 @@ detaljer. Hver registerendring, import, generering, godkjenning og eksport havne
 hver nedlasting av eksportfiler og fakturagrunnlag (`LASTET_NED`, med filtype). Bruk den til å svare på
 «hva skjedde med denne kjøringen / kunden?» og «er LG04-fila allerede hentet?».
 
+Hele loggen er tilgjengelig, 50 hendelser per side med de nyeste først (**Forrige** / **Neste**).
+Tidspunktene er norsk tid, og detaljene vises som «nøkkel: verdi», f.eks.
+`periode: 2027-01; antallFakturaer: 7`.
+
+**Filtrer:** velg **Fra dato** og/eller **Til dato** (begge dagene er med), skriv en del av et
+**brukernavn** (store og små bokstaver er likegyldige), og velg **Entitet** og/eller **Handling** fra
+listene. Trykk **Filtrer**. Filtrene gjelder samtidig, og de står i adressen, så du kan dele en filtrert
+visning. **Nullstill filter** viser alt igjen.
+
+**Last ned:** **Last ned hele loggen (XLSX)** gir alle hendelsene i et regneark, **Last ned utvalget
+(XLSX)** bare dem som passer filteret (alle sider). **CSV** gir det samme som tekstfil. Regnearket har
+kolonnene tidspunkt (dato og klokkeslett i Excel, norsk tid), bruker, handling, entitet, entitet_id,
+periode (hentet fra detaljene når hendelsen gjelder en måned), detaljer (lesbar tekst) og detaljer_json
+(slik det er lagret). Overskriftsraden har filterpiler og blir stående når du blar. Nedlastingen logges
+selv (`LASTET_NED`, entitet `HENDELSESLOGG`).
+
 ---
 
 ## 10. Månedsrutinen
