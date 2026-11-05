@@ -27,7 +27,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-REG-PROD-02 | Seeded product catalog | Six products preloaded: melding, formidling, varsling, autorisasjon, studio, appinfra. | Flyway `V6` | — | docs/03 V6 |
 | F-REG-PROD-03 | Create product | Add a product (kode, navn, enhet). | POST `/produkter` | FORVALTER | docs/04 P1 |
 | F-REG-PROD-04 | Edit product + kontering | Edit navn, enhet, aktiv, and kontering: artikkel_id, konto, dim_1/2/4. | GET/POST `/produkter/{id}` | FORVALTER | docs/04 P1 |
-| F-REG-PROD-06 | Product list order and dimensions | Active products first; Dim 1/2/4 shown with labels from `PRODUKT_DIMn_NAVN` (empty until OQ-2). | `ProduktService.oversikt`, `Dimensjonsnavn` | LESER | specs/003, BF1 F01/F03 |
+| F-REG-PROD-06 | Product list order and dimensions | Active products first; Dim1 Koststed / Dim2 Prosjekt/formål / Dim4 Kappost by default (Økonomi, specs/010), overridable via `PRODUKT_DIMn_NAVN`. | `ProduktService.oversikt`, `Dimensjonsnavn` | LESER | specs/003, BF1 F01/F03 |
 | F-REG-PROD-05 | Kontering nullable until OQ-2 | Kontering stays NULL until Økonomi delivers values; NULL is deliberately allowed here and blocked at generation. | `ProduktService` | — | OQ-2 |
 
 ## Registry — Prisversjon / Pris (price versions & prices)
@@ -127,6 +127,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-CTRL-10 | AKTIV_KUNDE_UTEN_BRUK (warning) | Active customer with no usage row in the period. | `FakturakjoringService` | — | specs/003, BF1 T10 |
 | F-CTRL-11 | DELT_REFERANSE (warning) | Invoice lines carry different references; the LG04 export splits the invoice into one order per reference. | `FakturakjoringService` | — |
 | F-CTRL-09 | Findings surfaced in UI | Blocking + warnings shown on the run and per-faktura. | GET `/kjoringer/{id}` | LESER | docs/04 P3 |
+| F-CTRL-12 | Control codes explained | Kontroller tab explains both severities and every code (definition and severity live on `Kontrollkode`); generation refuses a code raised with the wrong severity. | `Kontrollkode`, `kjoring/kontroller.html` | LESER | specs/010 |
 
 ## Approval & state machine — fakturakjøring
 
@@ -150,7 +151,7 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-EXP-04 | LG04 assembly (one order per invoice) | One header line per invoice, then one line pair per product numbered 1, 2, 3…; split by fakturareferanse/bestillingsnummer if they differ within an invoice (warned as DELT_REFERANSE). VALUE_1 blank without quantity. | `EksportService.byggOrdrer` | — | OQ-1 |
 | F-EXP-05 | Øre conversion in export only | ×100, round half-up, only here. | `EksportService` | — | docs/02 |
 | F-EXP-06 | Kontering from product | account/dims/article from produkt (not hardcoded). | `EksportService` | — | docs/04 P4 |
-| F-EXP-07 | Responsible from config | LG04 responsible persons from `EksportKonfig` (placeholders until OQ-2). | `EksportKonfig` | — | OQ-2 |
+| F-EXP-07 | Invoice texts per run | Header (`long_info1`), footer (`long_info2`) and «Vår referanse» (`responsible`/`responsible2`) stored on the run with Økonomi's defaults; editable while GENERERT, locked from approval on, each change logged (`ENDRET`). Limits 120/120/25 enforced; printed-invoice limit 90/65 is a warning only. | `Fakturatekster`, `FakturakjoringService.endreTekster`, POST `/kjoringer/{id}/tekster` | FORVALTER (edit), LESER (view) | specs/009, OQ-23 |
 | F-EXP-08 | PDF detail per invoice | XHTML→PDF, zipped, named `<kundenummer>-<faktura_uuid>.pdf`. | `PdfEksport` | GODKJENNER | docs/04 P4 |
 | F-EXP-09 | CSV export of lines | Run's lines as CSV, same columns as F-EXP-15. | `RegnearkEksport.csv`, `FakturagrunnlagRegneark` | GODKJENNER | docs/04 P4 |
 | F-EXP-10 | XLSX export of lines | Run's lines as XLSX; numbers are numeric cells. | `RegnearkEksport.xlsx`, `FakturagrunnlagRegneark` | GODKJENNER | docs/04 P4 |
@@ -167,13 +168,14 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 |---|---|---|---|---|---|
 | F-AUD-01 | Audit log (hendelseslogg) | Every state change recorded (who/what/when/details as jsonb); also stopped exports (`EKSPORT_STOPPET`) and spreadsheet downloads (`LASTET_NED`). | `common.AuditService`, GET `/hendelseslogg` | LESER | docs/02 |
 | F-SEC-01 | Roles LESER/FORVALTER/GODKJENNER | Authorization: writes require FORVALTER, approve/export require GODKJENNER, reads LESER. | `web.security.SecurityConfig` | — | docs/02 |
-| F-SEC-02 | OIDC login (prod) | OIDC against any issuer (Entra ID); wired when an issuer is configured. | `SecurityConfig` | — | docs/02 |
+| F-SEC-02 | OIDC login (prod) | OIDC against any issuer (Entra ID); wired when an issuer is configured. Users are recorded by `preferred_username`, not the opaque `sub` (specs/010). | `SecurityConfig` | — | docs/02 |
 | F-SEC-03 | Stubbed login (local) | Fixed dev user with all roles for offline use. | `StubAuthenticationFilter` (profile `local`) | — | docs/04 P0 |
 | F-SEC-04 | CSRF protection | CSRF enforced on forms; multipart handled via query-string token. A stale token (logged out or redeployed while the form was open) shows «Siden er utløpt» with a reload link; a missing role shows «Ingen tilgang». | `SecurityConfig`, `TilgangNektetHandler` | — | docs/04 P2 |
 | F-CORE-01 | Periode value type | Billing period is always an explicit first-of-month parameter, never derived from the clock. | `common.Periode` | — | docs/02 |
 | F-ARCH-01 | Modulith layout | registry / usage / billing / export / archive / web / common with a defined dependency direction. | package layout | — | docs/02 |
 | F-ARCH-02 | Runs fully offline | `docker compose up` = app + PostgreSQL + local archive + stubbed login, no Azure. | `docker-compose.yaml` | — | docs/02 |
 | F-ARCH-03 | Config via environment | 12-factor; no value requires Azure. Profiles local/test/prod/demo. | `application*.yaml` | — | docs/02 |
+| F-UI-01 | One number format | Every amount `1 234 567,89`, count `1 234 567`, unit price with all decimals; every amount labelled eksl. mva. | `Tallformat` (`@tall`) | LESER | specs/010 |
 
 ## Non-functional & tooling
 
@@ -218,7 +220,7 @@ Facts not yet decided; the design stays safe while they are open (never invent a
 | OQ | Question | Affects features |
 |---|---|---|
 | OQ-1 | Does LG04 support multiple amount lines per order? (Answered: yes, FEL format adopted) | F-EXP-04 |
-| OQ-2 | Kontering (konto, dims, artikkel_id) per product | F-REG-PROD-05, F-CTRL-05, F-EXP-06/07 |
+| OQ-2 | Kontering (konto, dims, artikkel_id) per product | F-REG-PROD-05, F-CTRL-05, F-EXP-06 |
 | OQ-3 | SMS cost source & format | F-USG-03, F-USG-15 |
 | OQ-4 | Datavarehus contract | F-USG-02, N-04 |
 | OQ-5 | CRM readiness / temporary governance | F-REG-KUN-11, N-03 |

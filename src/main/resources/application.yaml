@@ -54,12 +54,12 @@ forsystem:
   testverktoy:
     enabled: ${FORSYSTEM_TESTVERKTOY_ENABLED:false}
   produkt:
-    # Display names for Dim 1/2/4 on the product pages. Empty until Økonomi confirms what each
-    # dimension is (OQ-2) — never guessed; set per environment, e.g. PRODUKT_DIM1_NAVN=koststed.
+    # Display names for Dim1/2/4 on the product pages, as Økonomi named them (Confluence kickoff,
+    # 2026-11; specs/010). Override per environment, e.g. PRODUKT_DIM1_NAVN=Koststed.
     dimensjoner:
-      dim1: ${PRODUKT_DIM1_NAVN:}
-      dim2: ${PRODUKT_DIM2_NAVN:}
-      dim4: ${PRODUKT_DIM4_NAVN:}
+      dim1: ${PRODUKT_DIM1_NAVN:Koststed}
+      dim2: ${PRODUKT_DIM2_NAVN:Prosjekt/formål}
+      dim4: ${PRODUKT_DIM4_NAVN:Kappost}
   dwh:
     enabled: ${FORSYSTEM_DWH_ENABLED:false}
     base-url: ${DWH_BASE_URL:}

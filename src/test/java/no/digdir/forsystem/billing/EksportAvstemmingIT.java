@@ -69,7 +69,7 @@ class EksportAvstemmingIT extends BillingFixture {
             List<Lg04Ordre> ordrer = new ArrayList<>((List<Lg04Ordre>) inv.getArgument(0));
             Lg04Ordre siste = ordrer.removeLast();
             ordrer.add(new Lg04Ordre(siste.kundenummer(), siste.fakturareferanse(), siste.bestillingsnummer(),
-                    siste.tekst(), siste.ordreNr(), siste.url(), siste.ansvarlig1(), siste.ansvarlig2(),
+                    siste.topptekst(), siste.ordreNr(), siste.bunntekst(), siste.ansvarlig1(), siste.ansvarlig2(),
                     siste.batchId(), siste.linjer().subList(0, siste.linjer().size() - 1)));
             return new Lg04Eksport().bygg(ordrer);
         }).when(lg04).bygg(anyList());

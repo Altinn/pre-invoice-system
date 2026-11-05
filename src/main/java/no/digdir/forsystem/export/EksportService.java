@@ -62,7 +62,6 @@ public class EksportService {
     private final EksportfilRepository eksportfiler;
     private final AuditService audit;
     private final BrukerContext brukerContext;
-    private final EksportKonfig konfig;
     private final Lg04AvstemmingRepository avstemminger;
     private final FakturagrunnlagRegneark grunnlag;
     private final KorrigeringEksportKonfig korrigeringKonfig;
@@ -71,7 +70,7 @@ public class EksportService {
     EksportService(FakturakjoringService kjoringer, ProduktRepository produkter, Lg04Eksport lg04,
                    PdfEksport pdf, RegnearkEksport regneark, FileArchive arkiv,
                    EksportfilRepository eksportfiler, AuditService audit, BrukerContext brukerContext,
-                   EksportKonfig konfig, Lg04AvstemmingRepository avstemminger,
+                   Lg04AvstemmingRepository avstemminger,
                    FakturagrunnlagRegneark grunnlag,
                    KorrigeringEksportKonfig korrigeringKonfig) {
         this.kjoringer = kjoringer;
@@ -83,7 +82,6 @@ public class EksportService {
         this.eksportfiler = eksportfiler;
         this.audit = audit;
         this.brukerContext = brukerContext;
-        this.konfig = konfig;
         this.avstemminger = avstemminger;
         this.grunnlag = grunnlag;
         this.korrigeringKonfig = korrigeringKonfig;
@@ -106,6 +104,9 @@ public class EksportService {
             }
             throw new Regelbrudd("Korrigeringen kan ikke eksporteres før avregningsmåten er avklart "
                     + "og testet med regnskap (OQ-6)");
+        }
+        if (kj.tekster() == null) {
+            throw new Regelbrudd("Kjøringen har ingen tekster på fakturaen (topptekst, bunntekst, Vår referanse)");
         }
         Map<Long, Produkt> produktById = produktById();
         List<Faktura> fakturaer = kjoringer.fakturaer(kjoringId);
@@ -274,10 +275,14 @@ public class EksportService {
                 ordrerFor(kj, fakturaer, produktById(), "").size(), sumOre(fakturaer), fakturaer.size(), sha256);
     }
 
-    /** The run's order assembly — the single place that decides how lines become LG04 orders (D5). */
+    /**
+     * The run's order assembly — the single place that decides how lines become LG04 orders (D5). The
+     * texts are the run's own (specs/009); a run exported before they were stored has none, which only
+     * the counting paths ever see.
+     */
     private List<Lg04Ordre> ordrerFor(Fakturakjoring kj, List<Faktura> fakturaer, Map<Long, Produkt> produktById,
                                       String batchId) {
-        return byggOrdrer(fakturaer, produktById, "Bruk av Altinn " + kj.periodeLabel(), batchId);
+        return byggOrdrer(fakturaer, produktById, kj, batchId);
     }
 
     /** The run's amount in øre, with the export's own rounding: Σ over lines, not over invoices. */
@@ -305,7 +310,7 @@ public class EksportService {
         }
     }
 
-    private List<Lg04Ordre> byggOrdrer(List<Faktura> fakturaer, Map<Long, Produkt> produktById, String tekst,
+    private List<Lg04Ordre> byggOrdrer(List<Faktura> fakturaer, Map<Long, Produkt> produktById, Fakturakjoring kj,
                                        String batchId) {
         List<Lg04Ordre> ordrer = new ArrayList<>();
         int ordreNr = 1;
@@ -322,8 +327,9 @@ public class EksportService {
                         p.navn(), ore(l.belop()), l.antall()));
             }
             for (var e : perReferanse.entrySet()) {
-                ordrer.add(new Lg04Ordre(f.kundenummer(), e.getKey().get(0), e.getKey().get(1), tekst,
-                        ordreNr++, url(f), konfig.ansvarlig1(), konfig.ansvarlig2(), batchId, e.getValue()));
+                // «Vår referanse» goes in both responsible fields (Økonomi, OQ-23).
+                ordrer.add(new Lg04Ordre(f.kundenummer(), e.getKey().get(0), e.getKey().get(1), kj.topptekst(),
+                        ordreNr++, kj.bunntekst(), kj.varReferanse(), kj.varReferanse(), batchId, e.getValue()));
             }
         }
         return ordrer;
@@ -344,10 +350,6 @@ public class EksportService {
         String filnavn = sti.substring(sti.lastIndexOf('/') + 1);
         return eksportfiler.save(new Eksportfil(null, kjoringId, type, filnavn, a.blobUrl(), a.sha256(),
                 brukerContext.naavaerendeBruker(), OffsetDateTime.now()));
-    }
-
-    private String url(Faktura f) {
-        return konfig.fakturaUrlBase() + "/" + f.kundenummer() + "-" + f.fakturaUuid() + ".pdf";
     }
 
     private String pdfHtml(Fakturakjoring kj, Faktura f, String kundenavn, Map<Long, Produkt> produktById) {

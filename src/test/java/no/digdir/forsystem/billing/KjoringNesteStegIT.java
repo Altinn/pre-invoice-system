@@ -77,7 +77,8 @@ class KjoringNesteStegIT extends BillingFixture {
         // Grouped findings live on the Kontroller tab since specs/006.
         String kontroller = mvc.perform(get("/kjoringer/{id}/kontroller", kj.id())).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
-        String funn = kontroller.substring(kontroller.indexOf("id=\"kontrollfunn\""), kontroller.indexOf("id=\"bruksdata\""));
+        // The findings table only: since specs/010 the code explanation above it lists every code too.
+        String funn = kontroller.substring(kontroller.indexOf("<table class=\"ds-table funn\""), kontroller.indexOf("id=\"bruksdata\""));
         assertThat(funn.split("<code>MANGLER_KUNDE</code>", -1)).as("one row for the code").hasSize(2);
         assertThat(funn).contains("<td class=\"hoyre\">3</td>", "Vis alle 3 MANGLER_KUNDE");
     }

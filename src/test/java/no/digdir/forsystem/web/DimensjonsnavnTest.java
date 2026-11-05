@@ -4,19 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-/** Dimension labels come from configuration only and fall back to the bare name (specs/003 D4, OQ-2). */
+/** Dimension labels come from configuration and fall back to the bare name (specs/003 D4, specs/010 FR-004). */
 class DimensjonsnavnTest {
 
     @Test
     void bareLabelsWhenNothingIsConfigured() {
         var d = new Dimensjonsnavn(null, "", "  ");
-        assertThat(d.etikett(1)).isEqualTo("Dim 1");
-        assertThat(d.etikett(2)).isEqualTo("Dim 2");
-        assertThat(d.etikett(4)).isEqualTo("Dim 4");
+        assertThat(d.etikett(1)).isEqualTo("Dim1");
+        assertThat(d.etikett(2)).isEqualTo("Dim2");
+        assertThat(d.etikett(4)).isEqualTo("Dim4");
     }
 
     @Test
-    void configuredNameIsShownInParentheses() {
-        assertThat(new Dimensjonsnavn("koststed", null, null).etikett(1)).isEqualTo("Dim 1 (koststed)");
+    void configuredNameFollowsTheBareLabel() {
+        // Økonomi writes "Dim1 Koststed" — no space in Dim1, no parentheses (specs/010 FR-004).
+        assertThat(new Dimensjonsnavn("Koststed", null, null).etikett(1)).isEqualTo("Dim1 Koststed");
     }
 }

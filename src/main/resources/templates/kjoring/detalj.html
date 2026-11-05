@@ -123,8 +123,8 @@
 Buntnummer: ${a != null and a.buntnummer() != null ? a.buntnummer() : 'ukjent'}
 Periode: ${sammendrag.periode()} (${sammendrag.periode().norskLabel()})
 Antall fakturaer: ${fraFil ? a.antallOrdrerFil() : sammendrag.antallFakturaer()}
-Samlet beløp eksl. mva: ${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')} kr
-Samlet beløp inkl. mva: ${#numbers.formatDecimal(sammendrag.sumInklMva(), 1, 'WHITESPACE', 2, 'COMMA')} kr|">…</pre>
+Samlet beløp eksl. mva: ${@tall.belop(sammendrag.sumBelop())} kr
+Samlet beløp inkl. mva: ${@tall.belop(sammendrag.sumInklMva())} kr|">…</pre>
             <div class="rad ikke-utskrift">
                 <button class="ds-button" data-color="accent" type="button"
                         onclick="navigator.clipboard.writeText(document.getElementById('epost').innerText); this.textContent='Kopiert';">Kopier tallene</button>
@@ -151,6 +151,61 @@ Samlet beløp inkl. mva: ${#numbers.formatDecimal(sammendrag.sumInklMva(), 1, 'W
         </th:block>
     </section>
 
+    <!-- Invoice texts (specs/009): stored with the run, editable while GENERERT, locked from approval on.
+         Hard limits are the LG04 field widths; the printed-invoice limits are regnskap's suggestion,
+         not confirmed by FEL — TODO(OQ-23). A refused save comes back with the submitted values. -->
+    <section id="tekster" aria-labelledby="tekster-tittel"
+             th:with="lagret=${kjoring.tekster()}, t=${innsendteTekster != null ? innsendteTekster : lagret}">
+        <h2 class="ds-heading" data-size="xs" id="tekster-tittel">Tekster på fakturaen</h2>
+        <div class="ds-alert bred" data-color="success" th:if="${teksterLagret}" role="status"><p>Tekstene er lagret.</p></div>
+        <div class="ds-alert bred" data-color="danger" th:if="${teksterFeil}" role="alert"><p th:text="${teksterFeil}">Feil</p></div>
+
+        <form th:if="${generert}" th:action="@{/kjoringer/{id}/tekster(id=${kjoring.id()})}" method="post"
+              class="skjema bred ikke-utskrift">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <div class="ds-field">
+                <label class="ds-label" for="topptekst">Topptekst</label>
+                <p data-field="description" id="topptekst-beskrivelse">Står over linjene. Maks 120 tegn i LG04-filen.
+                    Regnskaps mal foreslår maks 90 på trykt faktura (ikke bekreftet av FEL, OQ-23).</p>
+                <input class="ds-input" id="topptekst" name="topptekst" maxlength="120" required
+                       aria-describedby="topptekst-beskrivelse" th:value="${t.topptekst()}">
+                <p class="ds-validation-message" data-color="warning" th:if="${lagret.topptekstOverTrykkgrense()}"
+                   th:text="|Toppteksten er ${#strings.length(lagret.topptekst())} tegn og kan bli for lang på trykt faktura.|">For lang.</p>
+            </div>
+            <div class="ds-field">
+                <label class="ds-label" for="bunntekst">Bunntekst</label>
+                <p data-field="description" id="bunntekst-beskrivelse">Står under linjene. Maks 120 tegn i LG04-filen.
+                    Regnskaps mal foreslår maks 65 på trykt faktura (ikke bekreftet av FEL, OQ-23). Lenker er ikke klikkbare i fakturaen.</p>
+                <input class="ds-input" id="bunntekst" name="bunntekst" maxlength="120" required
+                       aria-describedby="bunntekst-beskrivelse" th:value="${t.bunntekst()}">
+                <p class="ds-validation-message" data-color="warning" th:if="${lagret.bunntekstOverTrykkgrense()}"
+                   th:text="|Bunnteksten er ${#strings.length(lagret.bunntekst())} tegn og kan bli for lang på trykt faktura.|">For lang.</p>
+            </div>
+            <div class="ds-field">
+                <label class="ds-label" for="varReferanse">Vår referanse</label>
+                <p data-field="description" id="varReferanse-beskrivelse">Kontaktpunkt kunden ser på fakturaen. Maks 25 tegn i LG04-filen.</p>
+                <input class="ds-input" id="varReferanse" name="varReferanse" maxlength="25" required
+                       aria-describedby="varReferanse-beskrivelse" th:value="${t.varReferanse()}">
+            </div>
+            <div class="rad">
+                <button class="ds-button" data-variant="secondary" type="submit">Lagre tekstene</button>
+            </div>
+        </form>
+
+        <th:block th:unless="${generert}">
+            <table class="ds-table bred" data-size="sm" th:if="${lagret != null}">
+                <tbody>
+                <tr><th scope="row">Topptekst</th><td th:text="${lagret.topptekst()}">Bruk av Altinn januar 2027</td></tr>
+                <tr><th scope="row">Bunntekst</th><td th:text="${lagret.bunntekst()}">Se samarbeid.digdir.no …</td></tr>
+                <tr><th scope="row">Vår referanse</th><td th:text="${lagret.varReferanse()}">Servicedesk@altinn.no</td></tr>
+                </tbody>
+            </table>
+            <p class="ds-paragraph liten" th:if="${lagret != null}">Låst etter godkjenning.</p>
+            <p class="ds-paragraph liten" th:if="${lagret == null}">Tekstene ble ikke lagret for denne kjøringen
+                (den ble eksportert eller forkastet før tekstene ble lagret per kjøring).</p>
+        </th:block>
+    </section>
+
     <!-- Summary (specs/002 FR-001..003). VAT treatment is open (OQ-11): no VAT figure, only the label. -->
     <h2 class="ds-heading" data-size="xs">Sammendrag</h2>
     <div class="ds-alert bred" data-color="info" th:if="${kjoring.erKorrigering()}">
@@ -162,18 +217,18 @@ Samlet beløp inkl. mva: ${#numbers.formatDecimal(sammendrag.sumInklMva(), 1, 'W
     <table class="ds-table smal" data-size="sm">
         <tbody>
         <tr><th scope="row">Periode</th><td class="hoyre" th:text="${sammendrag.periode()}">2027-01</td></tr>
-        <tr><th scope="row">Antall fakturaer</th><td class="hoyre" th:text="${sammendrag.antallFakturaer()}">0</td></tr>
+        <tr><th scope="row">Antall fakturaer</th><td class="hoyre" th:text="${@tall.antall(sammendrag.antallFakturaer())}">0</td></tr>
         <tr><th scope="row">Antall LG04-ordrer <span class="liten">(én per faktura, flere ved ulike referanser)</span></th>
-            <td class="hoyre" th:text="${antallOrdrer}">0</td></tr>
-        <tr><th scope="row">Antall linjer</th><td class="hoyre" th:text="${sammendrag.antallLinjer()}">0</td></tr>
+            <td class="hoyre" th:text="${@tall.antall(antallOrdrer)}">0</td></tr>
+        <tr><th scope="row">Antall linjer</th><td class="hoyre" th:text="${@tall.antall(sammendrag.antallLinjer())}">0</td></tr>
         <tr><th scope="row">Sum beløp eksl. mva</th>
-            <td class="hoyre" th:text="${#numbers.formatDecimal(sammendrag.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
+            <td class="hoyre" th:text="${@tall.belop(sammendrag.sumBelop())}">0,00</td></tr>
         <tr><th scope="row">Sum beløp inkl. mva <span class="liten">(25 %, beregnet per faktura)</span></th>
-            <td class="hoyre" th:text="${#numbers.formatDecimal(sammendrag.sumInklMva(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td></tr>
+            <td class="hoyre" th:text="${@tall.belop(sammendrag.sumInklMva())}">0,00</td></tr>
         </tbody>
     </table>
     <div class="ds-alert" data-color="danger" th:unless="${sammendrag.konsistent()}">
-        <p th:text="|Summen av fakturaene (${sammendrag.sumFakturaer()}) er ikke lik summen av linjene (${sammendrag.sumBelop()}). Dette er en feil i forsystemet — kontakt forsystem-teamet.|">Summene stemmer ikke.</p></div>
+        <p th:text="|Summen av fakturaene (${@tall.belop(sammendrag.sumFakturaer())}) er ikke lik summen av linjene (${@tall.belop(sammendrag.sumBelop())}). Dette er en feil i forsystemet — kontakt forsystem-teamet.|">Summene stemmer ikke.</p></div>
 
     <!-- Forkast form + dialog, shared by the GENERERT and GODKJENT panels (only one is ever rendered). -->
     <th:block th:if="false">

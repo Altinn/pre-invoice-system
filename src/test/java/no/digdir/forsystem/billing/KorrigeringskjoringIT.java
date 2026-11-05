@@ -68,6 +68,8 @@ class KorrigeringskjoringIT extends BillingFixture {
         assertThat(v2.versjon()).isEqualTo(2);
         assertThat(v2.forrigeKjoringId()).isEqualTo(v1.id());
         assertThat(v2.korrigeringsaarsak()).isEqualTo("DWH korrigerte volumet");
+        // A correction run gets the same invoice-text defaults for its period (specs/009).
+        assertThat(v2.tekster()).isEqualTo(Fakturatekster.standard(JAN));
         assertThat(valgte.endringIder(v2.id())).containsExactly(valgt.id());
         assertThat(tjeneste.fakturaer(v2.id())).hasSize(1);
         Fakturalinje linje = tjeneste.linjer(tjeneste.fakturaer(v2.id()).getFirst().id()).getFirst();

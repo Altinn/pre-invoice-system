@@ -4,12 +4,15 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import no.digdir.forsystem.billing.BruksdataavstemmingService;
 import no.digdir.forsystem.billing.Faktura;
 import no.digdir.forsystem.billing.Fakturakjoring;
+import no.digdir.forsystem.billing.Fakturatekster;
 import no.digdir.forsystem.billing.FakturakjoringService;
 import no.digdir.forsystem.billing.Kontrollfunn;
+import no.digdir.forsystem.billing.Kontrollkode;
 import no.digdir.forsystem.billing.NullstillingService;
 import no.digdir.forsystem.common.HendelsesloggRepository;
 import no.digdir.forsystem.common.Periode;
@@ -105,6 +108,7 @@ class FakturakjoringController {
     String kontroller(@PathVariable Long id, Model model) {
         var fane = fane(id, model);
         model.addAttribute("funngrupper", Funngruppe.av(fane.funn()));
+        model.addAttribute("kontrollkoder", Kontrollkode.values());
         model.addAttribute("avstemming", fane.kjoring().erKorrigering() ? null : avstemming.forKjoring(id));
         model.addAttribute("antallValgteEndringer", fane.kjoring().erKorrigering()
                 ? kjoringer.valgteEndringIder(id).size() : 0);
@@ -179,6 +183,25 @@ class FakturakjoringController {
         return "redirect:/kjoringer/" + id;
     }
 
+    /**
+     * Save the run's invoice texts (specs/009). A refusal — invalid text or a locked run — comes back to
+     * the run page with the message and the submitted values, so nothing typed is lost.
+     */
+    @PostMapping("/{id}/tekster")
+    String tekster(@PathVariable Long id, @RequestParam(defaultValue = "") String topptekst,
+                   @RequestParam(defaultValue = "") String bunntekst,
+                   @RequestParam(defaultValue = "") String varReferanse, RedirectAttributes redirect) {
+        var innsendt = new Fakturatekster(topptekst, bunntekst, varReferanse);
+        try {
+            kjoringer.endreTekster(id, innsendt);
+            redirect.addFlashAttribute("teksterLagret", true);
+        } catch (Regelbrudd e) {
+            redirect.addFlashAttribute("teksterFeil", e.getMessage());
+            redirect.addFlashAttribute("innsendteTekster", innsendt);
+        }
+        return "redirect:/kjoringer/" + id + "#tekster";
+    }
+
     /** The fakturagrunnlag as a spreadsheet, also before approval (specs/002 US3). */
     @GetMapping("/{id}/fakturagrunnlag.{format:csv|xlsx}")
     ResponseEntity<byte[]> fakturagrunnlag(@PathVariable Long id, @PathVariable String format) {
@@ -223,7 +246,13 @@ class FakturakjoringController {
                 .collect(Collectors.toMap(p -> p.id(), p -> p.navn()));
         model.addAttribute("kjoring", kjoringer.hent(id));
         model.addAttribute("faktura", kjoringer.hentFaktura(fakturaId));
-        model.addAttribute("linjer", kjoringer.linjer(fakturaId));
+        var linjer = kjoringer.linjer(fakturaId);
+        model.addAttribute("linjer", linjer);
+        // The reference once, in the header; several only when the invoice is split (DELT_REFERANSE).
+        model.addAttribute("referanser", linjer.stream()
+                .map(l -> Stream.of(l.fakturareferanse(), l.bestillingsnummer())
+                        .filter(v -> v != null && !v.isBlank()).collect(Collectors.joining(" / ")))
+                .map(r -> r.isEmpty() ? "ingen referanse" : r).distinct().toList());
         model.addAttribute("funn", kjoringer.funnForFaktura(fakturaId));
         model.addAttribute("produktNavn", produktNavn);
         return "kjoring/faktura";

@@ -43,7 +43,7 @@ class BruksdataKandidatServiceIT extends IntegrationTest {
                 JAN.førsteDag(), null, "AKTIV"));
         Fakturakjoring v1 = kjoringer.save(new Fakturakjoring(null, JAN.førsteDag(), "EKSPORTERT",
                 prisversjon.id(), original.id(), "test", OffsetDateTime.now(), "test", OffsetDateTime.now(),
-                null, Kjoringstype.ORDINAER.name(), 1, null, null, null));
+                null, Kjoringstype.ORDINAER.name(), 1, null, null, null, null, null, null));
 
         byte[] raw = "complete-dwh-candidate".getBytes(java.nio.charset.StandardCharsets.UTF_8);
         Forhaandsvisning fv = new Forhaandsvisning(JAN, "dwh-januar.csv", Kilde.DWH, List.of(

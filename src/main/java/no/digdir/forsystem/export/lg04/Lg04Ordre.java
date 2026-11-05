@@ -6,16 +6,17 @@ import java.util.List;
 /**
  * The business values for one LG04 order: a header line, then one line pair per product
  * ({@link Lg04Ordrelinje}). Raw values — {@link Lg04Skriver} does all fixed-width formatting,
- * abbreviation and byte placement. {@code ansvarlig1/2} come from configuration; {@code batchId}
- * (buntnummer) is the date the file was made, passed in by the caller (never read from the clock here).
+ * abbreviation and byte placement. {@code topptekst}, {@code bunntekst} and {@code ansvarlig1/2} («Vår
+ * referanse») are the run's stored invoice texts (specs/009); {@code batchId} (buntnummer) is the date
+ * the file was made, passed in by the caller (never read from the clock here).
  */
 public record Lg04Ordre(
         String kundenummer,
         String fakturareferanse,
         String bestillingsnummer,
-        String tekst,
+        String topptekst,
         int ordreNr,
-        String url,
+        String bunntekst,
         String ansvarlig1,
         String ansvarlig2,
         String batchId,

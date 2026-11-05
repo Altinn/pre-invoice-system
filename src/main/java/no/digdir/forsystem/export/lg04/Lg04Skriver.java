@@ -12,8 +12,8 @@ import java.math.RoundingMode;
  *
  * <p>Ported from the reference system (../agresso Linje1/2/3), whose one-product-per-order layout is the
  * DPI/eSignering format. Values are parameterized rather than derived from the clock or hardcoded —
- * kontering comes from the product, responsible from configuration, and {@code batchId}/text from the
- * caller.
+ * kontering comes from the product, the texts and responsible («Vår referanse») from the run, and
+ * {@code batchId} from the caller.
  */
 public final class Lg04Skriver {
 
@@ -29,6 +29,7 @@ public final class Lg04Skriver {
     private static final String BELOP_SATT = "1";
     private static final String SEKVENSNR = "8";
     private static final int TEKSTFELT = 120;   // long_info1 and long_info2 are c120 (LG04_55)
+    private static final int ANSVARLIGFELT = 25; // responsible and responsible2 are c25
     private static final String LINJE_NULL = "0";
 
     /** Header line (line number 0): references, recipient, order metadata. */
@@ -41,8 +42,8 @@ public final class Lg04Skriver {
         plasser(buf, 2368, forkort(o.bestillingsnummer(), 25));
         plasser(buf, 2493, LINJE_NULL);
         felles(buf, o);
-        plasser(buf, 3264, nn(o.ansvarlig1()));
-        plasser(buf, 3289, nn(o.ansvarlig2()));
+        plasser(buf, 3264, fast(o.ansvarlig1(), ANSVARLIGFELT));
+        plasser(buf, 3289, fast(o.ansvarlig2(), ANSVARLIGFELT));
         return new String(buf);
     }
 
@@ -80,8 +81,8 @@ public final class Lg04Skriver {
 
     /** Fields every line of the order carries. */
     private static void felles(char[] buf, Lg04Ordre o) {
-        plasser(buf, 2509, fast(o.tekst(), TEKSTFELT));
-        plasser(buf, 2629, fast(o.url(), TEKSTFELT));
+        plasser(buf, 2509, fast(o.topptekst(), TEKSTFELT));
+        plasser(buf, 2629, fast(o.bunntekst(), TEKSTFELT));
         plasser(buf, 3130, padRight(String.valueOf(o.ordreNr()), 15));
         plasser(buf, 3145, ORDRETYPE);
         plasser(buf, 3410, STATUS);

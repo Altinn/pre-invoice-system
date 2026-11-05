@@ -93,6 +93,17 @@ class Lg04SkriverTest {
         }
     }
 
+    @Test
+    void responsibleIsCutAt25AndNeverSpillsIntoTheNextField() {
+        // «Vår referanse» is validated to 25 on the run (specs/009); the writer still guards the field.
+        String lang = "x".repeat(24) + "AB";
+        Lg04Ordre o = new Lg04Ordre("1", "ref", "", "t", 1, "u", lang, "kort", "20270206",
+                List.of(new Lg04Ordrelinje("3030", "20010", null, null, null, "Melding", "100", BigDecimal.ONE)));
+        String l1 = skriver.renderLinje1(o);
+        assertThat(l1.substring(3264, 3289)).isEqualTo(lang.substring(0, 25));
+        assertThat(l1.substring(3289, 3314)).isEqualTo(String.format("%-25s", "kort"));
+    }
+
     private static Lg04Ordre ordreMedAntall(BigDecimal antall) {
         return new Lg04Ordre("1", "ref", "", "t", 1, "u", "a", "b", "20270206",
                 List.of(new Lg04Ordrelinje("3030", "20009", null, null, null, "Applikasjonsinfrastruktur",

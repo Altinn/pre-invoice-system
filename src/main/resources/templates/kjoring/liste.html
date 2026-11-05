@@ -7,6 +7,9 @@
     <h1 class="ds-heading" data-size="lg">Fakturakjøringer</h1>
     <p class="ds-paragraph ingress">Generer fakturagrunnlag for en periode fra bruksdata og den
         aktive prisversjonen. Kjør kontroller, godkjenn og eksporter.</p>
+    <div class="ds-alert bred" data-color="info"><p>Bruksdata for perioden må være importert eller hentet fra
+        datavarehuset (under <a class="ds-link" th:href="@{/bruksdata}">Bruksdata</a>) før du kan generere en
+        fakturakjøring.</p></div>
     <div class="ds-alert bred" data-color="success" role="status" th:if="${nullstilt}"><p th:text="${nullstilt}">Nullstilt.</p></div>
 
     <h2 class="ds-heading" data-size="xs">Ny kjøring</h2>
@@ -24,7 +27,7 @@
     <h2 class="ds-heading" data-size="xs">Kjøringer</h2>
     <table class="ds-table" data-size="sm" data-hover>
         <thead>
-        <tr><th>Periode</th><th>Type/versjon</th><th>Status</th><th class="hoyre">Fakturaer</th><th class="hoyre">Sum</th>
+        <tr><th>Periode</th><th>Type/versjon</th><th>Status</th><th class="hoyre">Fakturaer</th><th class="hoyre">Sum (eksl. mva)</th>
             <th>Kontrollfunn</th><th>Generert av</th><th>Godkjent av</th><th><span class="ds-sr-only">Handling</span></th></tr>
         </thead>
         <tbody>
@@ -32,8 +35,8 @@
             <td class="periode" th:text="${k.periodeLabel()}">januar 2027</td>
             <td th:text="|${k.erKorrigering() ? 'Korrigering' : 'Ordinær'} ${k.versjonLabel()}|">Ordinær V1</td>
             <td><th:block th:replace="~{kjoring/fragmenter :: status(${k.status()})}"></th:block></td>
-            <td class="hoyre" th:text="${r.antallFakturaer()}">0</td>
-            <td class="hoyre" th:text="${#numbers.formatDecimal(r.sumBelop(), 1, 'WHITESPACE', 2, 'COMMA')}">0,00</td>
+            <td class="hoyre" th:text="${@tall.antall(r.antallFakturaer())}">0</td>
+            <td class="hoyre" th:text="${@tall.belop(r.sumBelop())}">0,00</td>
             <td>
                 <span class="ds-tag" data-color="danger" data-size="sm" th:if="${r.antallBlokkerende() > 0}"
                       th:text="|${r.antallBlokkerende()} blokkerende|">2 blokkerende</span>

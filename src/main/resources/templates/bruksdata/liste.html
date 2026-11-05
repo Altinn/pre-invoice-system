@@ -17,6 +17,8 @@
         <p class="ds-paragraph liten bred">Henter hele måneden fra datavarehuset, summerer per
             organisasjon og produkt og viser samme forhåndsvisning som for CSV. Ukjente produktnavn må kobles
             under <a class="ds-link" th:href="@{/produkter/kildenavn}">Produkter → Kildenavn</a>.</p>
+        <div class="ds-alert bred" data-color="warning"><p>Ved å trykke på Hent fra datavarehus hentes bruksdata for
+            perioden og vises for kontroll. Når importen er bekreftet, kan den ikke slettes eller endres.</p></div>
         <form th:action="@{/bruksdata/hent-dwh}" method="post" class="rad" hx-disabled-elt="find button">
             <th:block th:replace="~{layout :: csrf}"></th:block>
             <ds-field class="ds-field">
@@ -85,7 +87,7 @@
                       th:data-color="${i.status() == 'VALIDERT'} ? 'success' : (${i.status() == 'AVVIST'} ? 'neutral' : 'warning')"
                       th:text="${i.status()}">VALIDERT</span>
             </td>
-            <td class="hoyre" th:text="${i.antallRader()}">42</td>
+            <td class="hoyre" th:text="${@tall.antall(i.antallRader())}">42</td>
             <td th:text="${i.lastetAv()}">dev</td>
             <td class="hoyre">
                 <a class="ds-button" data-variant="tertiary" data-size="sm"
@@ -100,6 +102,10 @@
         </tr>
         </tbody>
     </table>
+
+    <div class="ds-alert bred" data-color="info" id="neste-steg"><p>Neste steg: når bruksdata for perioden er
+        importert, går du til <a class="ds-link" th:href="@{/kjoringer}">Kjøringer</a> og genererer
+        fakturagrunnlaget.</p></div>
 </main>
 </body>
 </html>

@@ -140,10 +140,11 @@ public class FakturakjoringService {
         Long forrigeKjoringId = kjoringer.findFirstByPeriodeOrderByVersjonDesc(periode.førsteDag())
                 .map(Fakturakjoring::id).orElse(null);
 
+        Fakturatekster tekster = Fakturatekster.standard(periode);
         Fakturakjoring kjoring = kjoringer.save(new Fakturakjoring(null, periode.førsteDag(),
                 Kjoringstatus.GENERERT.name(), versjon.id(), importId, brukerContext.naavaerendeBruker(),
                 OffsetDateTime.now(), null, null, null, Kjoringstype.ORDINAER.name(), kjoringVersjon,
-                forrigeKjoringId, null, null));
+                forrigeKjoringId, null, null, tekster.topptekst(), tekster.bunntekst(), tekster.varReferanse()));
 
         var ctx = new Byggekontekst(periode, versjon, kjoring.id(), false);
         bygg(ctx, bruk);
@@ -197,10 +198,12 @@ public class FakturakjoringService {
                 .map(Fakturakjoring::id).orElse(grunnlag.id());
         String bruker = brukerContext.naavaerendeBruker();
         OffsetDateTime naa = OffsetDateTime.now();
+        Fakturatekster tekster = Fakturatekster.standard(new Periode(sammenligning.periode()));
         Fakturakjoring kjoring = kjoringer.save(new Fakturakjoring(null, sammenligning.periode(),
                 Kjoringstatus.GENERERT.name(), prisversjon.id(), kandidat.id(), bruker, naa,
                 null, null, null, Kjoringstype.KORRIGERING.name(), versjon, forrigeId,
-                aarsak.trim(), sammenligning.id()));
+                aarsak.trim(), sammenligning.id(), tekster.topptekst(), tekster.bunntekst(),
+                tekster.varReferanse()));
         valgteEndringer.lagre(kjoring.id(), unikeIder, bruker, naa);
 
         List<Bruksdata> differanser = valgte.stream().map(e -> new Bruksdata(
@@ -446,7 +449,7 @@ public class FakturakjoringService {
 
     @Transactional
     public void godkjenn(Long kjoringId) {
-        Fakturakjoring kj = hent(kjoringId);
+        Fakturakjoring kj = hentForOppdatering(kjoringId);
         if (!Kjoringstatus.GENERERT.name().equals(kj.status())) {
             throw new Regelbrudd("Bare en generert kjøring kan godkjennes (status er " + kj.status() + ")");
         }
@@ -457,6 +460,34 @@ public class FakturakjoringService {
         kjoringer.save(kj.medStatus(Kjoringstatus.GODKJENT.name(), bruker, OffsetDateTime.now()));
         audit.logg(Handling.GODKJENTE, "FAKTURAKJORING", kjoringId, Map.of(
                 "periode", kj.periode().toString(), "versjon", kj.versjon(), "type", kj.type()));
+    }
+
+    /**
+     * Change the run's invoice texts (specs/009). Only while GENERERT: from approval on they are part
+     * of what was approved. Texts are trimmed and validated against the LG04 fields; each changed
+     * field is logged with old and new value, and a save without changes logs nothing.
+     */
+    @Transactional
+    public Fakturakjoring endreTekster(Long kjoringId, Fakturatekster nye) {
+        Fakturakjoring kj = hentForOppdatering(kjoringId);
+        if (!Kjoringstatus.GENERERT.name().equals(kj.status())) {
+            throw new Regelbrudd("Tekstene på fakturaen er låst etter godkjenning (status er "
+                    + kj.status() + ")");
+        }
+        Fakturatekster tekster = nye.normalisert();
+        tekster.valider();
+        Map<String, Map<String, String>> endringer = tekster.endringerFra(kj.tekster());
+        if (endringer.isEmpty()) {
+            return kj;
+        }
+        Fakturakjoring lagret = kjoringer.save(kj.medTekster(tekster));
+        audit.logg(Handling.ENDRET, "FAKTURAKJORING", kjoringId, Map.of(
+                "periode", kj.periode().toString(), "versjon", kj.versjon(), "endringer", endringer));
+        return lagret;
+    }
+
+    private Fakturakjoring hentForOppdatering(Long id) {
+        return kjoringer.finnForOppdatering(id).orElseThrow(() -> new Regelbrudd("Fant ikke kjøring " + id));
     }
 
     /** Move an approved run to EKSPORTERT. Called by the export service once artifacts are archived. */
@@ -682,11 +713,20 @@ public class FakturakjoringService {
     }
 
     private static Kontrollfunn blokk(Long kjoringId, Long fakturaId, Kontrollkode kode, String melding) {
-        return new Kontrollfunn(null, kjoringId, fakturaId, Alvorlighet.BLOKKERENDE.name(), kode.name(), melding);
+        return funn(kjoringId, fakturaId, Alvorlighet.BLOKKERENDE, kode, melding);
     }
 
     private static Kontrollfunn advarsel(Long kjoringId, Long fakturaId, Kontrollkode kode, String melding) {
-        return new Kontrollfunn(null, kjoringId, fakturaId, Alvorlighet.ADVARSEL.name(), kode.name(), melding);
+        return funn(kjoringId, fakturaId, Alvorlighet.ADVARSEL, kode, melding);
+    }
+
+    // The Kontroller tab explains each code with its declared severity; raising it with another would mislead.
+    private static Kontrollfunn funn(Long kjoringId, Long fakturaId, Alvorlighet alvorlighet, Kontrollkode kode,
+                                     String melding) {
+        if (kode.alvorlighet() != alvorlighet) {
+            throw new IllegalStateException(kode + " er " + kode.alvorlighet() + ", ikke " + alvorlighet);
+        }
+        return new Kontrollfunn(null, kjoringId, fakturaId, alvorlighet.name(), kode.name(), melding);
     }
 
     private static final class Byggekontekst {
