@@ -34,11 +34,14 @@
     </div>
 
     <h2 class="ds-heading" data-size="xs">Linjer</h2>
+    <p class="ds-paragraph liten ikke-utskrift">Last ned linjene:
+        <a class="ds-link" th:href="@{/kjoringer/{id}/faktura/{fid}/linjer.xlsx(id=${kjoring.id()},fid=${faktura.id()})}">XLSX</a> ·
+        <a class="ds-link" th:href="@{/kjoringer/{id}/faktura/{fid}/linjer.csv(id=${kjoring.id()},fid=${faktura.id()})}">CSV</a></p>
     <p class="ds-paragraph liten">Hver linje er sporbar til bruksdata (bruksdata-id) og pris (pris-id).</p>
     <table class="ds-table" data-size="sm" data-hover>
         <thead>
         <tr>
-            <th>Produkt</th><th>Beskrivelse</th><th>Servicekode</th>
+            <th>Produkt</th><th>Beskrivelse</th>
             <th class="hoyre">Antall</th><th class="hoyre">Enhetspris</th><th class="hoyre">Beløp (eksl. mva)</th>
             <th class="hoyre">Bruksdata-id</th><th class="hoyre">Pris-id</th>
         </tr>
@@ -47,7 +50,6 @@
         <tr th:each="l : ${linjer}">
             <td th:text="${produktNavn.containsKey(l.produktId()) ? produktNavn.get(l.produktId()) : l.produktId()}">Melding</td>
             <td th:text="${l.beskrivelse()}">Bruk av melding januar 2027</td>
-            <td th:text="${l.servicekode()} ?: '—'">—</td>
             <td class="hoyre" th:text="${@tall.mengde(l.antall())}">100,00</td>
             <td class="hoyre" th:text="${@tall.pris(l.enhetspris())}">1,25</td>
             <td class="hoyre" th:text="${@tall.belop(l.belop())}">125,00</td>
@@ -55,12 +57,12 @@
             <td class="hoyre" th:text="${l.prisId()} ?: '—'">3</td>
         </tr>
         <tr th:if="${linjer.isEmpty()}">
-            <td colspan="8" class="tom">Ingen linjer.</td>
+            <td colspan="7" class="tom">Ingen linjer.</td>
         </tr>
         </tbody>
         <tfoot th:unless="${linjer.isEmpty()}">
         <tr class="sumrad">
-            <th scope="row" colspan="5">Sum eksl. mva</th>
+            <th scope="row" colspan="4">Sum eksl. mva</th>
             <td class="hoyre"><strong th:text="${@tall.belop(faktura.sumBelop())}">0,00</strong></td>
             <td colspan="2"></td>
         </tr>

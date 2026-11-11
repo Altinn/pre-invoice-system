@@ -204,6 +204,21 @@ class TerskelverdiIT extends BillingFixture {
     }
 
     @Test
+    void invoiceLinesDownloadWithSumRowAndListsHaveNoTilleggstekst() throws Exception {
+        var kj = kjoringMedFireKunder();
+        var faktura = tjeneste.fakturaer(kj.id()).get(0);
+        String csv = mvc.perform(get("/kjoringer/{id}/faktura/{fid}/linjer.csv", kj.id(), faktura.id()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        assertThat(csv.lines().findFirst().orElseThrow()).startsWith("ordre,produkt,beskrivelse");
+        assertThat(csv.lines().reduce((a, b) -> b).orElseThrow()).contains("Sum eksl. mva");
+        mvc.perform(get("/kjoringer/{id}/fakturaer", kj.id()))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Tilleggstekst"))));
+        mvc.perform(get("/kjoringer/{id}/faktura/{fid}", kj.id(), faktura.id()))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Servicekode"))));
+    }
+
+    @Test
     void bothListsDownloadAsCsvAndXlsx() throws Exception {
         var kj = kjoringMedFireKunder();
         String csv = mvc.perform(get("/kjoringer/{id}/under-terskel.csv", kj.id()))
