@@ -120,7 +120,7 @@
         <p class="ds-paragraph liten" th:if="${ur.isEmpty()}">Alle fakturaene har fakturareferanse (Deres referanse).</p>
         <th:block th:unless="${ur.isEmpty()}">
             <p class="ds-paragraph liten bred"
-               th:text="|${@tall.antall(ur.size())} fakturaer har linjer uten fakturareferanse (Deres referanse). Legg inn referansen på kunden under Kunder og generer kjøringen på nytt. Mangler bare bestillingsnummer, brukes fakturareferansen.|">
+               th:text="|${@tall.antall(ur.size())} fakturaer har linjer uten fakturareferanse (Deres referanse). Legg inn referansen på kunden og generer kjøringen på nytt. Mangler bare bestillingsnummer, brukes fakturareferansen.|">
                 Fakturaer uten fakturareferanse.</p>
             <table class="ds-table" data-size="sm" data-hover>
                 <thead>
