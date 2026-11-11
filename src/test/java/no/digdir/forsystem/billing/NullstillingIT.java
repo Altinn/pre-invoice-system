@@ -14,7 +14,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.math.BigDecimal;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -22,6 +24,12 @@ import no.digdir.forsystem.common.HendelsesloggRepository;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
 import no.digdir.forsystem.export.EksportService;
+import no.digdir.forsystem.usage.Bruksdata;
+import no.digdir.forsystem.usage.BruksdataKandidatService;
+import no.digdir.forsystem.usage.Bruksdatatype;
+import no.digdir.forsystem.usage.Forhaandsvisning;
+import no.digdir.forsystem.usage.Kilde;
+import no.digdir.forsystem.usage.Raadata;
 import no.digdir.forsystem.usage.UsageImportService;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
@@ -51,6 +59,7 @@ class NullstillingIT extends BillingFixture {
     @Autowired NullstillingService nullstilling;
     @Autowired UsageImportService usage;
     @Autowired EksportService eksport;
+    @Autowired BruksdataKandidatService kandidater;
     @Autowired HendelsesloggRepository hendelser;
     @Autowired JdbcTemplate jdbc;
     @Autowired MockMvc mvc;
@@ -135,6 +144,36 @@ class NullstillingIT extends BillingFixture {
 
         assertThat(antall("kontrollfunn", "kjoring_id = ?", kj.id())).isZero();
         assertThat(antall("fakturakjoring", "periode = ?", JAN.førsteDag())).isZero();
+    }
+
+    @Test
+    void wipesAMonthWithCorrectionRunsAndComparisons() {
+        settKontoAlle();
+        Long prisversjon = aktivVersjon(JAN.førsteDag(), null).id();
+        pris(prisversjon, "melding", "2.0000");
+        Long kunde = kunde("100000001", "Kunde", "AKTIV", null).id();
+        regel(kunde, "KN1", null, "S1", null);
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
+        var v1 = tjeneste.generer(JAN);
+        kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
+        Long melding = produktId("melding");
+        var fv = new Forhaandsvisning(JAN, "ny-dwh.csv", Kilde.DWH, List.of(
+                new Bruksdata(null, null, JAN.førsteDag(), "100000001", melding,
+                        Bruksdatatype.BRUKSVOLUM.name(), new BigDecimal("120"), null)),
+                List.of(), List.of(), List.of("eksportert kjøring finnes"), List.of(),
+                new Raadata("candidate".getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null), null);
+        var sammenligning = kandidater.opprettHvisEksportert(fv).orElseThrow();
+        var valgt = sammenligning.endringer().getFirst();
+        var v2 = tjeneste.genererKorrigering(sammenligning.sammenligning().id(), List.of(valgt.id()), "Rettelse");
+
+        nullstilling.nullstill(JAN);
+
+        for (String tabell : List.of("fakturakjoring", "bruksdata_import", "bruksdata_sammenligning")) {
+            assertThat(antall(tabell, "periode = ?", JAN.førsteDag())).as(tabell).isZero();
+        }
+        assertThat(antall("bruksdata_endring", "id = ?", valgt.id())).isZero();
+        assertThat(antall("korrigeringskjoring_endring", "kjoring_id = ?", v2.id())).isZero();
     }
 
     @Test

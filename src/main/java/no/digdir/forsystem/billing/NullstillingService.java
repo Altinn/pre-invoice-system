@@ -85,7 +85,7 @@ public class NullstillingService {
                 select raadata_url from bruksdata_import where periode = ? and raadata_url is not null
                 """.formatted(KJORINGER), String.class, p, p);
 
-        // Children before parents, along the foreign keys of V4/V8/V9/V10/V14.
+        // Children before parents, along the foreign keys of V4/V8/V9/V10/V12/V14.
         jdbc.update("delete from lg04_avstemming where kjoring_id in (" + KJORINGER + ")", p);
         jdbc.update("""
                 delete from kontrollfunn_bruksdata
@@ -98,7 +98,18 @@ public class NullstillingService {
                 + KJORINGER + "))", p);
         int fakturaer = jdbc.update("delete from faktura where kjoring_id in (" + KJORINGER + ")", p);
         jdbc.update("delete from eksportfil where kjoring_id in (" + KJORINGER + ")", p);
-        jdbc.update("delete from fakturakjoring where periode = ?", p);
+        // Correction runs (V12): the selected differences and the differences themselves go first. A
+        // correction run and its comparison reference each other (run -> comparison as basis, comparison
+        // -> run as grunnlag), so neither can be deleted before the other; one statement removes both,
+        // as the foreign keys are only checked when it ends.
+        jdbc.update("delete from korrigeringskjoring_endring where kjoring_id in (" + KJORINGER + ")", p);
+        jdbc.update("delete from bruksdata_endring where sammenligning_id in "
+                + "(select id from bruksdata_sammenligning where periode = ?)", p);
+        jdbc.queryForList("""
+                with k as (delete from fakturakjoring where periode = ?),
+                     s as (delete from bruksdata_sammenligning where periode = ?)
+                select 1
+                """, p, p);
         int rader = jdbc.update("delete from bruksdata where import_id in (" + IMPORTER + ")", p);
         jdbc.update("delete from bruksdata_import where periode = ?", p);
 
