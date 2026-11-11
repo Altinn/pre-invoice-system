@@ -37,7 +37,7 @@
                     <a th:href="@{${base}(q=${u.q()},sorter='ordre')}">Ordre</a></th>
                 <th th:attr="aria-sort=${u.sorter() == 'kunde'} ? 'ascending' : 'none'">
                     <a th:href="@{${base}(q=${u.q()},sorter='kunde')}">Kunde</a></th>
-                <th>Kundenummer</th><th>Tilleggstekst</th><th>Mottaker (orgnr)</th>
+                <th>Kundenummer</th><th>Mottaker (orgnr)</th>
                 <th class="hoyre" th:attr="aria-sort=${u.sorter() == 'belop'} ? 'descending' : 'none'">
                     <a th:href="@{${base}(q=${u.q()},sorter='belop')}">Sum (eksl. mva)</a></th>
                 <th><span class="ds-sr-only">Handling</span></th>
@@ -48,7 +48,6 @@
                 <td th:text="${f.ordreNr()}">1</td>
                 <td th:text="${r.kundenavn()}">Kunde</td>
                 <td th:text="${f.kundenummer()}">100200</td>
-                <td th:text="${f.tilleggstekst()} ?: '—'">—</td>
                 <td th:text="${f.fakturamottakerOrgnr()}">123456789</td>
                 <td class="hoyre" th:text="${@tall.belop(f.sumBelop())}">0,00</td>
                 <td class="hoyre">

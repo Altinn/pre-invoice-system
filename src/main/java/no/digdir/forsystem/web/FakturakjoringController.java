@@ -246,6 +246,17 @@ class FakturakjoringController {
                 .body(n.innhold());
     }
 
+    /** One invoice's lines as a spreadsheet. */
+    @GetMapping("/{id}/faktura/{fakturaId}/linjer.{format:csv|xlsx}")
+    ResponseEntity<byte[]> fakturalinjer(@PathVariable Long id, @PathVariable Long fakturaId,
+                                         @PathVariable String format) {
+        EksportService.Nedlasting n = eksport.fakturalinjer(id, fakturaId, format);
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf(n.mediatype()))
+                .header("Content-Disposition", ContentDisposition.attachment().filename(n.filnavn()).build().toString())
+                .body(n.innhold());
+    }
+
     @GetMapping("/{id}/lg04-kontroll")
     String lg04Kontroll(@PathVariable Long id, Model model) {
         model.addAttribute("kjoring", kjoringer.hent(id));

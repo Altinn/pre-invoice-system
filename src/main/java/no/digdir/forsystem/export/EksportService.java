@@ -212,12 +212,12 @@ public class EksportService {
             case "fakturaliste" -> {
                 navn = "fakturaer";
                 kolonner = List.of("periode", "ordre", "kundenummer", "kundenavn", "fakturamottaker",
-                        "tilleggstekst", "sum_eksl_mva");
+                        "sum_eksl_mva");
                 List<Faktura> fakturaer = kjoringer.fakturaer(kjoringId);
                 Map<Long, String> kundenavn = kjoringer.kundenavn(fakturaer);
                 for (Faktura f : fakturaer) {
                     rader.add(Arrays.asList(periode, f.ordreNr(), f.kundenummer(), kundenavn.get(f.id()),
-                            f.fakturamottakerOrgnr(), f.tilleggstekst(), f.sumBelop()));
+                            f.fakturamottakerOrgnr(), f.sumBelop()));
                 }
             }
             case "under-terskel" -> {
@@ -292,6 +292,38 @@ public class EksportService {
         };
         audit.logg(Handling.LASTET_NED, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString(),
                 "liste", navn, "format", format.toUpperCase(), "status", kj.status()));
+        return n;
+    }
+
+    /** One invoice's lines as CSV or XLSX, with a sum row last. Changes nothing; logged. */
+    @Transactional   // not read-only: it writes the LASTET_NED audit row
+    public Nedlasting fakturalinjer(Long kjoringId, Long fakturaId, String format) {
+        Fakturakjoring kj = kjoringer.hent(kjoringId);
+        Faktura f = kjoringer.hentFaktura(fakturaId);
+        if (!kjoringId.equals(f.kjoringId())) {
+            throw new Regelbrudd("Fakturaen hører ikke til denne kjøringen.");
+        }
+        Map<Long, Produkt> produktById = produkter.findAll().stream()
+                .collect(Collectors.toMap(Produkt::id, Function.identity()));
+        List<String> kolonner = List.of("ordre", "produkt", "beskrivelse", "antall", "enhetspris", "belop_eksl_mva");
+        List<List<Object>> rader = new ArrayList<>();
+        for (Fakturalinje l : kjoringer.linjer(fakturaId)) {
+            Produkt p = produktById.get(l.produktId());
+            rader.add(Arrays.asList(f.ordreNr(), p == null ? null : p.navn(), l.beskrivelse(), l.antall(),
+                    l.enhetspris(), l.belop()));
+        }
+        rader.add(Arrays.asList(f.ordreNr(), "Sum eksl. mva", null, null, null, f.sumBelop()));
+        String periode = kj.periode().toString().substring(0, 7);
+        String filnavn = "faktura-" + f.ordreNr() + "-" + periode + (kj.erKorrigering() ? "-v" + kj.versjon() : "");
+        Nedlasting n = switch (format) {
+            case "csv" -> new Nedlasting(filnavn + ".csv", "text/csv", regneark.csv(kolonner, rader));
+            case "xlsx" -> new Nedlasting(filnavn + ".xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    regneark.xlsx("faktura", kolonner, rader));
+            default -> throw new Regelbrudd("Ukjent format: " + format + " (csv eller xlsx)");
+        };
+        audit.logg(Handling.LASTET_NED, "FAKTURAKJORING", kjoringId, Map.of("periode", kj.periode().toString(),
+                "liste", "faktura-" + f.ordreNr(), "format", format.toUpperCase(), "status", kj.status()));
         return n;
     }
 

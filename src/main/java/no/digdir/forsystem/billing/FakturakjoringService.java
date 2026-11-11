@@ -877,8 +877,9 @@ public class FakturakjoringService {
     }
 
     private static String beskrivKostnad(String type, Produkt p, Periode periode) {
-        String prefiks = "SMS_KOSTNAD".equals(type) ? "SMS-kostnad" : "Azure-kostnad";
-        return prefiks + " " + p.navn() + " " + periode.norskLabel();
+        // Økonomi: "Azure-kostnad" does not belong in the description (kickoff row 47).
+        String prefiks = "SMS_KOSTNAD".equals(type) ? "SMS-kostnad " : "Bruk av ";
+        return prefiks + p.navn() + " " + periode.norskLabel();
     }
 
     private static String kode(Map<Long, Produkt> produktById, Long id) {
