@@ -183,6 +183,7 @@ class EksportAvstemmingIT extends BillingFixture {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Til e-post til regnskap")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Samlet beløp eksl. mva: 23,00 kr")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Samlet beløp inkl. mva: 28,75 kr")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Hei, kan dere lese inn denne LG04-filen?")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Område: Altinn")))
                 .andExpect(content().string(org.hamcrest.Matchers.matchesPattern("(?s).*Buntnummer: \\d{8}\\n.*")))
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Antall fakturaer: 1")))

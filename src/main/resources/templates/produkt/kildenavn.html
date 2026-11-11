@@ -19,13 +19,13 @@
 
     <table class="ds-table" data-size="sm" data-hover>
         <thead>
-        <tr><th>Kildenavn</th><th>Produkt</th><th>Type</th><th></th></tr>
+        <tr><th>Kildenavn fra datavarehus</th><th>Produktnavn i forsystem</th><th>Type</th><th></th></tr>
         </thead>
         <tbody>
         <tr th:each="k : ${koblinger}">
             <td th:text="${k.kildenavn()}">Varsling e-post</td>
             <td>
-                <th:block th:each="p : ${produkter}" th:if="${p.id() == k.produktId()}" th:text="${p.kode()}">varsling</th:block>
+                <th:block th:each="p : ${produkter}" th:if="${p.id() == k.produktId()}" th:text="${p.navn()}">Varsling</th:block>
             </td>
             <td th:text="${k.type()}">BRUKSVOLUM</td>
             <td class="hoyre">

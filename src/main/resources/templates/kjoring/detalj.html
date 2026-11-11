@@ -108,7 +108,7 @@
         </th:block>
 
         <th:block th:if="${status == 'EKSPORTERT'}">
-            <h2 class="ds-heading" data-size="xs" id="neste-steg-tittel">Neste steg: send tallene til regnskap</h2>
+            <h2 class="ds-heading" data-size="xs" id="neste-steg-tittel">Neste steg: send e-post til regnskap</h2>
             <ul class="sjekkliste" th:with="a=${lg04Avstemming}">
                 <li class="ukjent" th:if="${a == null}"><span class="ds-sr-only">Ukjent: </span>LG04 er ikke avstemt.</li>
                 <li class="feil" th:if="${a != null and a.kilde().name() == 'FEIL'}"><span class="ds-sr-only">Feil: </span>
@@ -125,15 +125,19 @@
             <!-- Buntnummer and invoice count as regnskap sees them in the file: an invoice split by reference is several orders. -->
             <pre id="epost" class="ds-paragraph epost bred" data-size="sm"
                  th:with="a=${lg04Avstemming}, fraFil=${a != null and a.kilde().name() != 'FEIL'}"
-                 th:text="|Område: Altinn
+                 th:text="|Hei, kan dere lese inn denne LG04-filen?
+
+Område: Altinn
 Buntnummer: ${a != null and a.buntnummer() != null ? a.buntnummer() : 'ukjent'}
 Periode: ${sammendrag.periode()} (${sammendrag.periode().norskLabel()})
 Antall fakturaer: ${fraFil ? a.antallOrdrerFil() : sammendrag.antallFakturaer()}
 Samlet beløp eksl. mva: ${@tall.belop(sammendrag.sumBelop())} kr
 Samlet beløp inkl. mva: ${@tall.belop(sammendrag.sumInklMva())} kr|">…</pre>
+            <p class="ds-paragraph ikke-utskrift" data-size="sm">Teksten kopieres til utklippstavlen. Lim den inn i en e-post
+                til <a class="ds-link" href="mailto:regnskap@digdir.no">regnskap@digdir.no</a> og legg ved LG04-filen. Forsystemet sender ikke e-posten selv.</p>
             <div class="rad ikke-utskrift">
                 <button class="ds-button" data-color="accent" type="button"
-                        onclick="navigator.clipboard.writeText(document.getElementById('epost').innerText); this.textContent='Kopiert';">Kopier tallene</button>
+                        onclick="navigator.clipboard.writeText(document.getElementById('epost').innerText); this.textContent='Kopiert';">Kopier e-post</button>
             </div>
         </th:block>
 
