@@ -22,31 +22,6 @@ class KundeController {
         this.produkter = produkter;
     }
 
-    @GetMapping("/kunder")
-    String liste(Model model) {
-        model.addAttribute("kunder", kunder.alle());
-        return "kunde/liste";
-    }
-
-    @GetMapping("/kunder/ny")
-    String nyttSkjema(Model model) {
-        model.addAttribute("avtalestatuser", Avtalestatus.values());
-        return "kunde/ny";
-    }
-
-    @PostMapping("/kunder")
-    String opprett(@RequestParam String organisasjonsnummer,
-                   @RequestParam String virksomhetsnavn,
-                   @RequestParam(required = false) String fakturamottakerOrgnr,
-                   @RequestParam Avtalestatus avtalestatus,
-                   RedirectAttributes flash) {
-        String orgnr = organisasjonsnummer.trim();
-        String navn = virksomhetsnavn.trim();
-        var lagret = kunder.opprett(orgnr, navn, fakturamottakerOrgnr, avtalestatus);
-        brregAdvarsel(orgnr, navn, flash);
-        return "redirect:/kunder/" + lagret.id();
-    }
-
     @GetMapping("/kunder/{id}")
     String detalj(@PathVariable Long id, Model model) {
         var produktListe = produkter.alle();

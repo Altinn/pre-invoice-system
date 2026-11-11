@@ -36,8 +36,6 @@ class LayoutIT extends IntegrationTest {
             "/produkter, /produkter",
             "/produkter/kildenavn, /produkter",
             "/prisversjoner, /prisversjoner",
-            "/kunder, /kunder",
-            "/kunder/ny, /kunder",
             "/bruksdata, /bruksdata",
             "/kjoringer, /kjoringer",
             "/hendelseslogg, /hendelseslogg",
