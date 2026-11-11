@@ -77,7 +77,7 @@ Toppmenyen er lik på alle sider:
 
 | Menyvalg | Hva det er |
 |---|---|
-| **forsystem** | Forsiden (dashbord med snarveier). |
+| **forsystem** | Forsiden: hvor månedens fakturering står, og neste steg. |
 | **Produkter** | De seks Altinn-produktene og kontering. |
 | **Prisversjoner** | Årlige prislister, med livssyklus utkast → aktiv → arkivert. |
 | **Kunder** | Tjenesteeiere, fakturareferanser og kundenummerregler. |
@@ -87,6 +87,23 @@ Toppmenyen er lik på alle sider:
 
 Rekkefølgen i menyen følger arbeidsflyten: du fyller registre (Produkter → Prisversjoner → Kunder),
 importerer Bruksdata, og kjører alt under Kjøringer.
+
+### Forsiden
+
+Forsiden viser **én periode**: den eldste måneden med en kjøring som ikke er ferdig (generert eller
+godkjent), ellers den nyeste måneden det finnes bruksdata eller en kjøring for. Perioden velges alltid ut
+fra dataene, aldri ut fra dagens dato. Korrigeringskjøringer bytter ikke periode.
+
+| Del | Hva den viser |
+|---|---|
+| **Velkomst** | En setning om hvor perioden står, og én knapp til neste steg (knappen tilpasses rollen din). |
+| **Månedsløpet** | Bruksdata hentet → Generert → Kontrollert og godkjent → Eksportert. |
+| **Nøkkeltall** | Fakturagrunnlag (med endring mot forrige eksporterte periode), fakturaer og hvor mange som er under terskel, transaksjoner, og når bruksdata sist ble hentet fra datavarehuset. |
+| **Per produkt** | Fakturagrunnlaget fordelt på produkt, eller bruksvolumet før kjøringen er generert. |
+| **Trenger oppmerksomhet** | Blokkerende funn, advarsler som ikke er vurdert, uferdige korrigeringer, ny bruksdata som avviker fra det som er fakturert, nyere bruksdata, produkter uten konto eller artikkel-id, og manglende aktiv prisversjon. Tom liste betyr «Alt i rute». |
+| **Siste aktivitet** | De seks nyeste hendelsene fra hendelsesloggen (nedlastinger er utelatt). |
+
+Kortet **Ny i forsystem?** leder til læringssenteret (kommer snart).
 
 ---
 

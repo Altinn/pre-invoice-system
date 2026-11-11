@@ -184,6 +184,8 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-ARCH-02 | Runs fully offline | `docker compose up` = app + PostgreSQL + local archive + stubbed login, no Azure. | `docker-compose.yaml` | — | docs/02 |
 | F-ARCH-03 | Config via environment | 12-factor; no value requires Azure. Profiles local/test/prod/demo. | `application*.yaml` | — | docs/02 |
 | F-UI-01 | One number format | Every amount `1 234 567,89`, count `1 234 567`, unit price with all decimals; every amount labelled eksl. mva. | `Tallformat` (`@tall`) | LESER | specs/010 |
+| F-UI-02 | Start page dashboard | Greeting, status sentence and one next-step button for the dashboard period (oldest unfinished ordinary run, else the newest period with data — never the clock), progress strip, key numbers, per-product bars, «Trenger oppmerksomhet», recent activity, learning card. Read-only. | GET `/` · `ForsideService` | LESER | specs/015 |
+| F-UI-03 | Learning centre placeholder | «Kommer snart» page the start page's learning card links to. | GET `/laering` | LESER | specs/015 |
 
 ## Non-functional & tooling
 

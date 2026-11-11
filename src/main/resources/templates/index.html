@@ -3,32 +3,91 @@
 <head th:replace="~{layout :: head('Forside')}"></head>
 <body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
 <th:block th:replace="~{layout :: topbar('')}"></th:block>
-<main id="hovedinnhold" class="side" tabindex="-1">
-    <h1 class="ds-heading" data-size="lg">forsystem</h1>
-    <p class="ds-paragraph ingress" data-size="lg">Fakturerings-forsystem for Altinn-produkter under
-        FinMod-prismodellen. Vedlikehold registre, importer bruk, generer fakturagrunnlag og eksporter.</p>
+<!-- Start page as a dashboard (specs/015): where invoicing stands and the next step. The header menu
+     does the navigation. The period shown is chosen from the data, never from the clock. -->
+<main id="hovedinnhold" class="side forside" tabindex="-1" th:with="f=${forside}">
 
-    <div class="kort-rad">
-        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/produkter}">
-            <h2 class="ds-heading" data-size="xs">Produkter</h2>
-            <p class="ds-paragraph" data-size="sm">De fem Altinn-produktene og kontering.</p>
+    <section class="ds-card velkomst" data-color="accent" data-variant="tinted" aria-labelledby="hilsen">
+        <div class="velkomst-tekst">
+            <p class="ds-paragraph velkomst-dag" data-size="sm" th:text="${f.dag()}">onsdag 11. november 2026</p>
+            <h1 class="ds-heading" data-size="lg" id="hilsen" th:text="${f.hilsen()}">God morgen</h1>
+            <p class="ds-paragraph" data-size="lg" th:text="${f.status()}">Fakturagrunnlaget venter på godkjenning.</p>
+        </div>
+        <a class="ds-button" data-variant="primary" data-color="accent"
+           th:href="@{${f.handling().href()}}" th:text="${f.handling().tekst()}">Gå til kjøringen</a>
+        <span class="merkestripe" aria-hidden="true"><i></i><i></i><i></i></span>
+    </section>
+
+    <section class="ds-card" data-variant="default" th:if="${f.fremdrift() != null}" aria-labelledby="periode">
+        <div class="kort-topp">
+            <h2 class="ds-heading periode" data-size="xs" id="periode" th:text="${f.periode()}">januar 2027</h2>
+            <span class="liten">Månedsløpet</span>
+        </div>
+        <ol th:replace="~{kjoring/fragmenter :: fremdrift(${f.fremdrift()})}"></ol>
+    </section>
+
+    <section class="nokkeltall" th:unless="${f.nokkeltall().isEmpty()}" aria-label="Nøkkeltall">
+        <div class="ds-card nokkeltall-flis" data-variant="default" th:each="n : ${f.nokkeltall()}">
+            <p class="liten nokkeltall-etikett" th:text="${n.etikett()}">Fakturagrunnlag</p>
+            <p class="nokkeltall-verdi" th:text="${n.verdi()}">1 284 530,00 kr</p>
+            <p class="liten" th:each="d : ${n.detaljer()}" th:text="${d}">+6,2 % mot desember 2026</p>
+        </div>
+    </section>
+
+    <div class="forside-rutenett">
+        <section class="ds-card" data-variant="default" th:if="${f.produkter() != null}" aria-labelledby="produkter">
+            <h2 class="ds-heading" data-size="xs" id="produkter" th:text="${f.produkter().tittel()}">Fakturagrunnlag per produkt</h2>
+            <dl class="stolper">
+                <th:block th:each="s : ${f.produkter().stolper()}">
+                    <dt th:text="${s.navn()}">Melding</dt>
+                    <dd>
+                        <svg class="stolpe" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+                            <rect class="stolpe-spor" x="0" y="0" width="100" height="10"></rect>
+                            <rect class="stolpe-fyll" x="0" y="0" height="10" th:attr="width=${s.prosent()}" width="50"></rect>
+                        </svg>
+                        <span class="hoyre" th:text="|${s.verdi()}${f.produkter().enhet() == 'kr' ? ' kr' : ''}|">512 300,00 kr</span>
+                    </dd>
+                </th:block>
+            </dl>
+        </section>
+
+        <section class="ds-card" data-variant="default" aria-labelledby="oppmerksomhet">
+            <h2 class="ds-heading" data-size="xs" id="oppmerksomhet">Trenger oppmerksomhet</h2>
+            <ul class="sjekkliste" th:unless="${f.oppmerksomhet().isEmpty()}">
+                <li th:each="v : ${f.oppmerksomhet()}" th:class="${v.niva()}">
+                    <span class="ds-sr-only" th:text="${v.niva() == 'feil'} ? 'Må rettes: ' : (${v.niva() == 'advarsel'} ? 'Bør sjekkes: ' : 'Til orientering: ')">Bør sjekkes: </span>
+                    <a class="ds-link" th:href="@{${v.href()}}" th:text="${v.tekst()}">2 advarsler ikke vurdert</a>
+                </li>
+            </ul>
+            <ul class="sjekkliste" th:if="${f.oppmerksomhet().isEmpty()}">
+                <li class="ok"><span class="ds-sr-only">Ferdig: </span>Alt i rute. Ingenting venter på deg.</li>
+            </ul>
+        </section>
+    </div>
+
+    <div class="forside-rutenett forside-rutenett-snudd">
+        <a class="ds-card laering-kort" data-color="accent" data-variant="default" th:href="@{/laering}">
+            <svg class="laering-ikon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M22 9 12 4 2 9l10 5 10-5Z"></path><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"></path>
+            </svg>
+            <h2 class="ds-heading" data-size="xs">Ny i forsystem?</h2>
+            <p class="ds-paragraph" data-size="sm">Lær månedsløpet fra bruksdata til LG04-fil, steg for steg.</p>
+            <span class="lenketekst">Gå til læringssenteret</span>
         </a>
-        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/prisversjoner}">
-            <h2 class="ds-heading" data-size="xs">Prisversjoner</h2>
-            <p class="ds-paragraph" data-size="sm">Årlige prislister. Utkast → aktiv → arkivert.</p>
-        </a>
-        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/bruksdata}">
-            <h2 class="ds-heading" data-size="xs">Bruksdata</h2>
-            <p class="ds-paragraph" data-size="sm">Hent bruk fra datavarehuset eller last opp per periode.</p>
-        </a>
-        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/kjoringer}">
-            <h2 class="ds-heading" data-size="xs">Kjøringer</h2>
-            <p class="ds-paragraph" data-size="sm">Generer fakturagrunnlag, kontroller, godkjenn og eksporter.</p>
-        </a>
-        <a class="ds-card" data-variant="tinted" data-color="neutral" th:href="@{/hendelseslogg}">
-            <h2 class="ds-heading" data-size="xs">Hendelseslogg</h2>
-            <p class="ds-paragraph" data-size="sm">Sporbar logg over alle endringer.</p>
-        </a>
+
+        <section class="ds-card" data-variant="default" aria-labelledby="aktivitet">
+            <div class="kort-topp">
+                <h2 class="ds-heading" data-size="xs" id="aktivitet">Siste aktivitet</h2>
+                <a class="ds-link liten" th:href="@{/hendelseslogg}">Hele hendelsesloggen</a>
+            </div>
+            <ul class="aktivitet" th:unless="${f.aktivitet().isEmpty()}">
+                <li th:each="a : ${f.aktivitet()}">
+                    <span><strong th:text="${a.bruker()}">kari</strong> <span th:text="${a.tekst()}">genererte kjøring for januar 2027</span></span>
+                    <time class="liten" th:datetime="${a.tidspunkt()}" th:text="${a.naar()}">for 2 dager siden</time>
+                </li>
+            </ul>
+            <p class="ds-paragraph tom-avsnitt" data-size="sm" th:if="${f.aktivitet().isEmpty()}">Ingen hendelser ennå.</p>
+        </section>
     </div>
 </main>
 </body>
