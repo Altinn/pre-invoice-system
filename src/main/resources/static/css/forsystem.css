@@ -300,3 +300,88 @@ pre.epost {
 .filterskjema .ds-field { margin: 0; flex: 0 1 12rem; }
 td.ingen-bryting { white-space: nowrap; }
 td.detaljer { overflow-wrap: anywhere; max-width: 40rem; }
+
+/* ---- Start page dashboard (specs/015) ------------------------------------------------------ */
+
+.forside > * + * { margin-block-start: var(--ds-size-5); }
+.forside .ds-card > * + * { margin-block-start: var(--ds-size-3); }
+.forside .ds-card > .ds-heading:first-child,
+.forside .kort-topp .ds-heading { margin: 0; }
+.kort-topp { display: flex; flex-wrap: wrap; gap: var(--ds-size-2) var(--ds-size-4); align-items: baseline; justify-content: space-between; }
+
+/* Welcome: greeting, status sentence and the one primary action, with Digdir's three brand colours as a small mark. */
+.velkomst {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ds-size-4) var(--ds-size-8);
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: var(--ds-size-8) var(--ds-size-8) var(--ds-size-7);
+}
+.forside .velkomst > * + * { margin-block-start: 0; }
+.velkomst-tekst { flex: 1 1 28rem; max-width: 44rem; }
+.velkomst-tekst > * { margin: 0; }
+.velkomst-tekst > * + * { margin-block-start: var(--ds-size-2); }
+.velkomst-dag { color: var(--ds-color-accent-text-subtle); }
+.velkomst-dag::first-letter { text-transform: uppercase; }
+.merkestripe { position: absolute; inset-block-start: var(--ds-size-5); inset-inline-end: var(--ds-size-6); display: flex; gap: var(--ds-size-1); }
+.merkestripe i { display: block; width: var(--ds-size-2); height: var(--ds-size-2); border-radius: var(--ds-border-radius-full); }
+.merkestripe i:nth-child(1) { background: var(--ds-color-brand1-base-default); }
+.merkestripe i:nth-child(2) { background: var(--ds-color-brand2-base-default); }
+.merkestripe i:nth-child(3) { background: var(--ds-color-brand3-base-default); }
+
+/* Key-number tiles. */
+.nokkeltall { display: grid; gap: var(--ds-size-4); grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+.forside .nokkeltall-flis > * { margin: 0; }
+.forside .nokkeltall-flis > * + * { margin-block-start: var(--ds-size-1); }
+.nokkeltall-verdi {
+    font-size: var(--ds-heading-md-font-size);
+    font-weight: 500;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    color: var(--ds-color-neutral-text-default);
+}
+.forside .nokkeltall-flis > .nokkeltall-verdi { margin-block-start: var(--ds-size-2); }
+
+/* Two columns that stack on narrow screens; the second row puts the narrow card first. */
+.forside-rutenett { display: grid; gap: var(--ds-size-5); grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
+.forside-rutenett-snudd { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+.forside-rutenett > :only-child { grid-column: 1 / -1; }
+@media (max-width: 52rem) {
+    .forside-rutenett, .forside-rutenett-snudd { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Per-product bars: name, bar, value. One colour — the bars compare products, they don't categorise them. */
+.stolper { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--ds-size-3) var(--ds-size-4); align-items: center; margin: 0; }
+.stolper dt { font-size: var(--ds-body-sm-font-size); }
+.stolper dd { display: grid; grid-template-columns: minmax(0, 1fr) 9rem; gap: var(--ds-size-3); align-items: center; margin: 0; font-size: var(--ds-body-sm-font-size); }
+.stolpe { display: block; width: 100%; height: var(--ds-size-3); border-radius: var(--ds-border-radius-sm); overflow: hidden; }
+.stolpe-spor { fill: var(--ds-color-neutral-surface-tinted); }
+.stolpe-fyll { fill: var(--ds-color-accent-base-default); }
+/* Phones: name above its bar, so long product names never push the values out of the card. */
+@media (max-width: 36rem) {
+    .velkomst { padding: var(--ds-size-6) var(--ds-size-5) var(--ds-size-5); }
+    .stolper { grid-template-columns: minmax(0, 1fr); gap: var(--ds-size-1); }
+    .stolper dd { grid-template-columns: minmax(0, 1fr) auto; margin-block-end: var(--ds-size-2); }
+}
+
+/* «Trenger oppmerksomhet» reuses the checklist; info items get their own marker. */
+.sjekkliste li.info::before { content: "i" / ""; background: var(--ds-color-info-base-default); color: var(--ds-color-info-base-contrast-default); }
+.forside .sjekkliste .ds-link { margin-inline-start: 0; }
+
+/* Learning card: the whole card is the link. */
+a.laering-kort { display: block; }
+.laering-ikon { width: var(--ds-size-8); height: var(--ds-size-8); fill: none; stroke: var(--ds-color-accent-base-default); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.forside .laering-kort > .ds-heading { margin-block-start: var(--ds-size-2); }
+.forside .laering-kort > .ds-paragraph { color: var(--ds-color-neutral-text-subtle); }
+.lenketekst { display: inline-block; color: var(--ds-color-accent-text-default); text-decoration: underline; }
+.lenketekst::after { content: " →" / ""; }
+a.laering-kort:hover .lenketekst { text-decoration-thickness: 2px; }
+
+/* Recent activity. */
+.aktivitet { list-style: none; margin: 0; padding: 0; }
+.aktivitet li { display: flex; flex-wrap: wrap; gap: var(--ds-size-1) var(--ds-size-4); justify-content: space-between; padding-block: var(--ds-size-2); border-top: var(--ds-border-width-default) solid var(--ds-color-neutral-border-subtle); }
+.aktivitet li:first-child { border-top: none; padding-block-start: 0; }
+.aktivitet strong { font-weight: 500; }
+.aktivitet time { white-space: nowrap; }
