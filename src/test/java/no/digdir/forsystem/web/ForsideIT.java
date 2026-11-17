@@ -234,6 +234,47 @@ class ForsideIT extends IntegrationTest {
     }
 
     @Test
+    void endringMotForrigeTarMedEksporterteKorrigeringer() {
+        long kunde = jdbc.queryForObject("""
+                insert into kunde (organisasjonsnummer, virksomhetsnavn, oppdatert_av)
+                values ('987654323', 'Testetaten 3', 'test') returning id""", Long.class);
+        long desImp = nyImport(DES, "VALIDERT");
+        long desKjoring = nyKjoring(DES, "EKSPORTERT", "ORDINAER", 1, desImp);
+        faktura(desKjoring, kunde, 1, "1000.00");
+        // A correction holds only signed differences: December was invoiced 1 000 + 200 = 1 200.
+        long kandidat = nyImport(DES, "KANDIDAT");
+        long sammenligning = jdbc.queryForObject("""
+                insert into bruksdata_sammenligning (periode, kandidat_import_id, grunnlag_kjoring_id, status,
+                                                     uendrede_rader, opprettet_av)
+                values (?, ?, ?, 'KJORING_OPPRETTET', 0, 'test') returning id""",
+                Long.class, dato(DES), kandidat, desKjoring);
+        long korrigering = jdbc.queryForObject("""
+                insert into fakturakjoring (periode, status, prisversjon_id, bruksdata_import_id, generert_av, type,
+                                            versjon, forrige_kjoring_id, korrigeringsaarsak, sammenligning_id,
+                                            topptekst, bunntekst, var_referanse)
+                values (?, 'EKSPORTERT', ?, ?, 'test', 'KORRIGERING', 2, ?, 'Rettet bruk', ?, 't', 'b', 'v') returning id""",
+                Long.class, dato(DES), prisversjonId, kandidat, desKjoring, sammenligning);
+        faktura(korrigering, kunde, 1, "200.00");
+        long janKjoring = nyKjoring(JAN, "GENERERT", "ORDINAER", 1, nyImport(JAN, "VALIDERT"));
+        faktura(janKjoring, kunde, 1, "1320.00");
+
+        assertThat(forside.les(ALLE_ROLLER).nokkeltall().get(0).detaljer())
+                .containsExactly("+10,0 % mot desember 2026");
+    }
+
+    @Test
+    void avvistDwhImportTellerIkkeSomSistHentet() {
+        nyImport(JAN, "VALIDERT");
+        nyDwhImport(JAN, "AVVIST");
+
+        assertThat(forside.les(ALLE_ROLLER).nokkeltall())
+                .anySatisfy(n -> {
+                    assertThat(n.etikett()).isEqualTo("Sist hentet fra datavarehuset");
+                    assertThat(n.verdi()).isEqualTo("Aldri");
+                });
+    }
+
+    @Test
     void manglendePrisversjonForNesteMaanedVarsles() {
         jdbc.update("update prisversjon set gyldig_til = date '2027-01-31' where id = ?", prisversjonId);
         jdbc.update("update prisversjon set status = 'ARKIVERT' where status = 'AKTIV' and id <> ?", prisversjonId);

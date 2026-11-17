@@ -26,12 +26,31 @@ final class Fornavn {
             if (gitt != null && !gitt.isBlank()) {
                 return gitt.strip();
             }
-            String navn = oidc.getFullName();
-            if (navn != null && !navn.isBlank()) {
-                return navn.strip().split("\\s+")[0];
+            String fraNavn = fraFulltNavn(oidc.getFullName());
+            if (fraNavn != null) {
+                return fraNavn;
             }
         }
         return fraBrukernavn(auth.getName());
+    }
+
+    /**
+     * {@code "Adi Dahl"} → {@code "Adi"}. The directory form {@code "Dahl, Adi"} gives the part after the
+     * comma, and anything else uncertain gives {@code null}: a guessed name is worse than none.
+     */
+    static String fraFulltNavn(String navn) {
+        if (navn == null || navn.isBlank()) {
+            return null;
+        }
+        String rent = navn.strip();
+        int komma = rent.indexOf(',');
+        if (komma >= 0) {
+            rent = rent.substring(komma + 1).strip();
+            if (rent.isEmpty()) {
+                return null;
+            }
+        }
+        return rent.split("\\s+")[0];
     }
 
     /** {@code "adi.dahl@digdir.no"} → {@code "Adi"}; anything not e-mail-shaped → {@code null}. */

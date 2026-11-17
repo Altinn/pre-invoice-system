@@ -20,6 +20,7 @@ final class Tidstekst {
     private static final DateTimeFormatter DATO_TID = DateTimeFormatter.ofPattern("dd.MM.yyyy 'kl.' HH:mm", NORSK);
     private static final DateTimeFormatter DAG = DateTimeFormatter.ofPattern("EEEE d. MMMM yyyy", NORSK);
     private static final DateTimeFormatter PLAN = DateTimeFormatter.ofPattern("d. MMMM 'kl.' HH:mm", NORSK);
+    private static final DateTimeFormatter PLAN_AAR = DateTimeFormatter.ofPattern("d. MMMM yyyy 'kl.' HH:mm", NORSK);
 
     private Tidstekst() {
     }
@@ -41,9 +42,11 @@ final class Tidstekst {
         return DAG.format(naa.withZoneSameInstant(OSLO));
     }
 
-    /** «7. mars kl. 06:00». */
-    static String planlagt(ZonedDateTime tidspunkt) {
-        return PLAN.format(tidspunkt.withZoneSameInstant(OSLO));
+    /** «7. mars kl. 06:00», with the year («7. januar 2027 kl. 06:00») when it is not the current year. */
+    static String planlagt(ZonedDateTime tidspunkt, ZonedDateTime naa) {
+        ZonedDateTime t = tidspunkt.withZoneSameInstant(OSLO);
+        boolean annetAar = t.getYear() != naa.withZoneSameInstant(OSLO).getYear();
+        return (annetAar ? PLAN_AAR : PLAN).format(t);
     }
 
     /** «07.02.2027 kl. 06:02». */

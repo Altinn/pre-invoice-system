@@ -25,6 +25,26 @@ class ForsideTeksterTest {
     }
 
     @ParameterizedTest
+    @CsvSource(nullValues = "NULL", value = {
+            "Adi Dahl, Adi",
+            "'Dahl, Adi', Adi",
+            "'  Ole Martin Hansen ', Ole",
+            "'Dahl,', NULL",
+            "'  ', NULL",
+            "NULL, NULL",
+    })
+    void fornavnFraFulltNavn(String navn, String forventet) {
+        assertThat(Fornavn.fraFulltNavn(navn)).isEqualTo(forventet);
+    }
+
+    @Test
+    void planlagtHentingHarAarstallBareNaarDetErEtAnnetAar() {
+        ZonedDateTime naa = ZonedDateTime.parse("2026-12-20T09:00+01:00");
+        assertThat(Tidstekst.planlagt(ZonedDateTime.parse("2026-12-29T06:00+01:00"), naa)).isEqualTo("29. desember kl. 06:00");
+        assertThat(Tidstekst.planlagt(ZonedDateTime.parse("2027-01-07T06:00+01:00"), naa)).isEqualTo("7. januar 2027 kl. 06:00");
+    }
+
+    @ParameterizedTest
     @CsvSource({
             "2027-02-10T06:00+01:00, God morgen",
             "2027-02-10T12:00+01:00, God dag",

@@ -10,9 +10,12 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import no.digdir.forsystem.billing.Alvorlighet;
+import no.digdir.forsystem.billing.KontrollfunnRepository;
 import no.digdir.forsystem.common.Jsonb;
 import no.digdir.forsystem.common.Norsktall;
 import no.digdir.forsystem.common.Periode;
+import no.digdir.forsystem.registry.Prisdekning;
 import no.digdir.forsystem.usage.DwhEgenskaper;
 import no.digdir.forsystem.web.Forside.Aktivitet;
 import no.digdir.forsystem.web.Forside.Lenke;
@@ -67,17 +70,20 @@ public class ForsideService {
     private final NamedParameterJdbcTemplate jdbc;
     private final Tallformat tall;
     private final DwhEgenskaper dwh;
+    private final KontrollfunnRepository funn;
     private final Clock klokke;
 
     @Autowired
-    ForsideService(NamedParameterJdbcTemplate jdbc, Tallformat tall, DwhEgenskaper dwh) {
-        this(jdbc, tall, dwh, Clock.system(Tidstekst.OSLO));
+    ForsideService(NamedParameterJdbcTemplate jdbc, Tallformat tall, DwhEgenskaper dwh, KontrollfunnRepository funn) {
+        this(jdbc, tall, dwh, funn, Clock.system(Tidstekst.OSLO));
     }
 
-    ForsideService(NamedParameterJdbcTemplate jdbc, Tallformat tall, DwhEgenskaper dwh, Clock klokke) {
+    ForsideService(NamedParameterJdbcTemplate jdbc, Tallformat tall, DwhEgenskaper dwh, KontrollfunnRepository funn,
+                   Clock klokke) {
         this.jdbc = jdbc;
         this.tall = tall;
         this.dwh = dwh;
+        this.funn = funn;
         this.klokke = klokke;
     }
 
@@ -85,7 +91,7 @@ public class ForsideService {
     public Forside les(Bruker bruker) {
         ZonedDateTime naa = ZonedDateTime.now(klokke);
         String hilsen = Tidstekst.hilsen(naa) + (bruker.fornavn() == null ? "" : ", " + bruker.fornavn());
-        Optional<ZonedDateTime> nesteHenting = nesteDwhHenting(naa);
+        Optional<String> nesteHenting = nesteDwhHenting(naa).map(t -> Tidstekst.planlagt(t, naa));
         List<Aktivitet> aktivitet = aktivitet(naa);
         Optional<Periode> valgt = dashbordperiode();
 
@@ -165,12 +171,10 @@ public class ForsideService {
                 .stream().findFirst();
     }
 
-    /** Blocking findings, or warnings not yet accepted. */
+    /** Blocking findings, or warnings not yet accepted — the same counts the approval rule uses. */
     private long antallFunn(long kjoringId, boolean blokkerende) {
-        String sql = blokkerende
-                ? "select count(*) from kontrollfunn where kjoring_id = :id and alvorlighet = 'BLOKKERENDE'"
-                : "select count(*) from kontrollfunn where kjoring_id = :id and alvorlighet = 'ADVARSEL' and akseptert_at is null";
-        return jdbc.queryForObject(sql, new MapSqlParameterSource("id", kjoringId), Long.class);
+        return funn.countByKjoringIdAndAlvorlighetAndAkseptertAtIsNull(kjoringId,
+                (blokkerende ? Alvorlighet.BLOKKERENDE : Alvorlighet.ADVARSEL).name());
     }
 
     // ---- Progress, status sentence and the one action ------------------------------------------------------
@@ -197,7 +201,7 @@ public class ForsideService {
     }
 
     private static String status(Periode periode, Optional<Import> imp, Optional<Kjoring> kjoring,
-                                 long blokkerende, long advarsler, Optional<ZonedDateTime> nesteHenting) {
+                                 long blokkerende, long advarsler, Optional<String> nesteHenting) {
         String p = periode.norskLabel();
         if (kjoring.isEmpty()) {
             if (imp.isPresent() && !imp.get().bekreftet()) {
@@ -215,7 +219,7 @@ public class ForsideService {
                     : "Fakturagrunnlaget for " + p + " er generert og klart til godkjenning.";
             case "GODKJENT" -> "Fakturagrunnlaget for " + p + " er godkjent og klart til eksport.";
             default -> "Fakturagrunnlaget for " + p + " er eksportert."
-                    + nesteHenting.map(t -> " Neste henting fra datavarehuset er " + Tidstekst.planlagt(t) + ".").orElse("");
+                    + nesteHenting.map(t -> " Neste henting fra datavarehuset er " + t + ".").orElse("");
         };
     }
 
@@ -243,7 +247,7 @@ public class ForsideService {
     // ---- Key numbers and the per-product split ----------------------------------------------------------
 
     private List<Nokkeltall> nokkeltall(Periode periode, Optional<Import> imp, Optional<Kjoring> kjoring,
-                                        ZonedDateTime naa, Optional<ZonedDateTime> nesteHenting) {
+                                        ZonedDateTime naa, Optional<String> nesteHenting) {
         List<Nokkeltall> fliser = new ArrayList<>();
         if (kjoring.isPresent()) {
             long id = kjoring.get().id();
@@ -270,26 +274,33 @@ public class ForsideService {
         }
 
         OffsetDateTime sistHentet = jdbc.queryForObject(
-                "select max(hentet_at) from bruksdata_import where kilde = 'DWH'", new MapSqlParameterSource(), OffsetDateTime.class);
+                "select max(hentet_at) from bruksdata_import where kilde = 'DWH' and status <> 'AVVIST'", new MapSqlParameterSource(), OffsetDateTime.class);
         List<String> detaljer = new ArrayList<>();
         if (sistHentet != null) {
             detaljer.add(Tidstekst.datoTid(sistHentet));
         } else {
             detaljer.add("Ingen henting fra datavarehuset ennå");
         }
-        nesteHenting.ifPresent(t -> detaljer.add("Neste: " + Tidstekst.planlagt(t)));
+        nesteHenting.ifPresent(t -> detaljer.add("Neste: " + t));
         fliser.add(new Nokkeltall("Sist hentet fra datavarehuset",
                 sistHentet == null ? "Aldri" : forstor(Tidstekst.siden(sistHentet, naa)), detaljer));
         return fliser;
     }
 
-    /** «+6,2 % mot desember 2026» against the previous period's newest exported ordinary run, if any. */
+    /**
+     * «+6,2 % mot desember 2026» against what the previous period was invoiced: its newest exported ordinary run
+     * plus its exported correction runs, which hold only the signed differences (specs/007). Empty when the
+     * previous period has no exported ordinary run.
+     */
     private Optional<String> endringMotForrige(Periode periode, BigDecimal belop) {
         Periode forrige = periode.forrige();
         List<BigDecimal> tidligere = jdbc.query("""
-                        select coalesce(sum(f.sum_belop), 0) from fakturakjoring k left join faktura f on f.kjoring_id = k.id
-                         where k.periode = :periode and k.type = 'ORDINAER' and k.status = 'EKSPORTERT'
-                         group by k.id, k.versjon order by k.versjon desc limit 1""",
+                        select coalesce((select sum(f.sum_belop) from faktura f where f.kjoring_id = o.id), 0)
+                             + coalesce((select sum(f.sum_belop) from faktura f join fakturakjoring k on k.id = f.kjoring_id
+                                          where k.periode = :periode and k.type = 'KORRIGERING' and k.status = 'EKSPORTERT'), 0)
+                          from fakturakjoring o
+                         where o.periode = :periode and o.type = 'ORDINAER' and o.status = 'EKSPORTERT'
+                         order by o.versjon desc limit 1""",
                 periode(forrige), (rs, i) -> rs.getBigDecimal(1));
         if (tidligere.isEmpty() || tidligere.get(0).signum() == 0) {
             return Optional.empty();
@@ -410,15 +421,16 @@ public class ForsideService {
                     : utenKontering + " produkter mangler konto eller artikkel-id", "/produkter"));
         }
 
+        List<Prisdekning> prisdekning = aktivePrisdekninger();
         if (periode == null) {
-            if (!harAktivPrisversjon(null)) {
+            if (prisdekning.isEmpty()) {
                 advarsler.add(new Varsel("advarsel", "Ingen prisversjon er aktiv", "/prisversjoner"));
             }
-        } else if (!harAktivPrisversjon(periode)) {
+        } else if (!dekkes(prisdekning, periode)) {
             feil.add(new Varsel("feil", "Ingen aktiv prisversjon dekker " + periode.norskLabel(), "/prisversjoner"));
         } else {
             Periode neste = new Periode(periode.førsteDag().plusMonths(1));
-            if (!harAktivPrisversjon(neste)) {
+            if (!dekkes(prisdekning, neste)) {
                 advarsler.add(new Varsel("advarsel", "Ingen aktiv prisversjon dekker " + neste.norskLabel() + " ennå",
                         "/prisversjoner"));
             }
@@ -430,20 +442,16 @@ public class ForsideService {
         return alle;
     }
 
-    /**
-     * Whether an active price version covers the period — the rule of {@code Prisdekning}: both dates
-     * inclusive against the period's first day, an empty «til» open-ended. {@code null} asks for any active one.
-     */
-    private boolean harAktivPrisversjon(Periode periode) {
-        if (periode == null) {
-            return jdbc.queryForObject("select exists(select 1 from prisversjon where status = 'AKTIV')",
-                    new MapSqlParameterSource(), Boolean.class);
-        }
-        return jdbc.queryForObject("""
-                select exists(select 1 from prisversjon
-                               where status = 'AKTIV' and gyldig_fra <= :periode
-                                 and (gyldig_til is null or gyldig_til >= :periode))""",
-                periode(periode), Boolean.class);
+    /** The coverage of every active price version, read once per page view. */
+    private List<Prisdekning> aktivePrisdekninger() {
+        return jdbc.query("select gyldig_fra, gyldig_til from prisversjon where status = 'AKTIV'",
+                (rs, i) -> Prisdekning.fra(rs.getObject("gyldig_fra", LocalDate.class),
+                        rs.getObject("gyldig_til", LocalDate.class)));
+    }
+
+    /** Whether an active price version covers the period — {@link Prisdekning} is the one rule for that. */
+    private static boolean dekkes(List<Prisdekning> aktive, Periode periode) {
+        return aktive.stream().anyMatch(d -> d.dekker(periode));
     }
 
     // ---- Recent activity --------------------------------------------------------------------------------

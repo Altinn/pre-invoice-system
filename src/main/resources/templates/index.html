@@ -28,9 +28,11 @@
 
     <section class="nokkeltall" th:unless="${f.nokkeltall().isEmpty()}" aria-label="Nøkkeltall">
         <div class="ds-card nokkeltall-flis" data-variant="default" th:each="n : ${f.nokkeltall()}">
-            <p class="liten nokkeltall-etikett" th:text="${n.etikett()}">Fakturagrunnlag</p>
-            <p class="nokkeltall-verdi" th:text="${n.verdi()}">1 284 530,00 kr</p>
-            <p class="liten" th:each="d : ${n.detaljer()}" th:text="${d}">+6,2 % mot desember 2026</p>
+            <dl>
+                <dt class="liten nokkeltall-etikett" th:text="${n.etikett()}">Fakturagrunnlag</dt>
+                <dd class="nokkeltall-verdi" th:text="${n.verdi()}">1 284 530,00 kr</dd>
+                <dd class="liten" th:each="d : ${n.detaljer()}" th:text="${d}">+6,2 % mot desember 2026</dd>
+            </dl>
         </div>
     </section>
 
@@ -66,13 +68,14 @@
     </div>
 
     <div class="forside-rutenett forside-rutenett-snudd">
-        <a class="ds-card laering-kort" data-color="accent" data-variant="default" th:href="@{/laering}">
+        <a class="ds-card laering-kort" data-color="accent" data-variant="default" th:href="@{/laering}"
+           aria-labelledby="laering-lenke" aria-describedby="laering-tekst">
             <svg class="laering-ikon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M22 9 12 4 2 9l10 5 10-5Z"></path><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"></path>
             </svg>
             <h2 class="ds-heading" data-size="xs">Ny i forsystem?</h2>
-            <p class="ds-paragraph" data-size="sm">Lær månedsløpet fra bruksdata til LG04-fil, steg for steg.</p>
-            <span class="lenketekst">Gå til læringssenteret</span>
+            <p class="ds-paragraph" data-size="sm" id="laering-tekst">Lær månedsløpet fra bruksdata til LG04-fil, steg for steg.</p>
+            <span class="lenketekst" id="laering-lenke">Gå til læringssenteret</span>
         </a>
 
         <section class="ds-card" data-variant="default" aria-labelledby="aktivitet">

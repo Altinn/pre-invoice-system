@@ -333,8 +333,8 @@ td.detaljer { overflow-wrap: anywhere; max-width: 40rem; }
 
 /* Key-number tiles. */
 .nokkeltall { display: grid; gap: var(--ds-size-4); grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
-.forside .nokkeltall-flis > * { margin: 0; }
-.forside .nokkeltall-flis > * + * { margin-block-start: var(--ds-size-1); }
+.nokkeltall-flis dl, .nokkeltall-flis dt, .nokkeltall-flis dd { margin: 0; }
+.nokkeltall-flis dd + dd { margin-block-start: var(--ds-size-1); }
 .nokkeltall-verdi {
     font-size: var(--ds-heading-md-font-size);
     font-weight: 500;
@@ -342,7 +342,7 @@ td.detaljer { overflow-wrap: anywhere; max-width: 40rem; }
     font-variant-numeric: tabular-nums;
     color: var(--ds-color-neutral-text-default);
 }
-.forside .nokkeltall-flis > .nokkeltall-verdi { margin-block-start: var(--ds-size-2); }
+.nokkeltall-flis dd.nokkeltall-verdi { margin-block-start: var(--ds-size-2); }
 
 /* Two columns that stack on narrow screens; the second row puts the narrow card first. */
 .forside-rutenett { display: grid; gap: var(--ds-size-5); grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
@@ -372,6 +372,7 @@ td.detaljer { overflow-wrap: anywhere; max-width: 40rem; }
 
 /* Learning card: the whole card is the link. */
 a.laering-kort { display: block; }
+a.laering-kort:focus-visible { outline: var(--dsc-focus-outline); box-shadow: var(--dsc-focus-boxShadow); }
 .laering-ikon { width: var(--ds-size-8); height: var(--ds-size-8); fill: none; stroke: var(--ds-color-accent-base-default); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .forside .laering-kort > .ds-heading { margin-block-start: var(--ds-size-2); }
 .forside .laering-kort > .ds-paragraph { color: var(--ds-color-neutral-text-subtle); }
