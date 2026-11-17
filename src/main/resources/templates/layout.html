@@ -29,7 +29,8 @@
 </head>
 <body>
 <!-- Skip link + header. `seksjon` marks the current main section: produkter, prisversjoner,
-     kunder, bruksdata, kjoringer, hendelseslogg — or '' (start page, error pages). -->
+     kunder, bruksdata, kjoringer, hendelseslogg, hjelp (Læringssenter, a separate link at the right
+     end) — or '' (start page, error pages). -->
 <th:block th:fragment="topbar(seksjon)">
     <a class="ds-skip-link" href="#hovedinnhold">Hopp til hovedinnhold</a>
     <header class="topbar ikke-utskrift">
@@ -44,9 +45,17 @@
                     <li><a th:href="@{/hendelseslogg}" th:attr="aria-current=${seksjon == 'hendelseslogg'} ? 'page'">Hendelseslogg</a></li>
                 </ul>
             </nav>
+            <!-- Læringssenter (specs/016): outside nav.hovedmeny so the main menu keeps one current section. -->
+            <a class="hjelp-lenke" th:href="@{/hjelp}" th:attr="aria-current=${seksjon == 'hjelp'} ? 'page'">Hjelp</a>
         </div>
     </header>
 </th:block>
+
+<!-- «Hjelp til denne siden» (specs/016 FR-021): place right after the h1 of a main page with the id of the
+     article, e.g. layout :: hjelp('manedsrutinen/3-generer'). A test checks every id exists. -->
+<p th:fragment="hjelp(artikkelId)" class="hjelp-i-kontekst ikke-utskrift">
+    <a class="ds-link" th:href="@{|/hjelp/${artikkelId}|}">Hjelp til denne siden</a>
+</p>
 
 <!-- CSRF hidden field for POST forms (no Spring Security Thymeleaf dialect on the classpath). -->
 <th:block th:fragment="csrf">

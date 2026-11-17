@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<!--
+  Fragments for the learning center (specs/016 contracts/ui.md). Not a page itself.
+  sokeskjema          the search form (GET /hjelp/sok).
+  meny(gjeldende)     section menu: a fixed column from 48rem, a folding «Innhold» below. Needs meny, titler.
+  aside(artikkel)     På denne siden, Gå til i appen, Relatert.
+  stegviser(steg)     progress strip for an ordered path.
+  forrigeNeste(steg)  Forrige/Neste links at the bottom of a step.
+  blokk(navn)         live blocks: kontrollkoder, livslop-kjoring, livslop-prisversjon.
+-->
+<body>
+
+<th:block th:fragment="meny(gjeldende)">
+    <div class="hjelp-meny-stor">
+        <th:block th:replace="~{hjelp/fragmenter :: sokeskjema}"></th:block>
+        <th:block th:replace="~{hjelp/fragmenter :: menyliste(${gjeldende}, 'Læringssenter')}"></th:block>
+    </div>
+    <details class="ds-details hjelp-meny-liten ikke-utskrift" data-variant="tinted">
+        <summary>Innhold</summary>
+        <div>
+            <th:block th:replace="~{hjelp/fragmenter :: sokeskjema}"></th:block>
+            <th:block th:replace="~{hjelp/fragmenter :: menyliste(${gjeldende}, 'Læringssenter (kort)')}"></th:block>
+        </div>
+    </details>
+</th:block>
+
+<form th:fragment="sokeskjema" class="hjelp-sok ikke-utskrift" role="search" method="get" th:action="@{/hjelp/sok}">
+    <ds-field class="ds-field">
+        <label class="ds-label" th:for="|sok-${#ids.seq('s')}|">Søk i Læringssenteret</label>
+        <input class="ds-input" type="search" name="q" th:id="|sok-${#ids.prev('s')}|" th:value="${q}" maxlength="100">
+    </ds-field>
+    <button class="ds-button" data-variant="secondary" type="submit">Søk</button>
+</form>
+
+<nav th:fragment="menyliste(gjeldende, etikett)" class="hjelp-meny ikke-utskrift" th:attr="aria-label=${etikett}">
+    <details class="ds-details" th:each="s : ${meny.synligeSeksjoner()}"
+             th:open="${#strings.startsWith(gjeldende, s.id() + '/')}">
+        <summary th:text="${s.tittel()}">Kom i gang</summary>
+        <div>
+            <th:block th:each="g : ${s.grupper()}">
+                <p class="hjelp-gruppe liten" th:if="${g.tittel() != null}" th:text="${g.tittel()}">Gruppe</p>
+                <ol th:if="${s.sti()}" class="ds-list hjelp-liste hjelp-sti">
+                    <li th:each="id : ${g.artikkelIder()}">
+                        <a class="ds-link" th:href="@{|/hjelp/${id}|}" th:text="${titler.get(id)}"
+                           th:attr="aria-current=${id == gjeldende} ? 'page'">Artikkel</a>
+                    </li>
+                </ol>
+                <ul th:unless="${s.sti()}" class="ds-list hjelp-liste">
+                    <li th:each="id : ${g.artikkelIder()}">
+                        <a class="ds-link" th:href="@{|/hjelp/${id}|}" th:text="${titler.get(id)}"
+                           th:attr="aria-current=${id == gjeldende} ? 'page'">Artikkel</a>
+                    </li>
+                </ul>
+            </th:block>
+        </div>
+    </details>
+</nav>
+
+<aside th:fragment="aside(artikkel)" class="hjelp-aside ikke-utskrift" aria-label="Om denne siden">
+    <section th:if="${artikkel.innhold().size() >= 2}">
+        <h2 class="ds-heading" data-size="2xs">På denne siden</h2>
+        <ul class="ds-list hjelp-liste">
+            <li th:each="o : ${artikkel.innhold()}"><a class="ds-link" th:href="|#${o.anker()}|" th:text="${o.tekst()}">Overskrift</a></li>
+        </ul>
+    </section>
+    <section th:if="${artikkel.apneIAppen() != null}">
+        <h2 class="ds-heading" data-size="2xs">Gå til i appen</h2>
+        <a class="ds-button" data-variant="secondary" th:href="@{${artikkel.apneIAppen()}}" th:text="${artikkel.apneIAppenTekst()}">Åpne</a>
+    </section>
+    <section th:if="${!artikkel.relatert().isEmpty()}">
+        <h2 class="ds-heading" data-size="2xs">Relatert</h2>
+        <ul class="ds-list hjelp-liste">
+            <li th:each="id : ${artikkel.relatert()}"><a class="ds-link" th:href="@{|/hjelp/${id}|}" th:text="${titler.get(id)}">Artikkel</a></li>
+        </ul>
+    </section>
+</aside>
+
+<ol th:fragment="stegviser(steg)" class="fremdrift stegviser" aria-label="Fremdrift i månedsrutinen">
+    <li th:each="l, it : ${steg.liste()}"
+        th:class="${it.count < steg.nr()} ? 'ferdig' : (${it.count == steg.nr()} ? 'naa' : 'senere')"
+        th:attr="aria-current=${it.count == steg.nr()} ? 'step'">
+        <span class="ds-sr-only" th:text="${it.count < steg.nr()} ? 'Ferdig: ' : (${it.count == steg.nr()} ? 'Du er her: ' : 'Senere: ')">Ferdig: </span>
+        <a class="ds-link" th:href="@{${l.url()}}" th:text="${l.tittel()}">Steg</a>
+    </li>
+</ol>
+
+<nav th:fragment="forrigeNeste(steg)" class="forrige-neste ikke-utskrift" aria-label="Forrige og neste steg">
+    <a class="ds-link forrige" th:if="${steg.forrige() != null}" th:href="@{${steg.forrige().url()}}"
+       th:text="|‹ Forrige: ${steg.forrige().tittel()}|">Forrige</a>
+    <a class="ds-link neste" th:if="${steg.neste() != null}" th:href="@{${steg.neste().url()}}"
+       th:text="|Neste: ${steg.neste().tittel()} ›|">Neste</a>
+</nav>
+
+<th:block th:fragment="blokk(navn)" th:switch="${navn}">
+    <th:block th:case="'kontrollkoder'"><th:block th:replace="~{hjelp/fragmenter :: kontrollkoder}"></th:block></th:block>
+    <th:block th:case="'livslop-kjoring'"><th:block th:replace="~{hjelp/fragmenter :: livslopKjoring}"></th:block></th:block>
+    <th:block th:case="'livslop-prisversjon'"><th:block th:replace="~{hjelp/fragmenter :: livslopPrisversjon}"></th:block></th:block>
+</th:block>
+
+<!-- One entry per Kontrollkode, severity and definition from the enum (same source as the Kontroller tab),
+     «Slik løser du det» from kontrollfunn.yml. Each code has an anchor for links from the Kontroller tab. -->
+<dl th:fragment="kontrollkoder" class="kodeliste kontrollkoder">
+    <th:block th:each="k : ${kontrollkoder}">
+        <dt>
+            <code th:id="${k.name()}" th:text="${k.name()}">MANGLER_KUNDE</code>
+            <span class="ds-tag" data-size="sm" th:data-color="${k.alvorlighet().name() == 'BLOKKERENDE'} ? 'danger' : 'warning'"
+                  th:text="${k.alvorlighet().name() == 'BLOKKERENDE'} ? 'Blokkerende' : 'Advarsel'">Blokkerende</span>
+        </dt>
+        <dd>
+            <p class="ds-paragraph" th:text="${k.definisjon()}">Definisjon.</p>
+            <div class="losning">
+                <p class="ds-paragraph"><strong>Slik løser du det:</strong></p>
+                <th:block th:utext="${kontrollfunn.get(k)}"></th:block>
+            </div>
+        </dd>
+    </th:block>
+</dl>
+
+<!-- Run lifecycle (FR-011). A list, not a picture: it needs no script and reads well with a screen reader. -->
+<th:block th:fragment="livslopKjoring">
+    <ol class="livslop" aria-label="Livsløp for en fakturakjøring">
+        <li><span class="ds-tag" data-color="warning">Venter på godkjenning</span> <span class="liten">GENERERT</span></li>
+        <li class="overgang"><span class="liten">Godkjenn</span></li>
+        <li><span class="ds-tag" data-color="info">Klar til eksport</span> <span class="liten">GODKJENT</span></li>
+        <li class="overgang"><span class="liten">Eksporter</span></li>
+        <li><span class="ds-tag" data-color="success">Eksportert</span> <span class="liten">EKSPORTERT</span></li>
+    </ol>
+    <p class="ds-paragraph liten">I stedet for å godkjenne kan du forkaste en kjøring som ikke er eksportert:
+        <span class="ds-tag" data-color="neutral">Forkastet</span> <span class="liten">FORKASTET</span>.</p>
+    <p class="ds-sr-only">Rekkefølge: Generert, så Godkjent med «Godkjenn», så Eksportert med «Eksporter».
+        En kjøring som ikke er eksportert kan forkastes.</p>
+</th:block>
+
+<th:block th:fragment="livslopPrisversjon">
+    <ol class="livslop" aria-label="Livsløp for en prisversjon">
+        <li><span class="ds-tag" data-color="warning">UTKAST</span></li>
+        <li class="overgang"><span class="liten">Aktiver</span></li>
+        <li><span class="ds-tag" data-color="success">AKTIV</span></li>
+        <li class="overgang"><span class="liten">Arkiver</span></li>
+        <li><span class="ds-tag" data-color="neutral">ARKIVERT</span></li>
+    </ol>
+    <p class="ds-sr-only">Rekkefølge: Utkast, så Aktiv med «Aktiver», så Arkivert med «Arkiver».</p>
+</th:block>
+
+</body>
+</html>

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head(${artikkel.tittel()})}"></head>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('hjelp')}"></th:block>
+<!-- Læringssenter article (specs/016 contracts/ui.md): menu, article, aside. -->
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <nav class="ds-breadcrumbs ikke-utskrift" aria-label="Du er her:">
+        <a class="ds-link" th:href="@{/hjelp}" aria-label="Tilbake til Læringssenter">Læringssenter</a>
+        <ol>
+            <li><a class="ds-link" th:href="@{/}">Forside</a></li>
+            <li><a class="ds-link" th:href="@{/hjelp}">Læringssenter</a></li>
+            <li><span th:text="${seksjonTittel}">Seksjon</span></li>
+            <li><a class="ds-link" aria-current="page" th:href="@{${artikkel.url()}}" th:text="${artikkel.tittel()}">Artikkel</a></li>
+        </ol>
+    </nav>
+    <div class="hjelp-oppsett">
+        <th:block th:replace="~{hjelp/fragmenter :: meny(${gjeldende})}"></th:block>
+        <article class="artikkel">
+            <h1 class="ds-heading" data-size="lg" th:text="${artikkel.tittel()}">Tittel</h1>
+            <p class="ds-paragraph ingress" data-size="lg" th:text="${artikkel.sammendrag()}">Sammendrag.</p>
+            <p th:if="${artikkel.rolle() != null}">
+                <span class="ds-tag" data-color="info" th:text="|Krever rollen ${artikkel.rolle()}|">Krever rollen FORVALTER</span>
+            </p>
+            <th:block th:if="${artikkel.steg() != null}">
+                <p class="ds-paragraph liten" th:text="|Steg ${artikkel.steg().nr()} av ${artikkel.steg().av()}|">Steg 3 av 6</p>
+                <th:block th:replace="~{hjelp/fragmenter :: stegviser(${artikkel.steg()})}"></th:block>
+            </th:block>
+
+            <div class="artikkel-tekst">
+                <th:block th:each="del : ${artikkel.deler()}">
+                    <th:block th:if="${del.erBlokk()}"><th:block th:replace="~{hjelp/fragmenter :: blokk(${del.navn()})}"></th:block></th:block>
+                    <th:block th:unless="${del.erBlokk()}" th:utext="${del.html()}"></th:block>
+                </th:block>
+            </div>
+
+            <th:block th:if="${artikkel.steg() != null}"><th:block th:replace="~{hjelp/fragmenter :: forrigeNeste(${artikkel.steg()})}"></th:block></th:block>
+            <p class="ds-paragraph liten oppdatert">Sist oppdatert <span th:text="${oppdatertTekst}">17. november 2026</span></p>
+        </article>
+        <th:block th:replace="~{hjelp/fragmenter :: aside(${artikkel})}"></th:block>
+    </div>
+</main>
+</body>
+</html>

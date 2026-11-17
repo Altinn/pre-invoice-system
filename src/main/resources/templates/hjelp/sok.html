@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Søk i Læringssenteret')}"></head>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('hjelp')}"></th:block>
+<!-- Læringssenter search results (specs/016 FR-022). -->
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <nav class="ds-breadcrumbs" aria-label="Du er her:">
+        <a class="ds-link" th:href="@{/hjelp}" aria-label="Tilbake til Læringssenter">Læringssenter</a>
+        <ol>
+            <li><a class="ds-link" th:href="@{/}">Forside</a></li>
+            <li><a class="ds-link" th:href="@{/hjelp}">Læringssenter</a></li>
+            <li><a class="ds-link" aria-current="page" th:href="@{/hjelp/sok(q=${q})}">Søk</a></li>
+        </ol>
+    </nav>
+    <div class="hjelp-oppsett">
+        <th:block th:replace="~{hjelp/fragmenter :: meny(${gjeldende})}"></th:block>
+        <div class="hjelp-start">
+            <h1 class="ds-heading" data-size="lg">Søk i Læringssenteret</h1>
+            <p class="ds-paragraph" role="status" th:if="${!treff.isEmpty()}"
+               th:text="|${treff.size()} treff for «${q}»|">3 treff for «terskel»</p>
+            <ul class="ds-list sokeresultat" th:if="${!treff.isEmpty()}">
+                <li th:each="t : ${treff}">
+                    <a class="ds-link" th:href="@{${t.artikkel().url()}}" th:text="${t.artikkel().tittel()}">Tittel</a>
+                    <span class="liten" th:text="${seksjonTitler.get(t.artikkel().seksjon())}">Seksjon</span>
+                    <span class="ds-paragraph liten" th:text="${t.artikkel().sammendrag()}">Sammendrag.</span>
+                </li>
+            </ul>
+            <th:block th:if="${treff.isEmpty()}">
+                <p class="ds-paragraph" role="status" th:text="|Ingen treff for «${q}».|">Ingen treff for «x».</p>
+                <p class="ds-paragraph">Prøv et annet ord, gå til <a class="ds-link" th:href="@{/hjelp}">Læringssenteret</a>,
+                    eller se <a class="ds-link" th:href="@{/hjelp/nar-noe-gar-galt/oversikt}">Når noe går galt</a>.</p>
+            </th:block>
+        </div>
+    </div>
+</main>
+</body>
+</html>

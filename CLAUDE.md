@@ -50,6 +50,9 @@ previous one meets its acceptance criteria.
   the current date, and never stored in static state. This was a defect class in the old repo.
 - Every phase ends with: all tests green (`mvn verify`), docs updated if behavior changed,
   a conventional commit. Do not batch multiple phases into one commit.
+- **Learning center**: a change to something users see (a page, a button label, a status, a control code,
+  a role) updates the matching article under `src/main/resources/hjelp/` in the same pull request. The
+  build catches broken links and a control code without a «Slik løser du det» text (specs/016).
 
 ## Build/run expectations
 

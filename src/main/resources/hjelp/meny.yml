@@ -1,0 +1,71 @@
+# Læringssenter: menu, order and the start page's «Jeg vil …» list (specs/016 data-model.md).
+# Every article file must appear here exactly once; every entry must have a file. Sections show in a
+# fixed order (Meny.REKKEFOLGE) and only when they hold articles. Ids are <seksjon>/<filnavn uten .md>.
+seksjoner:
+  - id: kom-i-gang
+    tittel: Kom i gang
+    artikler: [hva-er-forsystem, roller-og-tilgang, rundtur, prov-selv]
+
+  - id: manedsrutinen
+    tittel: Månedsrutinen
+    sti: true                      # ordered path: «Steg n av N», stepper, Forrige/Neste
+    artikler: [1-sjekk-registrene, 2-hent-bruksdata, 3-generer, 4-kontrollfunn, 5-godkjenn, 6-eksporter]
+
+  - id: slik-gjor-du
+    tittel: Slik gjør du
+    grupper:
+      - tittel: Priser og produkter
+        artikler: [lag-prisversjon, endre-pris-eller-terskelverdi, legg-inn-kontering, koble-kildenavn]
+      - tittel: Kunder
+        artikler: [legg-til-fakturareferanse, legg-til-kundenummerregel, avvikende-fakturamottaker]
+      - tittel: Bruksdata
+        artikler: [last-opp-csv, importer-periode-pa-nytt, opprett-kunder-fra-fila]
+      - tittel: Kjøringer
+        artikler: [endre-fakturatekster, forkast-og-generer-pa-nytt, sjekk-ut-advarsler, finn-en-faktura,
+                   last-ned-fakturagrunnlag, kopier-epost-til-regnskap, lag-korrigeringskjoring]
+      - tittel: Spor
+        artikler: [hvem-endret-hva, er-lg04-lastet-ned]
+
+  - id: nar-noe-gar-galt
+    tittel: Når noe går galt
+    artikler: [oversikt, godkjenn-er-gra, ingen-aktiv-prisversjon, ingen-bruksdata, import-blokkeres,
+               fila-kjennes-ikke-igjen, eksport-stoppet, ingen-tilgang, siden-er-utlopt, eksportert-kan-ikke-forkastes]
+
+  - id: oppslag
+    tittel: Oppslag
+    artikler: [kontrollfunn, statuser, roller, filer, csv-format, ordliste]
+
+  - id: forsta-systemet
+    tittel: Forstå systemet
+    artikler: [slik-grupperes-fakturaer, prisversjon-og-gyldighet, terskelverdi, korrigering-og-avregning,
+               sporbarhet, finmod-kort-fortalt]
+
+jeg-vil:
+  - tekst: komme i gang som ny bruker
+    artikkel: kom-i-gang/hva-er-forsystem
+  - tekst: kjøre en hel måned
+    artikkel: manedsrutinen/1-sjekk-registrene
+  - tekst: lage en ny prisversjon
+    artikkel: slik-gjor-du/lag-prisversjon
+  - tekst: endre en pris eller terskelverdi
+    artikkel: slik-gjor-du/endre-pris-eller-terskelverdi
+  - tekst: legge inn kontering for et produkt
+    artikkel: slik-gjor-du/legg-inn-kontering
+  - tekst: laste opp bruksdata fra en CSV-fil
+    artikkel: slik-gjor-du/last-opp-csv
+  - tekst: legge inn fakturareferanse for en kunde
+    artikkel: slik-gjor-du/legg-til-fakturareferanse
+  - tekst: forstå et kontrollfunn
+    artikkel: oppslag/kontrollfunn
+  - tekst: sjekke ut advarsler før godkjenning
+    artikkel: slik-gjor-du/sjekk-ut-advarsler
+  - tekst: endre tekstene på fakturaen
+    artikkel: slik-gjor-du/endre-fakturatekster
+  - tekst: forkaste en kjøring og generere på nytt
+    artikkel: slik-gjor-du/forkast-og-generer-pa-nytt
+  - tekst: lage en korrigeringskjøring
+    artikkel: slik-gjor-du/lag-korrigeringskjoring
+  - tekst: finne ut hvem som har endret noe
+    artikkel: slik-gjor-du/hvem-endret-hva
+  - tekst: kopiere e-posten til regnskap
+    artikkel: slik-gjor-du/kopier-epost-til-regnskap
