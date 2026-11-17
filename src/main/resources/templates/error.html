@@ -18,6 +18,16 @@
             <a class="ds-button" data-variant="tertiary" th:href="@{/}">Til forsiden</a>
         </div>
     </th:block>
+    <!-- Unknown address, e.g. a mistyped or removed page (specs/016). -->
+    <th:block th:if="${oktUtlopt != true and status == 404}">
+        <h1 class="ds-heading" data-size="lg">Fant ikke siden</h1>
+        <p class="ds-paragraph">Adressen finnes ikke, eller siden er flyttet. Gå til forsiden, eller se i
+            Læringssenteret.</p>
+        <div class="rad">
+            <a class="ds-button" data-variant="primary" th:href="@{/}">Til forsiden</a>
+            <a class="ds-button" data-variant="secondary" th:href="@{/hjelp}">Læringssenter</a>
+        </div>
+    </th:block>
     <th:block th:if="${oktUtlopt != true and status == 403}">
         <h1 class="ds-heading" data-size="lg">Ingen tilgang</h1>
         <div class="ds-alert bred" data-color="danger" role="alert">
@@ -25,7 +35,7 @@
                 eksport krever rollen godkjenner. Kontakt forvaltningen hvis du mener du skal ha tilgang.</p>
         </div>
     </th:block>
-    <th:block th:if="${oktUtlopt != true and status != 403}">
+    <th:block th:if="${oktUtlopt != true and status != 403 and status != 404}">
         <h1 class="ds-heading" data-size="lg">Noe gikk galt</h1>
         <div class="ds-alert bred" data-color="danger" role="alert">
             <p>Handlingen kunne ikke fullføres på grunn av en teknisk feil
@@ -33,7 +43,7 @@
                 Prøv igjen, og kontakt forvaltningen hvis feilen vedvarer.</p>
         </div>
     </th:block>
-    <th:block th:unless="${oktUtlopt}">
+    <th:block th:if="${oktUtlopt != true and status != 404}">
         <p class="ds-paragraph liten">Tidspunkt:
             <span th:text="${timestamp != null} ? ${#dates.format(timestamp, 'yyyy-MM-dd HH:mm:ss')} : ''"></span></p>
         <div class="rad">

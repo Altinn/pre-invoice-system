@@ -1,0 +1,27 @@
+# «Slik løser du det» per kontrollkode (specs/016, T028). Nøkkelen er navnet i enumen Kontrollkode.
+# Definisjonen kommer fra koden. Teksten her sier bare hvor du retter det i appen.
+# Lenker er relative .md-stier fra oppslag/-mappen, eller appstier som /produkter.
+MANGLER_KUNDE: |
+  Sjekk først at organisasjonsnummeret i bruksdataene er riktig. Er det en ekte kunde som mangler, kan du opprette den fra fila: last opp måneden på nytt og trykk **Opprett kunder fra fila** i forhåndsvisningen, se [Opprett kunder fra fila](../slik-gjor-du/opprett-kunder-fra-fila.md) og [Importer periode på nytt](../slik-gjor-du/importer-periode-pa-nytt.md). Forkast deretter kjøringen og generer på nytt. Kommer bruken fra datavarehuset og kunden ikke kan opprettes fra en fil, kontakt forsystem-teamet.
+MANGLER_KUNDENUMMER: |
+  Kunden trenger en kundenummerregel som passer produktet. Se [Legg til kundenummerregel](../slik-gjor-du/legg-til-kundenummerregel.md). Kundenummeret er kundens nummer i Unit4, så spør regnskap hvis du ikke vet det. Forkast kjøringen og generer på nytt etterpå.
+INAKTIV_AVTALE: |
+  Sjekk med Økonomi eller kundeansvarlig om avtalen faktisk er aktiv, for hva «aktiv» betyr er ikke endelig avklart (OQ-13). Er den det, må avtalestatusen settes til AKTIV. Kunder redigeres ikke fra en egen meny, så kontakt forsystem-teamet. Forkast kjøringen og generer på nytt etterpå.
+MANGLER_PRIS: |
+  Åpne [Prisversjoner](/prisversjoner) og sjekk at produktet er aktivt og har enhetspris i den aktive versjonen som dekker perioden. Prisene i en aktiv versjon er låst, så en manglende pris krever en ny versjon, se [Lag prisversjon](../slik-gjor-du/lag-prisversjon.md). Forkast kjøringen og generer på nytt etterpå.
+MANGLER_KONTERING: |
+  Åpne [Produkter](/produkter), trykk **Rediger** på produktet og fyll inn konto, dimensjoner og artikkel-id med kodene du har fått fra Økonomi. Ikke gjett. Hvilke koder som gjelder, er ikke endelig avklart (OQ-2). Se [Legg inn kontering](../slik-gjor-du/legg-inn-kontering.md), og forkast og generer på nytt etterpå.
+STORT_AVVIK: |
+  Sjekk at bruken stemmer. Se på kundens linjer under **Fakturaer** og på forhåndsvisningen fra importen i [Bruksdata](/bruksdata). Er økningen eller nedgangen riktig, for eksempel fordi kunden har tatt i bruk noe nytt, kryss av for **Funn akseptert**. Er tallene feil, importer måneden på nytt, se [Importer periode på nytt](../slik-gjor-du/importer-periode-pa-nytt.md).
+NULLBELOP: |
+  Åpne fakturaen under **Fakturaer** og trykk **Linjer** for å finne linjen med beløp 0. Sjekk om bruken er 0, eller om produktet mangler pris i prisversjonen. Er linjen riktig, kryss av for **Funn akseptert**.
+NY_KUNDE: |
+  Sjekk at kunden er ventet, for eksempel at den nylig har tatt i bruk et produkt. Er den det, kryss av for **Funn akseptert**. Er den uventet, sjekk organisasjonsnummeret i bruksdataene.
+AKTIV_KUNDE_UTEN_BRUK: |
+  Sjekk om kunden faktisk ikke har hatt fakturerbar bruk i måneden. Finn organisasjonsnummeret i forhåndsvisningen under [Bruksdata](/bruksdata), og spør vedlikeholderne av datavarehuset hvis bruk ser ut til å mangle der. Er fraværet riktig, kryss av for **Funn akseptert**. Mangler bruken, importer måneden på nytt, se [Importer periode på nytt](../slik-gjor-du/importer-periode-pa-nytt.md).
+DELT_REFERANSE: |
+  Sjekk at det er ønsket at kunden får flere fakturaer i Unit4, én per referanse. Skal kunden ha én faktura, må den produktspesifikke referansen fjernes fra kunden, se [Legg til fakturareferanse](../slik-gjor-du/legg-til-fakturareferanse.md). Forkast kjøringen og generer på nytt etterpå. Er delingen riktig, kryss av for **Funn akseptert**.
+MANGLER_FAKTURAREFERANSE: |
+  Åpne listen **Fakturaer uten fakturareferanse** lenger ned på fanen Kontroller. Den viser hvilke kunder og produkter som mangler referanse, og kan lastes ned. Se [Legg til fakturareferanse](../slik-gjor-du/legg-til-fakturareferanse.md), og forkast og generer på nytt. Om feltet skal være obligatorisk, er ikke avklart (OQ-15), så funnet er en advarsel.
+UNDER_TERSKEL: |
+  Se listen **Faktureres ikke (under terskelverdi)** på fanen **Fakturaer**. Vanligvis er det ingenting å rette: kundene får ingen faktura denne måneden, og beløpene overføres ikke. Terskelverdien står på prisversjonen og er låst når den er aktiv, se [Endre pris eller terskelverdi](../slik-gjor-du/endre-pris-eller-terskelverdi.md). Hva som skal skje med beløp under terskelen, er ikke avklart (OQ-22).

@@ -39,6 +39,7 @@ class LayoutIT extends IntegrationTest {
             "/bruksdata, /bruksdata",
             "/kjoringer, /kjoringer",
             "/hendelseslogg, /hendelseslogg",
+            "/hjelp,",
     })
     void sidenHarFellesOppsettOgMarkererSeksjonen(String side, String seksjon) throws Exception {
         String html = mvc.perform(get(side))
@@ -58,6 +59,19 @@ class LayoutIT extends IntegrationTest {
             assertThat(m.group(1)).isEqualTo(seksjon);
             assertThat(m.find()).as("only one section is current on %s", side).isFalse();
         }
+    }
+
+    /** The Hjelp link sits outside the main menu (specs/016): current on /hjelp, not elsewhere. */
+    @ParameterizedTest
+    @CsvSource({"/hjelp, true", "/kjoringer, false", "/, false"})
+    void hjelpLenkenErUtenforHovedmenyenOgMarkertIHjelp(String side, boolean gjeldende) throws Exception {
+        String html = mvc.perform(get(side)).andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        Matcher m = Pattern.compile("<a\\b[^>]*class=\"hjelp-lenke\"[^>]*>Hjelp</a>").matcher(html);
+        assertThat(m.find()).as("Hjelp link on %s", side).isTrue();
+        assertThat(m.group().contains("href=\"/hjelp\"")).isTrue();
+        assertThat(m.group().contains("aria-current=\"page\"")).isEqualTo(gjeldende);
+        int meny = html.indexOf("aria-label=\"Hovedmeny\"");
+        assertThat(m.start()).as("outside nav.hovedmeny").isGreaterThan(html.indexOf("</nav>", meny));
     }
 
     @ParameterizedTest

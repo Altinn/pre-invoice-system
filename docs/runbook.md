@@ -4,6 +4,9 @@ Operational guide for the monthly invoicing pre-run, plus how to demo the system
 the MVP process: LG04 and PDF are **downloaded from the UI and sent onward by a person** (docs/01),
 mirroring how FEL operates the old system today.
 
+The user-facing steps of this procedure are taught in the app under **Hjelp** (`/hjelp`, section
+Månedsrutinen; sources in `src/main/resources/hjelp/`). Keep the two in step.
+
 Roles (from OIDC groups; stubbed to a dev user with all roles under the `local` profile):
 `LESER` reads, `FORVALTER` maintains registries + imports + generates, `GODKJENNER` approves +
 exports.

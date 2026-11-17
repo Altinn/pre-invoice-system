@@ -39,8 +39,8 @@ versions, and the audit trail. No schema change is needed.
 - Q: Which name does the greeting use? → A: The OIDC `given_name` claim, else the first word of
   `name`, else the part of an e-mail-shaped username before the first `.`/`@`, capitalised. With none of
   these (the local stub user `dev`), the greeting has no name.
-- Q: The learning centre? → A: Out of scope. The card links to `/laering`, a placeholder page
-  («kommer snart»). A later spec replaces it.
+- Q: The learning centre? → A: Out of scope. The card first linked to a `/laering` placeholder
+  («kommer snart»); specs/016 replaced it and the card now links to `/hjelp`.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -74,7 +74,7 @@ the usage volume per product).
 runs, unfinished correction runs, open usage comparisons, newer usage than the dashboard period, active
 products missing konto or artikkel-id, and a missing active price version for the dashboard period or
 the next one. Empty list → «Alt i rute». «Siste aktivitet» shows the six newest audit rows (downloads
-excluded) as short sentences. A card «Ny i forsystem?» links to `/laering`.
+excluded) as short sentences. A card «Ny i forsystem?» links to the Læringssenter (`/hjelp`).
 
 ### Edge Cases
 
@@ -92,7 +92,7 @@ excluded) as short sentences. A card «Ny i forsystem?» links to `/laering`.
   key-number tiles, per-product bars, «Trenger oppmerksomhet», learning card, «Siste aktivitet».
 - **FR-004**: Only Designsystemet classes and `--ds-*` tokens; no inline styles; light and dark mode;
   numbers through `Tallformat`.
-- **FR-005**: `/laering` exists as a placeholder for every logged-in role.
+- **FR-005**: The learning card links to the Læringssenter (`/hjelp`), open to every logged-in role (superseded the `/laering` placeholder when specs/016 landed).
 - **FR-006**: Read-only: opening `/` writes nothing, including to the audit trail.
 
 ## Success Criteria *(mandatory)*

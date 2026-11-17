@@ -18,6 +18,7 @@
               th:data-color="${versjon.status() == 'AKTIV'} ? 'success' : (${versjon.status() == 'ARKIVERT'} ? 'neutral' : 'warning')"
               th:text="${versjon.status()}">UTKAST</span>
     </div>
+    <th:block th:replace="~{layout :: hjelp('slik-gjor-du/endre-pris-eller-terskelverdi')}"></th:block>
     <p class="ds-paragraph" data-size="sm">
         Gyldig <span th:text="${versjon.gyldigFra()}">2027-01-01</span>
         – <span th:text="${versjon.gyldigTil()} ?: 'åpen'">åpen</span>.

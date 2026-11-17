@@ -5,6 +5,7 @@
 <th:block th:replace="~{layout :: topbar('kjoringer')}"></th:block>
 <main id="hovedinnhold" class="side" tabindex="-1">
     <h1 class="ds-heading" data-size="lg">Fakturakjøringer</h1>
+    <th:block th:replace="~{layout :: hjelp('manedsrutinen/3-generer')}"></th:block>
     <p class="ds-paragraph ingress">Generer fakturagrunnlag for en periode fra bruksdata og den
         aktive prisversjonen. Kjør kontroller, godkjenn og eksporter.</p>
     <div class="ds-alert bred" data-color="info"><p>Bruksdata for perioden må være importert eller hentet fra

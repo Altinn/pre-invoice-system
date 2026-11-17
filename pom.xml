@@ -20,6 +20,7 @@
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <commonmark.version>0.32.0</commonmark.version>
     </properties>
 
     <dependencies>
@@ -73,6 +74,33 @@
             <artifactId>azure-identity-extensions</artifactId>
             <version>1.2.2</version>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- Læringssenter (specs/016): Markdown articles rendered at startup. Pure Java, no transitive deps. -->
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-tables</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-yaml-front-matter</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-heading-anchor</artifactId>
+            <version>${commonmark.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-alerts</artifactId>
+            <version>${commonmark.version}</version>
         </dependency>
 
         <!-- Operability -->

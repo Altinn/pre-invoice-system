@@ -1,6 +1,7 @@
 <!--
 Sync Impact Report
-- Version change: template → 1.0.0 (initial ratification; principles derived from CLAUDE.md hard rules)
+- Version change: 1.0.0 → 1.0.1 (PATCH, wording: Development Workflow names the learning center, specs/016 FR-018)
+- Earlier: template → 1.0.0 (initial ratification; principles derived from CLAUDE.md hard rules)
 - Principles added: I–VII (all new)
 - Added sections: Delivery Constraints, Development Workflow, Governance
 - Templates: .specify/templates/plan-template.md ✅ (generic "Constitution Check" gate is compatible);
@@ -56,6 +57,8 @@ and approving runs MUST remain an explicit, audited human action by an authorise
 
 - Every change ends with `mvn verify` green, docs updated when behaviour changes, and one
   conventional commit per logical change.
+- A change to something users see includes the matching learning-center article under
+  `src/main/resources/hjelp/` in the same pull request.
 - Tests use fixtures with fake organisation numbers; real customer data never enters the repo.
 - The reference repository `../agresso` is read-only.
 
@@ -66,4 +69,4 @@ then `CLAUDE.md`, then this file. Amendments update this file with a Sync Impact
 semantic version bump (MAJOR: principle removed/redefined; MINOR: principle added; PATCH: wording).
 Every plan's "Constitution Check" MUST evaluate principles I–VII.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-10-06
+**Version**: 1.0.1 | **Ratified**: 2026-10-06 | **Last Amended**: 2026-11-17

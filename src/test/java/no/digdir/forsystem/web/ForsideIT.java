@@ -76,10 +76,13 @@ class ForsideIT extends IntegrationTest {
     }
 
     @Test
-    void laeringErEnPlassholderForAlle() throws Exception {
-        mvc.perform(get("/laering"))
+    void laeringskortetLederTilLaeringssenteretForAlle() throws Exception {
+        mvc.perform(get("/"))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("kommer snart")));
+                .andExpect(content().string(containsString("href=\"/hjelp\"")))
+                .andExpect(content().string(containsString("Hjelp til denne siden")));
+        mvc.perform(get("/hjelp")).andExpect(status().isOk());
+        mvc.perform(get("/laering")).andExpect(status().isNotFound());
     }
 
     @Test

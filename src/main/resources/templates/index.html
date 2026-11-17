@@ -12,6 +12,7 @@
             <p class="ds-paragraph velkomst-dag" data-size="sm" th:text="${f.dag()}">onsdag 11. november 2026</p>
             <h1 class="ds-heading" data-size="lg" id="hilsen" th:text="${f.hilsen()}">God morgen</h1>
             <p class="ds-paragraph" data-size="lg" th:text="${f.status()}">Fakturagrunnlaget venter på godkjenning.</p>
+            <th:block th:replace="~{layout :: hjelp('kom-i-gang/rundtur')}"></th:block>
         </div>
         <a class="ds-button" data-variant="primary" data-color="accent"
            th:href="@{${f.handling().href()}}" th:text="${f.handling().tekst()}">Gå til kjøringen</a>
@@ -68,7 +69,7 @@
     </div>
 
     <div class="forside-rutenett forside-rutenett-snudd">
-        <a class="ds-card laering-kort" data-color="accent" data-variant="default" th:href="@{/laering}"
+        <a class="ds-card laering-kort" data-color="accent" data-variant="default" th:href="@{/hjelp}"
            aria-labelledby="laering-lenke" aria-describedby="laering-tekst">
             <svg class="laering-ikon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                 <path d="M22 9 12 4 2 9l10 5 10-5Z"></path><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"></path>

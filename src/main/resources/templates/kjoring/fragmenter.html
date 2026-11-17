@@ -25,6 +25,8 @@
             th:text="|${kjoring.erKorrigering() ? 'Korrigering' : 'Kjøring'} ${kjoring.periodeLabel()} · ${kjoring.versjonLabel()}|">Kjøring</h1>
         <th:block th:replace="~{kjoring/fragmenter :: status(${kjoring.status()})}"></th:block>
     </div>
+    <!-- «Hjelp til denne siden» (specs/016): one article per tab. -->
+    <th:block th:replace="~{layout :: hjelp(${fane == 'oversikt' ? 'manedsrutinen/5-godkjenn' : (fane == 'kontroller' ? 'oppslag/kontrollfunn' : (fane == 'fakturaer' ? 'slik-gjor-du/finn-en-faktura' : (fane == 'filer' ? 'manedsrutinen/6-eksporter' : 'slik-gjor-du/hvem-endret-hva')))})}"></th:block>
     <nav class="faner ikke-utskrift" aria-label="Kjøring">
         <ul>
             <li><a th:href="@{/kjoringer/{id}(id=${kjoring.id()})}"

@@ -8,7 +8,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 /**
- * The start page as a dashboard (specs/015) and the learning-centre placeholder. Navigation lives in the
+ * The start page as a dashboard (specs/015); its learning card links to the Læringssenter at {@code /hjelp} (specs/016). Navigation lives in the
  * header menu; the start page shows where invoicing stands and the next step.
  */
 @Controller
@@ -25,12 +25,6 @@ class HomeController {
         model.addAttribute("forside", forside.les(new ForsideService.Bruker(
                 Fornavn.av(auth), harRolle(auth, Rolle.FORVALTER), harRolle(auth, Rolle.GODKJENNER))));
         return "index";
-    }
-
-    /** Placeholder until the learning centre has its own spec. */
-    @GetMapping("/laering")
-    String laering() {
-        return "laering";
     }
 
     private static boolean harRolle(Authentication auth, String rolle) {

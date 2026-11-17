@@ -13,6 +13,7 @@
         </ol>
     </nav>
     <h1 class="ds-heading" data-size="lg">Forhåndsvisning</h1>
+    <th:block th:replace="~{layout :: hjelp('slik-gjor-du/last-opp-csv')}"></th:block>
 
     <!-- Uploaded datavarehus export: organisations that are not customers yet can be created from the file. -->
     <div class="seksjon" th:if="${kundeoppretting != null}">

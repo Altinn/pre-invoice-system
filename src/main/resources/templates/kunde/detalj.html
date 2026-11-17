@@ -12,6 +12,7 @@
         </ol>
     </nav>
     <h1 class="ds-heading" data-size="lg" th:text="${kunde.virksomhetsnavn()}">Eksempel kommune</h1>
+    <th:block th:replace="~{layout :: hjelp('slik-gjor-du/legg-til-fakturareferanse')}"></th:block>
     <p class="ds-paragraph liten">
         Orgnr <strong th:text="${kunde.organisasjonsnummer()}">123456789</strong> ·
         kilde <span th:text="${kunde.kilde()}">MANUELL</span> ·
