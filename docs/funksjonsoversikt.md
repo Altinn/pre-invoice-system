@@ -199,7 +199,25 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-NFR-08 | Structured JSON logging | ECS JSON logs. | `application.yaml` | — | docs/02 |
 | F-DEMO-01 | Demo dataset | `demo` profile seeds fake data covering every special case + imported usage. | `demo.Demodata` | — | docs/04 P5 |
 | F-DEMO-02 | Ops runbook | Monthly procedure, re-run, DFØ-error handling, demo walkthrough. | `docs/runbook.md` | — | docs/04 P5 |
-| F-DEMO-03 | User guide | Step-by-step onboarding for end users. | `docs/brukerveiledning.md` | — | — |
+| F-DEMO-03 | User guide | Step-by-step onboarding for end users. Now lives in the learning center (F-HJELP-*); `docs/brukerveiledning.md` is only a pointer. | `/hjelp` | — | specs/016 |
+
+---
+
+## Læringssenter — help and onboarding
+
+| ID | Feature | Description | Where | Role | Ref |
+|---|---|---|---|---|---|
+| F-HJELP-01 | Hjelp link | A **Hjelp** link at the right end of the top bar on every page, outside the main menu; marked current inside the learning center. | `layout.html` | LESER | specs/016 FR-001 |
+| F-HJELP-02 | Start page | Four entry cards (*Ny her? Start her*, *Månedsrutinen steg for steg*, *Noe gikk galt*, *Oppslag*) and a *Jeg vil …* list. | GET `/hjelp` · `HjelpController` | LESER | specs/016 FR-002 |
+| F-HJELP-03 | Articles | Three-column article page: section menu, article with breadcrumbs, and *På denne siden* / *Gå til i appen* / *Relatert*. Menu folds into *Innhold* on narrow screens; prints as the article only. | GET `/hjelp/{seksjon}/{side}` | LESER | specs/016 FR-003–FR-009 |
+| F-HJELP-04 | Content as Markdown | Articles are Markdown with YAML front matter under `src/main/resources/hjelp/`, rendered with commonmark at startup. Raw HTML is escaped; alerts, tables, button names (`[Label](knapp:)`) and live blocks are supported. | `Hjelpebibliotek`, `HjelpRenderer` | — | specs/016 R1, R5 |
+| F-HJELP-05 | Månedsrutinen as a path | Six numbered steps with «Steg n av N», a progress strip and Forrige/Neste. | `meny.yml` (`sti: true`) | LESER | specs/016 FR-010 |
+| F-HJELP-06 | Lifecycle state rows | Run and price-version lifecycles as script-free state rows. | blocks `livslop-kjoring`, `livslop-prisversjon` | LESER | specs/016 FR-011 |
+| F-HJELP-07 | Kontrollfunn reference | Every `Kontrollkode` with severity and definition from the enum plus a hand-written *Slik løser du det* from `kontrollfunn.yml`; linked from the Kontroller tab. | `/hjelp/oppslag/kontrollfunn` | LESER | specs/016 FR-012/013 |
+| F-HJELP-08 | Drift checks | Startup fails, and so does every integration test, when an article is missing from the menu, a link between articles or an anchor is broken, an external link is used, a block is unknown, or a control code has no solution text. `HjelpLenkerIT` checks that every link into the app matches a real GET route. | `HjelpebibliotekTest`, `HjelpLenkerIT` | — | specs/016 FR-014–017 |
+| F-HJELP-09 | Friendly 404 | An unknown address shows «Fant ikke siden» with links to Forside and Læringssenter. | `error.html` | — | specs/016 |
+| F-HJELP-10 | Help in context | *Hjelp til denne siden* on each main page links to its article; a test checks every such id exists. | `layout :: hjelp(id)` | LESER | specs/016 FR-021 |
+| F-HJELP-11 | Search | In-memory search over titles, summaries and text (title hits first, at most 20). | GET `/hjelp/sok?q=` · `Hjelpesok` | LESER | specs/016 FR-022 |
 
 ---
 

@@ -55,7 +55,8 @@ body {
     padding: 0;
     list-style: none;
 }
-.hovedmeny a {
+.hovedmeny a,
+.hjelp-lenke {
     display: block;
     padding-block: var(--ds-size-4) calc(var(--ds-size-4) - var(--ds-border-width-focus));
     border-bottom: var(--ds-border-width-focus) solid transparent;
@@ -63,19 +64,23 @@ body {
     font-weight: 500;
     text-decoration: none;
 }
-.hovedmeny a:hover {
+.hovedmeny a:hover,
+.hjelp-lenke:hover {
     color: var(--ds-color-neutral-text-default);
     border-bottom-color: var(--ds-color-neutral-border-default);
 }
-.hovedmeny a[aria-current="page"] {
+.hovedmeny a[aria-current="page"],
+.hjelp-lenke[aria-current="page"] {
     color: var(--ds-color-accent-text-default);
     border-bottom-color: var(--ds-color-accent-base-default);
 }
 @media (max-width: 40rem) {
     .merke { padding-block: var(--ds-size-3) 0; }
-    .hovedmeny a { padding-block: var(--ds-size-2) calc(var(--ds-size-2) - var(--ds-border-width-focus)); }
+    .hovedmeny a,
+    .hjelp-lenke { padding-block: var(--ds-size-2) calc(var(--ds-size-2) - var(--ds-border-width-focus)); }
 }
-.hovedmeny a:focus-visible {
+.hovedmeny a:focus-visible,
+.hjelp-lenke:focus-visible {
     outline: var(--dsc-focus-outline);
     box-shadow: var(--dsc-focus-boxShadow);
 }
@@ -288,6 +293,8 @@ pre.epost {
     /* The «Funn akseptert» checkboxes are the state, not an action: keep them on paper (specs/013). */
     .side .ds-table.funn form.aksept-skjema { display: block !important; }
     .side { max-width: none; padding: 0; }
+    .hjelp-oppsett { display: block; }
+    .hjelp-meny-stor, .hjelp-meny-liten, .hjelp-aside, .stegviser, .forrige-neste, .hjelp-lenke { display: none !important; }
 }
 
 /* Control-code explanations on Kontroller (specs/010 FR-008). */
@@ -300,3 +307,102 @@ pre.epost {
 .filterskjema .ds-field { margin: 0; flex: 0 1 12rem; }
 td.ingen-bryting { white-space: nowrap; }
 td.detaljer { overflow-wrap: anywhere; max-width: 40rem; }
+
+/* ---- Læringssenter (specs/016) ---------------------------------------------------------- */
+
+/* The Hjelp link sits at the right end of the top bar, outside the main menu. */
+.hjelp-lenke { margin-inline-start: auto; }
+
+/* Three columns: menu, article, aside. Aside moves below the article under 64rem; the menu folds
+   into «Innhold» under 48rem. minmax(0, …) keeps wide tables and code from causing sideways scroll. */
+.hjelp-oppsett {
+    display: grid;
+    grid-template-columns: 16rem minmax(0, 44rem) 14rem;
+    gap: var(--ds-size-8);
+    align-items: start;
+    margin-block-start: var(--ds-size-6);
+}
+.hjelp-oppsett > .hjelp-start { grid-column: 2 / -1; }
+.hjelp-start > * + * { margin-block-start: var(--ds-size-4); }
+.hjelp-start > .kort-rad { margin-block-start: var(--ds-size-6); }
+.hjelp-start > h2 { margin-block-start: var(--ds-size-10); }
+.hjelp-start .kort-rad { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hjelp-start .ds-list > li + li { margin-block-start: var(--ds-size-2); }
+.hjelp-meny-liten { display: none; }
+@media (max-width: 64rem) {
+    .hjelp-oppsett { grid-template-columns: 16rem minmax(0, 1fr); }
+    .hjelp-oppsett > .hjelp-aside { grid-column: 2; }
+}
+@media (max-width: 48rem) {
+    .hjelp-start .kort-rad { grid-template-columns: minmax(0, 1fr); }
+    .hjelp-oppsett { grid-template-columns: minmax(0, 1fr); gap: var(--ds-size-5); }
+    .hjelp-oppsett > .hjelp-aside,
+    .hjelp-oppsett > .hjelp-start { grid-column: 1; }
+    .hjelp-meny-stor { display: none; }
+    .hjelp-meny-liten { display: block; }
+}
+.hjelp-meny > .ds-details + .ds-details { margin-block-start: var(--ds-size-2); }
+.hjelp-liste { margin: 0; padding-inline-start: var(--ds-size-5); }
+.hjelp-liste:not(.hjelp-sti) { list-style: none; padding-inline-start: 0; }
+.hjelp-liste a[aria-current="page"] { font-weight: 600; text-decoration: none; color: var(--ds-color-accent-text-default); }
+.hjelp-gruppe { margin: var(--ds-size-3) 0 var(--ds-size-1); font-weight: 500; }
+.hjelp-aside > * + * { margin-block-start: var(--ds-size-6); }
+.hjelp-aside .ds-heading { margin-block-end: var(--ds-size-3); }
+.hjelp-aside .hjelp-liste > li + li { margin-block-start: var(--ds-size-2); }
+.hjelp-liste > li + li { margin-block-start: var(--ds-size-2); }
+.hjelp-meny .ds-details > div { padding-block-end: var(--ds-size-2); }
+.hjelp-meny-liten { margin-block-end: var(--ds-size-2); }
+
+.artikkel > * + * { margin-block-start: var(--ds-size-4); }
+.artikkel > .ingress { margin-block-start: var(--ds-size-3); }
+.artikkel > .stegviser { margin-block-start: var(--ds-size-5); }
+.artikkel > .artikkel-tekst { margin-block-start: var(--ds-size-8); }
+.artikkel > .forrige-neste { margin-block-start: var(--ds-size-10); }
+.artikkel-tekst > * + * { margin-block-start: var(--ds-size-4); }
+.artikkel-tekst > h2 { margin-block-start: var(--ds-size-10); }
+.artikkel-tekst > h2:first-child { margin-block-start: 0; }
+.artikkel-tekst > h3 { margin-block-start: var(--ds-size-6); }
+.artikkel-tekst .ds-list { margin-block-end: 0; }
+.artikkel-tekst li > .ds-list { margin-block-start: var(--ds-size-2); }
+.artikkel-tekst li > p + p { margin-block-start: var(--ds-size-2); }
+.artikkel-tekst .ds-list > li + li { margin-block-start: var(--ds-size-2); }
+.artikkel-tekst .tabell-rull { overflow-x: auto; max-width: 100%; }
+.artikkel-tekst .tabell-rull:focus-visible, .artikkel-tekst pre:focus-visible { outline: var(--dsc-focus-outline); box-shadow: var(--dsc-focus-boxShadow); }
+.artikkel-tekst code { overflow-wrap: anywhere; }
+.artikkel-tekst pre { overflow-x: auto; max-width: 100%; }
+.artikkel-tekst pre code { overflow-wrap: normal; }
+.artikkel { min-width: 0; }
+.artikkel > .oppdatert { margin-block-start: var(--ds-size-8); }
+
+/* A button name in the text: looks like a small secondary button, but does nothing. */
+.knapp {
+    display: inline-block;
+    padding: 0 var(--ds-size-2);
+    border: var(--ds-border-width-default) solid var(--ds-color-neutral-border-strong);
+    border-radius: var(--ds-border-radius-md);
+    background: var(--ds-color-neutral-surface-default);
+    color: var(--ds-color-neutral-text-default);
+    font-size: var(--ds-body-sm-font-size);
+    font-weight: 500;
+    line-height: 1.6;
+    white-space: nowrap;
+    cursor: default;
+}
+
+.stegviser li a { color: inherit; }
+.forrige-neste { display: flex; flex-wrap: wrap; gap: var(--ds-size-3) var(--ds-size-8); justify-content: space-between; }
+.forrige-neste .neste { margin-inline-start: auto; }
+
+/* Lifecycle state rows (FR-011): tags with the transition named between them. */
+.livslop { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ds-size-2) var(--ds-size-3); margin: 0; padding: 0; list-style: none; }
+.livslop li { display: flex; align-items: center; gap: var(--ds-size-2); }
+.livslop li.overgang { color: var(--ds-color-neutral-text-subtle); }
+.livslop li.overgang::before { content: "→" / ""; }
+.kontrollkoder .losning { margin-block-start: var(--ds-size-2); }
+.kontrollkoder dd { margin-block-end: var(--ds-size-4); }
+.hjelp-sok { display: flex; flex-wrap: wrap; gap: var(--ds-size-2); align-items: flex-end; margin-block-end: var(--ds-size-4); }
+.hjelp-sok .ds-field { flex: 1 1 10rem; margin: 0; }
+.sokeresultat { list-style: none; padding: 0; }
+.sokeresultat > li + li { margin-block-start: var(--ds-size-4); }
+.sokeresultat .liten { display: block; }
+.hjelp-i-kontekst { margin-block: var(--ds-size-1) 0; font-size: var(--ds-body-sm-font-size); }

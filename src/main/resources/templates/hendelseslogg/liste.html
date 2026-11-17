@@ -6,6 +6,7 @@
 <!-- The whole audit trail (specs/014, Økonomi's kickoff row 24): filters, paging and spreadsheet download. -->
 <main id="hovedinnhold" class="side" tabindex="-1" th:with="r=${resultat}, f=${filter}">
     <h1 class="ds-heading" data-size="lg">Hendelseslogg</h1>
+    <th:block th:replace="~{layout :: hjelp('slik-gjor-du/hvem-endret-hva')}"></th:block>
     <p class="ds-paragraph ingress">Alle endringer, nyeste først. Hver registerendring, import, generering,
         godkjenning, eksport og nedlasting logges automatisk. Filtrer listen, eller last den ned som regneark
         for å sortere og filtrere i Excel.</p>

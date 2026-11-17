@@ -69,7 +69,7 @@ App styles and scripts live in `css/forsystem.css` and `js/forsystem.js`.
 | [docs/08-traceability.md](docs/08-traceability.md) | Requirements traceability — every stated requirement mapped to features |
 | [docs/09-beslutningslogg.md](docs/09-beslutningslogg.md) | **Decision log** — all decisions and correspondence, chronological (Norwegian) |
 | [docs/10-presentasjon.md](docs/10-presentasjon.md) | **Presentation** — status, diagrams, roadmap for stakeholders (Norwegian) |
-| [docs/brukerveiledning.md](docs/brukerveiledning.md) | **User guide** — step-by-step onboarding for end users (Norwegian) |
+| [docs/brukerveiledning.md](docs/brukerveiledning.md) | **User guide** — now the in-app learning center (**Hjelp**, `/hjelp`); sources in `src/main/resources/hjelp/` |
 | [docs/funksjonsoversikt.md](docs/funksjonsoversikt.md) | **Feature inventory** — every function with a stable ID, for cross-referencing requirements |
 | [docs/runbook.md](docs/runbook.md) | Ops runbook — monthly procedure, re-run, DFØ errors, local demo |
 | [docs/csv-format.md](docs/csv-format.md) | Usage-import CSV contract |

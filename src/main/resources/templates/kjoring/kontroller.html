@@ -34,6 +34,8 @@
             </dl>
         </div>
     </details>
+    <p class="ds-paragraph liten bred"><a class="ds-link" th:href="@{/hjelp/oppslag/kontrollfunn}">Les mer i Læringssenteret</a>:
+        hva hver kode betyr og hvordan du løser den.</p>
     <!-- «Funn akseptert» (specs/013): a warning is ticked off by a named user before approval; a blocking
          finding cannot be — it is fixed by regenerating. Each checkbox is its own audited POST. -->
     <p class="ds-paragraph liten bred" th:if="${funnstatus.antallAapne() > 0}"
@@ -51,7 +53,7 @@
         <tr>
             <td><span class="ds-tag" data-size="sm" th:data-color="${g.blokkerende()} ? 'danger' : 'warning'"
                       th:text="${g.blokkerende()} ? 'Blokkerende' : 'Advarsel'">Blokkerende</span></td>
-            <td><code th:text="${g.kode()}">MANGLER_KUNDE</code></td>
+            <td><a class="ds-link" th:href="@{|/hjelp/oppslag/kontrollfunn#${g.kode()}|}"><code th:text="${g.kode()}">MANGLER_KUNDE</code></a></td>
             <td class="hoyre" th:text="${@tall.antall(g.antall())}">1</td>
             <td th:text="${g.eksempel()}">melding</td>
             <td class="aksept">

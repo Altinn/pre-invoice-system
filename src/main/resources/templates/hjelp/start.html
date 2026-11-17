@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Læringssenter')}"></head>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('hjelp')}"></th:block>
+<!-- Læringssenter start page (specs/016 contracts/ui.md). -->
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <nav class="ds-breadcrumbs" aria-label="Du er her:">
+        <a class="ds-link" th:href="@{/}" aria-label="Tilbake til Forside">Forside</a>
+        <ol>
+            <li><a class="ds-link" th:href="@{/}">Forside</a></li>
+            <li><a class="ds-link" aria-current="page" th:href="@{/hjelp}">Læringssenter</a></li>
+        </ol>
+    </nav>
+    <div class="hjelp-oppsett">
+        <th:block th:replace="~{hjelp/fragmenter :: meny(${gjeldende})}"></th:block>
+        <div class="hjelp-start">
+            <h1 class="ds-heading" data-size="lg">Læringssenter</h1>
+            <p class="ds-paragraph ingress" data-size="lg">Lær forsystem: hva det gjør, hvordan en måned kjøres,
+                og hva du gjør når noe stopper.</p>
+
+            <div class="kort-rad">
+                <a class="ds-card" data-variant="tinted" data-color="neutral" th:each="k : ${kort}" th:href="@{${k.url()}}">
+                    <h2 class="ds-heading" data-size="xs" th:text="${k.tittel()}">Kort</h2>
+                    <p class="ds-paragraph" data-size="sm" th:text="${k.tekst()}">Tekst.</p>
+                </a>
+            </div>
+
+            <h2 class="ds-heading" data-size="sm">Jeg vil …</h2>
+            <ul class="ds-list">
+                <li th:each="j : ${jegVil}"><a class="ds-link" th:href="@{${j.url()}}" th:text="${j.tekst()}">gjøre noe</a></li>
+            </ul>
+        </div>
+    </div>
+</main>
+</body>
+</html>
