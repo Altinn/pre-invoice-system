@@ -138,7 +138,12 @@ public final class HjelpRenderer {
 
         omskriv(dokument, seksjon, side, problemer, artikkelLenker, appLenker, lokaleAnkre, blokker);
 
-        String html = renderer.render(dokument);
+        String html = renderer.render(dokument)
+                // A scrollable table or code block must be reachable by keyboard, and a table wrapped in a
+                // scroll container keeps its table semantics (display: block on the table itself would drop them).
+                .replace("<table ", "<div class=\"tabell-rull\" role=\"region\" tabindex=\"0\" aria-label=\"Tabell\"><table ")
+                .replace("</table>", "</table></div>")
+                .replace("<pre>", "<pre tabindex=\"0\">");
         List<Overskrift> innhold = new ArrayList<>();
         Set<String> ankre = new java.util.LinkedHashSet<>();
         Matcher m = OVERSKRIFT.matcher(html);
@@ -166,6 +171,11 @@ public final class HjelpRenderer {
                     Matcher bm = BLOKK_ODELT.matcher(t.getLiteral().trim());
                     if (bm.matches()) {
                         String navn = bm.group(1).trim();
+                        if (!navn.matches("[a-z0-9-]+")) {
+                            problemer.add("ugyldig blokknavn «{{" + navn + "}}» (bare små bokstaver, tall og bindestrek)");
+                            avsnitt.unlink();
+                            return;
+                        }
                         blokker.add(navn);
                         BlokkNode b = new BlokkNode(navn);
                         avsnitt.insertBefore(b);

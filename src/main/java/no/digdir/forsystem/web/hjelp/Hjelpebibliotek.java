@@ -18,7 +18,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 import no.digdir.forsystem.billing.Kontrollkode;
-import no.digdir.forsystem.web.hjelp.Artikkel.Blokk;
+import no.digdir.forsystem.web.security.Rolle;
 import no.digdir.forsystem.web.hjelp.Artikkel.Del;
 import no.digdir.forsystem.web.hjelp.Artikkel.Html;
 import no.digdir.forsystem.web.hjelp.Artikkel.Lenke;
@@ -44,7 +44,7 @@ public class Hjelpebibliotek {
 
     static final Set<String> KJENTE_NOKLER = Set.of(
             "tittel", "sammendrag", "oppdatert", "rolle", "apne-i-appen", "apne-i-appen-tekst", "relatert", "nokkelord");
-    static final Set<String> ROLLER = Set.of("LESER", "FORVALTER", "GODKJENNER");
+    static final Set<String> ROLLER = Set.of(Rolle.LESER, Rolle.FORVALTER, Rolle.GODKJENNER);
     /** Live blocks the templates can render (hjelp/fragmenter.html, fragment {@code blokk}). */
     public static final Set<String> KJENTE_BLOKKER = Set.of("kontrollkoder", "livslop-kjoring", "livslop-prisversjon");
 
@@ -221,7 +221,7 @@ public class Hjelpebibliotek {
         } else {
             try {
                 oppdatert = LocalDate.parse(oppdatertTekst);
-                if (oppdatert.isAfter(LocalDate.now())) {
+                if (oppdatert.isAfter(LocalDate.now(java.time.ZoneId.of("Europe/Oslo")).plusDays(1))) {
                     problemer.add(fil + ": «oppdatert» (" + oppdatertTekst + ") ligger frem i tid");
                     ok = false;
                 }

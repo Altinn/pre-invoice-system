@@ -27,9 +27,6 @@ public record Meny(List<Seksjon> seksjoner, List<JegVil> jegVil) {
             return !artikkelIder().isEmpty();
         }
 
-        public boolean harGrupper() {
-            return grupper.stream().anyMatch(g -> g.tittel() != null);
-        }
     }
 
     /** @param tittel subheading in the menu, or {@code null} for an ungrouped list; ids are {@code seksjon/side} */
@@ -49,7 +46,6 @@ public record Meny(List<Seksjon> seksjoner, List<JegVil> jegVil) {
     }
 
     /** Parses {@code meny.yml}; structural problems are added to {@code problemer} rather than thrown. */
-    @SuppressWarnings("unchecked")
     static Meny les(String yaml, String fil, List<String> problemer) {
         Object rot;
         try {
@@ -97,6 +93,12 @@ public record Meny(List<Seksjon> seksjoner, List<JegVil> jegVil) {
                             problemer.add(fil + ": en gruppe i «" + id + "» må ha «artikler»");
                         }
                     }
+                }
+                if (!REKKEFOLGE.contains(id)) {
+                    problemer.add(fil + ": ukjent seksjon «" + id + "» (kjente: " + String.join(", ", REKKEFOLGE) + ")");
+                }
+                if (seksjoner.stream().anyMatch(x -> x.id().equals(id))) {
+                    problemer.add(fil + ": seksjonen «" + id + "» står flere ganger");
                 }
                 seksjoner.add(new Seksjon(id, tittel, Boolean.TRUE.equals(s.get("sti")), List.copyOf(grupper)));
             }

@@ -323,12 +323,18 @@ td.detaljer { overflow-wrap: anywhere; max-width: 40rem; }
     margin-block-start: var(--ds-size-6);
 }
 .hjelp-oppsett > .hjelp-start { grid-column: 2 / -1; }
+.hjelp-start > * + * { margin-block-start: var(--ds-size-4); }
+.hjelp-start > .kort-rad { margin-block-start: var(--ds-size-6); }
+.hjelp-start > h2 { margin-block-start: var(--ds-size-10); }
+.hjelp-start .kort-rad { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hjelp-start .ds-list > li + li { margin-block-start: var(--ds-size-2); }
 .hjelp-meny-liten { display: none; }
 @media (max-width: 64rem) {
     .hjelp-oppsett { grid-template-columns: 16rem minmax(0, 1fr); }
     .hjelp-oppsett > .hjelp-aside { grid-column: 2; }
 }
 @media (max-width: 48rem) {
+    .hjelp-start .kort-rad { grid-template-columns: minmax(0, 1fr); }
     .hjelp-oppsett { grid-template-columns: minmax(0, 1fr); gap: var(--ds-size-5); }
     .hjelp-oppsett > .hjelp-aside,
     .hjelp-oppsett > .hjelp-start { grid-column: 1; }
@@ -341,20 +347,32 @@ td.detaljer { overflow-wrap: anywhere; max-width: 40rem; }
 .hjelp-liste a[aria-current="page"] { font-weight: 600; text-decoration: none; color: var(--ds-color-accent-text-default); }
 .hjelp-gruppe { margin: var(--ds-size-3) 0 var(--ds-size-1); font-weight: 500; }
 .hjelp-aside > * + * { margin-block-start: var(--ds-size-6); }
-.hjelp-aside .ds-heading { margin-block-end: var(--ds-size-2); }
+.hjelp-aside .ds-heading { margin-block-end: var(--ds-size-3); }
+.hjelp-aside .hjelp-liste > li + li { margin-block-start: var(--ds-size-2); }
+.hjelp-liste > li + li { margin-block-start: var(--ds-size-2); }
+.hjelp-meny .ds-details > div { padding-block-end: var(--ds-size-2); }
+.hjelp-meny-liten { margin-block-end: var(--ds-size-2); }
 
 .artikkel > * + * { margin-block-start: var(--ds-size-4); }
+.artikkel > .ingress { margin-block-start: var(--ds-size-3); }
+.artikkel > .stegviser { margin-block-start: var(--ds-size-5); }
+.artikkel > .artikkel-tekst { margin-block-start: var(--ds-size-8); }
+.artikkel > .forrige-neste { margin-block-start: var(--ds-size-10); }
 .artikkel-tekst > * + * { margin-block-start: var(--ds-size-4); }
 .artikkel-tekst > h2 { margin-block-start: var(--ds-size-10); }
+.artikkel-tekst > h2:first-child { margin-block-start: 0; }
 .artikkel-tekst > h3 { margin-block-start: var(--ds-size-6); }
-.artikkel-tekst .ds-list { margin-block: 0; }
+.artikkel-tekst .ds-list { margin-block-end: 0; }
+.artikkel-tekst li > .ds-list { margin-block-start: var(--ds-size-2); }
+.artikkel-tekst li > p + p { margin-block-start: var(--ds-size-2); }
 .artikkel-tekst .ds-list > li + li { margin-block-start: var(--ds-size-2); }
-.artikkel-tekst table { display: block; overflow-x: auto; }
+.artikkel-tekst .tabell-rull { overflow-x: auto; max-width: 100%; }
+.artikkel-tekst .tabell-rull:focus-visible, .artikkel-tekst pre:focus-visible { outline: var(--dsc-focus-outline); box-shadow: var(--dsc-focus-boxShadow); }
 .artikkel-tekst code { overflow-wrap: anywhere; }
 .artikkel-tekst pre { overflow-x: auto; max-width: 100%; }
 .artikkel-tekst pre code { overflow-wrap: normal; }
 .artikkel { min-width: 0; }
-.artikkel .oppdatert { margin-block-start: var(--ds-size-10); }
+.artikkel > .oppdatert { margin-block-start: var(--ds-size-8); }
 
 /* A button name in the text: looks like a small secondary button, but does nothing. */
 .knapp {

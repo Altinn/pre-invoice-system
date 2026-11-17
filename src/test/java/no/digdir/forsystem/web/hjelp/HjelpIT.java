@@ -42,6 +42,12 @@ class HjelpIT extends IntegrationTest {
         bibliotek.jegVil().forEach(j -> assertThat(html).contains("href=\"/hjelp/" + j.artikkelId() + "\""));
         // The menu is there, but no article is current.
         assertThat(html).contains("aria-label=\"Læringssenter\"").doesNotContain("aria-current=\"page\" href=\"/hjelp/");
+        // Each card leads to a real article, not the start page or a 404.
+        for (String kort : new String[] {"kom-i-gang", "manedsrutinen", "nar-noe-gar-galt", "oppslag/kontrollfunn"}) {
+            String mal = kort.contains("/") ? "/hjelp/" + kort : bibliotek.forsteI(kort).orElseThrow().url();
+            assertThat(html).contains("href=\"" + mal + "\"");
+            hent(mal);
+        }
         assertThat(currentLenker(html)).as("only the Hjelp link and the breadcrumb are current").allMatch("/hjelp"::equals);
     }
 

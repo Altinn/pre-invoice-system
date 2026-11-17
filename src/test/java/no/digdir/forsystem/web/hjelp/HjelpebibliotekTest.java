@@ -36,16 +36,16 @@ class HjelpebibliotekTest {
     }
 
     private void gyldigBibliotek() throws IOException {
-        skriv("a/en.md", GYLDIG);
-        skriv("a/to.md", GYLDIG.replace("En artikkel", "To"));
+        skriv("kom-i-gang/en.md", GYLDIG);
+        skriv("kom-i-gang/to.md", GYLDIG.replace("En artikkel", "To"));
         skriv("meny.yml", """
                 seksjoner:
-                  - id: a
+                  - id: kom-i-gang
                     tittel: A
                     artikler: [en, to]
                 jeg-vil:
                   - tekst: gjøre noe
-                    artikkel: a/en
+                    artikkel: kom-i-gang/en
                 """);
         skriv("kontrollfunn.yml", EnumSet.allOf(Kontrollkode.class).stream()
                 .map(k -> k.name() + ": Rett det.").collect(Collectors.joining("\n")));
@@ -65,92 +65,92 @@ class HjelpebibliotekTest {
         gyldigBibliotek();
         Hjelpebibliotek b = new Hjelpebibliotek(katalog);
         assertThat(b.alle()).hasSize(2);
-        assertThat(b.artikkel("a", "en")).isPresent();
+        assertThat(b.artikkel("kom-i-gang", "en")).isPresent();
         assertThat(b.kontrollfunn()).hasSize(Kontrollkode.values().length);
     }
 
     @Test
     void manglendeTittel() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG.replace("tittel: En artikkel\n", ""));
-        forventFeil("a/en.md", "«tittel» mangler");
+        skriv("kom-i-gang/en.md", GYLDIG.replace("tittel: En artikkel\n", ""));
+        forventFeil("kom-i-gang/en.md", "«tittel» mangler");
     }
 
     @Test
     void ukjentFrontMatterNokkel() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG.replace("---\n##", "titel: feil\n---\n##"));
-        forventFeil("a/en.md", "ukjent front matter-nøkkel «titel»");
+        skriv("kom-i-gang/en.md", GYLDIG.replace("---\n##", "titel: feil\n---\n##"));
+        forventFeil("kom-i-gang/en.md", "ukjent front matter-nøkkel «titel»");
     }
 
     @Test
     void oppdatertIFremtiden() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG.replace("2026-11-01", "2999-01-01"));
-        forventFeil("a/en.md", "frem i tid");
+        skriv("kom-i-gang/en.md", GYLDIG.replace("2026-11-01", "2999-01-01"));
+        forventFeil("kom-i-gang/en.md", "frem i tid");
     }
 
     @Test
     void artikkelUtenMenyoppforing() throws IOException {
         gyldigBibliotek();
-        skriv("a/tre.md", GYLDIG);
-        forventFeil("a/tre.md", "står ikke i meny.yml");
+        skriv("kom-i-gang/tre.md", GYLDIG);
+        forventFeil("kom-i-gang/tre.md", "står ikke i meny.yml");
     }
 
     @Test
     void menyoppforingUtenFil() throws IOException {
         gyldigBibliotek();
-        Files.delete(katalog.resolve("a/to.md"));
-        forventFeil("meny.yml", "a/to", "finnes ikke");
+        Files.delete(katalog.resolve("kom-i-gang/to.md"));
+        forventFeil("meny.yml", "kom-i-gang/to", "finnes ikke");
     }
 
     @Test
     void artikkelListetToGanger() throws IOException {
         gyldigBibliotek();
         skriv("meny.yml", Files.readString(katalog.resolve("meny.yml")).replace("[en, to]", "[en, to, en]"));
-        forventFeil("meny.yml", "a/en", "2 ganger");
+        forventFeil("meny.yml", "kom-i-gang/en", "2 ganger");
     }
 
     @Test
     void odelagtMdLenke() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG + "\nSe [x](finnes-ikke.md).\n");
-        forventFeil("a/en.md", "a/finnes-ikke.md", "ikke finnes");
+        skriv("kom-i-gang/en.md", GYLDIG + "\nSe [x](finnes-ikke.md).\n");
+        forventFeil("kom-i-gang/en.md", "kom-i-gang/finnes-ikke.md", "ikke finnes");
     }
 
     @Test
     void odelagtAnker() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG + "\nSe [x](to.md#ingen-slik).\n");
-        forventFeil("a/en.md", "to.md#ingen-slik");
+        skriv("kom-i-gang/en.md", GYLDIG + "\nSe [x](to.md#ingen-slik).\n");
+        forventFeil("kom-i-gang/en.md", "to.md#ingen-slik");
     }
 
     @Test
     void lenkeTilGyldigAnkerGaar() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG + "\nSe [x](to.md#del-en) og [y](#del-en).\n");
+        skriv("kom-i-gang/en.md", GYLDIG + "\nSe [x](to.md#del-en) og [y](#del-en).\n");
         new Hjelpebibliotek(katalog);
     }
 
     @Test
     void eksternLenke() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG + "\nSe [x](https://example.com).\n");
-        forventFeil("a/en.md", "ekstern lenke");
+        skriv("kom-i-gang/en.md", GYLDIG + "\nSe [x](https://example.com).\n");
+        forventFeil("kom-i-gang/en.md", "ekstern lenke");
     }
 
     @Test
     void ukjentBlokk() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG + "\n{{finnes-ikke}}\n");
-        forventFeil("a/en.md", "ukjent blokk", "finnes-ikke");
+        skriv("kom-i-gang/en.md", GYLDIG + "\n{{finnes-ikke}}\n");
+        forventFeil("kom-i-gang/en.md", "ukjent blokk", "finnes-ikke");
     }
 
     @Test
     void tomKnappetekst() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG + "\nTrykk [](knapp:).\n");
-        forventFeil("a/en.md", "knapp:");
+        skriv("kom-i-gang/en.md", GYLDIG + "\nTrykk [](knapp:).\n");
+        forventFeil("kom-i-gang/en.md", "knapp:");
     }
 
     @Test
@@ -171,23 +171,30 @@ class HjelpebibliotekTest {
     @Test
     void jegVilPekerUtIntet() throws IOException {
         gyldigBibliotek();
-        skriv("meny.yml", Files.readString(katalog.resolve("meny.yml")).replace("artikkel: a/en", "artikkel: a/nei"));
-        forventFeil("meny.yml", "jeg-vil", "a/nei");
+        skriv("meny.yml", Files.readString(katalog.resolve("meny.yml")).replace("artikkel: kom-i-gang/en", "artikkel: kom-i-gang/nei"));
+        forventFeil("meny.yml", "jeg-vil", "kom-i-gang/nei");
     }
 
     @Test
     void relatertPekerUtIntet() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG.replace("---\n##", "relatert: [a/nei]\n---\n##"));
-        forventFeil("a/en.md", "relatert", "a/nei");
+        skriv("kom-i-gang/en.md", GYLDIG.replace("---\n##", "relatert: [kom-i-gang/nei]\n---\n##"));
+        forventFeil("kom-i-gang/en.md", "relatert", "kom-i-gang/nei");
     }
 
     @Test
     void alleProblemerRapporteresSamlet() throws IOException {
         gyldigBibliotek();
-        skriv("a/en.md", GYLDIG.replace("tittel: En artikkel\n", ""));
-        skriv("a/to.md", GYLDIG + "\n[x](https://example.com)\n");
-        forventFeil("a/en.md", "a/to.md");
+        skriv("kom-i-gang/en.md", GYLDIG.replace("tittel: En artikkel\n", ""));
+        skriv("kom-i-gang/to.md", GYLDIG + "\n[x](https://example.com)\n");
+        forventFeil("kom-i-gang/en.md", "kom-i-gang/to.md");
+    }
+
+    @Test
+    void ukjentSeksjonErFeil() throws IOException {
+        gyldigBibliotek();
+        skriv("meny.yml", Files.readString(katalog.resolve("meny.yml")).replace("id: kom-i-gang\n", "id: finnes-ikke\n"));
+        forventFeil("meny.yml", "ukjent seksjon «finnes-ikke»");
     }
 
     @Test
@@ -195,10 +202,10 @@ class HjelpebibliotekTest {
         gyldigBibliotek();
         skriv("meny.yml", Files.readString(katalog.resolve("meny.yml")).replace("tittel: A\n", "tittel: A\n    sti: true\n"));
         Hjelpebibliotek b = new Hjelpebibliotek(katalog);
-        var steg = b.artikkel("a", "to").orElseThrow().steg();
+        var steg = b.artikkel("kom-i-gang", "to").orElseThrow().steg();
         assertThat(steg.nr()).isEqualTo(2);
         assertThat(steg.av()).isEqualTo(2);
-        assertThat(steg.forrige().url()).isEqualTo("/hjelp/a/en");
+        assertThat(steg.forrige().url()).isEqualTo("/hjelp/kom-i-gang/en");
         assertThat(steg.neste()).isNull();
     }
 
