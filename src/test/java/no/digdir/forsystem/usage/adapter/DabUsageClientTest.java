@@ -46,6 +46,7 @@ class DabUsageClientTest {
     @Test
     void sendsBearerTokenWhenAuthConfigured() {
         server.expect(requestTo(FORVENTET)).andExpect(header("Authorization", "Bearer tok"))
+                .andExpect(header("X-MS-API-ROLE", "Usage.Read"))
                 .andRespond(withSuccess("{\"value\":[]}", MediaType.APPLICATION_JSON));
         klient(() -> "tok").hentMaaned(JAN);
         server.verify();
@@ -64,7 +65,7 @@ class DabUsageClientTest {
 
     static DwhEgenskaper egenskaper() {
         return new DwhEgenskaper(true, "https://dwh.test", "mv_altinn_usage_monthly", 100000, "none",
-                "api://dwh/.default", Duration.ofSeconds(5), Duration.ofSeconds(60), 50,
+                "api://dwh/.default", "Usage.Read", Duration.ofSeconds(5), Duration.ofSeconds(60), 50,
                 new DwhEgenskaper.Planlegging(false, "0 0 6 7 * *"));
     }
 }

@@ -39,6 +39,9 @@ final class DabUsageClient implements DwhUsageClient {
                     .headers(h -> {
                         if (tokens != null) {
                             h.set(HttpHeaders.AUTHORIZATION, "Bearer " + tokens.token());
+                            if (egenskaper.rolle() != null && !egenskaper.rolle().isBlank()) {
+                                h.set("X-MS-API-ROLE", egenskaper.rolle());
+                            }
                         }
                     })
                     .exchange((req, res) -> {

@@ -15,6 +15,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param maksRader             {@code $first} — the whole month must fit in one response (OQ-19)
  * @param auth                  {@code none} or {@code entra} (workload identity token, OQ-19)
  * @param scope                 token scope when {@code auth=entra}, e.g. {@code api://<app-id>/.default}
+ * @param rolle                 app role to act as, sent as {@code X-MS-API-ROLE} when {@code auth=entra}: DAB only
+ *                              applies a role permission (here {@code Usage.Read}) when the caller names it
  * @param tilkoblingTimeout     connect timeout
  * @param lesTimeout            read timeout
  * @param avviksgrenseProsent   warn when a product's monthly total deviates more than this from last month
@@ -28,6 +30,7 @@ public record DwhEgenskaper(
         @DefaultValue("100000") int maksRader,
         @DefaultValue("none") String auth,
         String scope,
+        @DefaultValue("Usage.Read") String rolle,
         @DefaultValue("5s") Duration tilkoblingTimeout,
         @DefaultValue("60s") Duration lesTimeout,
         @DefaultValue("50") int avviksgrenseProsent,
