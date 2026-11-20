@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Build and push edge syncroot artifact
         uses: Altinn/altinn-platform/actions/flux/build-push-image@cc2d766fe7dd2e9d96737a30e965399832728598 # main
