@@ -66,6 +66,8 @@ forsystem:
     # none | entra (workload-identity token; required once the DWH closes the API, OQ-19)
     auth: ${DWH_AUTH:none}
     scope: ${DWH_SCOPE:}
+    # DAB applies the Usage.Read permission only when the caller names the role (X-MS-API-ROLE)
+    rolle: ${DWH_ROLE:Usage.Read}
     planlegging:
       # Stage the previous month at 06:00 on the 7th (Europe/Oslo). Never commits.
       enabled: ${FORSYSTEM_DWH_PLANLEGGING:false}
