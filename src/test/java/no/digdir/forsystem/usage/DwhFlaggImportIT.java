@@ -39,6 +39,7 @@ class DwhFlaggImportIT extends IntegrationTest {
     @Autowired KundeRepository kunder;
     @Autowired BruksdataImportRepository importer;
     @Autowired BruksdataRepository bruksdata;
+    @Autowired no.digdir.forsystem.common.HendelsesloggRepository hendelser;
 
     private void kobleProdukter() {
         koble("Autorisasjon", "autorisasjon", "BRUKSVOLUM");
@@ -177,5 +178,55 @@ class DwhFlaggImportIT extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("ugyldig organisasjonsnummer på rad merket")))
                 .andExpect(content().string(Matchers.containsString("Import er ikke mulig")));
+    }
+
+    @Test
+    void previewShowsTheFileReportAndConfirmAuditsTheCounts() throws Exception {
+        kobleProdukter();
+        MockHttpSession session = new MockHttpSession();
+
+        mvc.perform(multipart("/bruksdata/last-opp").file(fil(FlaggFiksturer.bytes())).param("periode", "2026-10")
+                        .session(session).with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Innholdet i fila")))
+                .andExpect(content().string(Matchers.containsString("Kontrollsum")))
+                .andExpect(content().string(Matchers.containsString("Utelatt av datavarehuset")));
+        mvc.perform(post("/bruksdata/bekreft").session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+
+        var rapport = DwhCsv.lesFil(FlaggFiksturer.bytes(), new no.digdir.forsystem.common.Periode(
+                java.time.LocalDate.of(2026, 10, 1))).rapport();
+        String detaljer = hendelser.findTop200ByOrderByTidspunktDescIdDesc().stream()
+                .filter(h -> "IMPORTERTE".equals(h.handling())).findFirst().orElseThrow().detaljer().json();
+        assertThat(detaljer).contains("\"brukte\": " + rapport.brukt(), "\"utelatt\": " + rapport.utelatt(),
+                "\"dpv\": " + rapport.dpv(), "\"utenforPerioden\": " + rapport.utenforPerioden());
+    }
+
+    @Test
+    void invalidAndBlankFlagValuesAreRejectedWithLineColumnAndValue() throws Exception {
+        kobleProdukter();
+        String tekst = new String(FlaggFiksturer.bytes(), java.nio.charset.StandardCharsets.UTF_8)
+                + "\"123456789\",\"x\",\"Autorisasjon\",5,NULL,\"2026-10-03\",\"t\",NULL,NULL,NULL,NULL,2,0,\"r\"\n"
+                + "\"123456789\",\"x\",\"Autorisasjon\",5,NULL,\"2026-10-03\",\"t\",NULL,NULL,NULL,NULL,,0,\"r\"\n";
+        mvc.perform(multipart("/bruksdata/last-opp")
+                        .file(fil(tekst.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                        .param("periode", "2026-10").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("kolonne flag_inv_altinn: ugyldig verdi «2»")))
+                .andExpect(content().string(Matchers.containsString("kolonne flag_inv_altinn: tom verdi")))
+                .andExpect(content().string(Matchers.containsString("Import er ikke mulig")));
+    }
+
+    @Test
+    void unmappedProductNameOnAUsedRowPointsToKildenavn() throws Exception {
+        kobleProdukter();
+        String tekst = new String(FlaggFiksturer.bytes(), java.nio.charset.StandardCharsets.UTF_8)
+                + "\"123456789\",\"x\",\"Helt nytt produkt\",5,NULL,\"2026-10-03\",\"t\",NULL,NULL,NULL,NULL,1,0,\"r\"\n";
+        mvc.perform(multipart("/bruksdata/last-opp")
+                        .file(fil(tekst.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
+                        .param("periode", "2026-10").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Helt nytt produkt")))
+                .andExpect(content().string(Matchers.containsString("Kildenavn")));
     }
 }

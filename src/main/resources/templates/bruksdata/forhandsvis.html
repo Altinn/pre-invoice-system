@@ -67,6 +67,65 @@
         </div>
     </div>
 
+    <!-- Flagged datavarehus export (specs/017): what became of every row of the file. -->
+    <div class="seksjon" th:if="${fv.filrapport() != null}" th:with="r=${fv.filrapport()}">
+        <h2 class="ds-heading" data-size="xs">Innholdet i fila</h2>
+        <table class="ds-table" data-size="sm" id="filrapport">
+            <thead><tr><th>Gruppe</th><th class="hoyre">Rader</th><th>Volum per produkt</th></tr></thead>
+            <tbody>
+            <tr>
+                <td>Brukt (merket for Altinn-fakturering)</td>
+                <td class="hoyre" th:text="${@tall.antall(r.brukt())}">0</td>
+                <td><span th:each="v, i : ${r.volum().get(T(no.digdir.forsystem.usage.DwhRadklasse).BRUKT)}"
+                          th:text="|${v.key}: ${@tall.mengde(v.value)}${i.last ? '' : ' · '}|"></span></td>
+            </tr>
+            <tr>
+                <td>Utenfor perioden</td>
+                <td class="hoyre" th:text="${@tall.antall(r.utenforPerioden())}">0</td>
+                <td><span th:each="m, i : ${r.utenforPerMaaned()}"
+                          th:text="|${m.key}: ${@tall.antall(m.value)} rader${i.last ? '' : ' · '}|"></span></td>
+            </tr>
+            <tr>
+                <td>DPV (ikke fakturert her)</td>
+                <td class="hoyre" th:text="${@tall.antall(r.dpv())}">0</td>
+                <td><span th:each="v, i : ${r.volum().get(T(no.digdir.forsystem.usage.DwhRadklasse).DPV)}"
+                          th:text="|${v.key}: ${@tall.mengde(v.value)}${i.last ? '' : ' · '}|"></span></td>
+            </tr>
+            <tr>
+                <td>Utelatt av datavarehuset</td>
+                <td class="hoyre" th:text="${@tall.antall(r.utelatt())}">0</td>
+                <td><span th:each="v, i : ${r.volum().get(T(no.digdir.forsystem.usage.DwhRadklasse).EKSKLUDERT)}"
+                          th:text="|${v.key}: ${@tall.mengde(v.value)}${i.last ? '' : ' · '}|"></span></td>
+            </tr>
+            <tr th:if="${r.avvist() > 0}">
+                <td>Avvist av lesingen</td>
+                <td class="hoyre" th:text="${@tall.antall(r.avvist())}">0</td>
+                <td>Se «Avviste rader» under.</td>
+            </tr>
+            </tbody>
+            <tfoot>
+            <tr>
+                <th>Kontrollsum</th>
+                <th class="hoyre" th:text="${@tall.antall(r.totalt())}">0</th>
+                <th th:text="${r.balanserer()} ? |Brukt + utenfor perioden + DPV + utelatt + avvist = ${@tall.antall(r.totalt())} rader i fila| : 'Radene balanserer ikke mot fila'">Balanserer</th>
+            </tr>
+            </tfoot>
+        </table>
+        <details th:if="${!r.utelattPerArsak().isEmpty()}">
+            <summary>Utelatt per årsak og organisasjon</summary>
+            <table class="ds-table" data-size="sm">
+                <thead><tr><th>Årsak oppgitt av datavarehuset</th><th class="hoyre">Rader</th></tr></thead>
+                <tbody><tr th:each="a : ${r.utelattPerArsak()}">
+                    <td th:text="${a.key}">årsak</td><td class="hoyre" th:text="${@tall.antall(a.value)}">1</td></tr></tbody>
+            </table>
+            <table class="ds-table" data-size="sm">
+                <thead><tr><th>Organisasjon</th><th class="hoyre">Utelatt volum</th></tr></thead>
+                <tbody><tr th:each="o, i : ${r.utelattVolumPerOrg()}" th:if="${i.index < 20}">
+                    <td th:text="${o.key}">orgnr</td><td class="hoyre" th:text="${@tall.mengde(o.value)}">1</td></tr></tbody>
+            </table>
+        </details>
+    </div>
+
     <h2 class="ds-heading" data-size="xs">Summer per produkt</h2>
     <table class="ds-table" data-size="sm" data-hover>
         <thead>

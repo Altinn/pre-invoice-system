@@ -1,7 +1,7 @@
 ---
 tittel: Last opp bruksdata fra en fil
 sammendrag: Slik laster du opp en CSV-fil med bruk for en måned, leser forhåndsvisningen og bekrefter importen.
-oppdatert: 2026-11-17
+oppdatert: 2026-11-23
 rolle: FORVALTER
 apne-i-appen: /bruksdata
 apne-i-appen-tekst: Åpne Bruksdata
@@ -35,10 +35,23 @@ Alle detaljer står i [CSV-format](../oppslag/csv-format.md). SMS- og Azure-rade
    - **Summer per produkt**: antall rader og summer. Sammenlign med fila.
    - **Avviste rader**: hver feil med linjenummer og årsak, for eksempel ukjent produktkode, ugyldig organisasjonsnummer, feil periode, duplikat eller negativ verdi.
    - **Advarsler**: avvik du bør se på, for eksempel at et produkt har endret seg mye fra forrige måned. De hindrer ikke import.
+   - **Innholdet i fila** (kun datavarehusets eksport med flagg): hva som skjedde med hver rad i fila. Se under.
 5. Er alt i orden, trykker du [Bekreft import](knapp:). Vil du avbryte, trykker du [Avbryt](knapp:).
 
 > [!WARNING]
 > En bekreftet import kan ikke slettes eller endres. Sjekk summene før du bekrefter.
+
+## Eksport med flagg fra datavarehuset
+
+Har eksporten kolonnen `flag_inv_altinn`, er det datavarehuset som avgjør hva som skal faktureres. Forsystem bruker bare rader med flagget 1 som ligger i måneden du valgte. Resten telles og vises i «Innholdet i fila»:
+
+- **Brukt**: rader merket for Altinn-fakturering i perioden.
+- **Utenfor perioden**: rader fra andre måneder. Det er ikke en feil. Last fila opp én gang per måned.
+- **DPV (ikke fakturert her)**: rader med DPV-flagg.
+- **Utelatt av datavarehuset**: rader uten flagg, med datavarehusets egen årsak (kolonnen `regel`).
+- **Kontrollsum**: summen av gruppene er alltid lik antall rader i fila. Stemmer den ikke, er noe galt med fila.
+
+Er flagget noe annet enn 0 eller 1, eller tomt, avvises raden med linjenummer, kolonne og verdi. Har en rad som skal brukes et produktnavn forsystem ikke kjenner, står det hvilket navn du må koble under Produkter → Kildenavn.
 
 ## Alt eller ingenting
 

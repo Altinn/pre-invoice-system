@@ -42,10 +42,10 @@ Paths: `U` = `src/main/java/no/digdir/forsystem/usage`, `T` = `src/test/java/no/
 **Goal**: preview shows used / other months / DPV / excluded with a balancing control sum.
 **Independent test**: report counts equal counts computed independently from the fixture; sum equals total rows (SC-003).
 
-- [ ] T015 [US2] Fill `DwhFilrapport` in the reader/service: per-class counts, other-month counts per month, volume per product and class, excluded per verbatim `regel` reason, top excluded organisations incl. «ukjent orgnr»
-- [ ] T016 [US2] Render the report in `R/templates/bruksdata/forhandsvis.html` per contracts/upload-ui.md (including kontrollsum line); keep Thymeleaf conventions checked by `TemplateKonvensjonTest`
-- [ ] T017 [P] [US2] Test `T/DwhFilrapportTest.java`: counts, kontrollsum, unknown `regel` tokens passed through unchanged (FR-013)
-- [ ] T018 [US2] Add `brukte`/`utelatt`/`dpv`/`utenforPerioden` counts to the `IMPORTERTE` audit details in `U/UsageImportService.java` (FR-015) and assert it in `T/DwhFlaggImportIT.java`
+- [x] T015 [US2] Fill `DwhFilrapport` in the reader/service: per-class counts, other-month counts per month, volume per product and class, excluded per verbatim `regel` reason, top excluded organisations incl. «ukjent orgnr»
+- [x] T016 [US2] Render the report in `R/templates/bruksdata/forhandsvis.html` per contracts/upload-ui.md (including kontrollsum line); keep Thymeleaf conventions checked by `TemplateKonvensjonTest`
+- [x] T017 [P] [US2] Test `T/DwhFilrapportTest.java`: counts, kontrollsum, unknown `regel` tokens passed through unchanged (FR-013)
+- [x] T018 [US2] Add `brukte`/`utelatt`/`dpv`/`utenforPerioden` counts to the `IMPORTERTE` audit details in `U/UsageImportService.java` (FR-015) and assert it in `T/DwhFlaggImportIT.java`
 
 ## Phase 5: User Story 3 — Trace usage back to DWH sources (P2)
 
@@ -62,8 +62,8 @@ Paths: `U` = `src/main/java/no/digdir/forsystem/usage`, `T` = `src/test/java/no/
 
 **Independent test**: flag `2`/blank and a new product name each give a clear, line-numbered message.
 
-- [ ] T024 [US4] Make the reject messages precise (line, column, value) for bad/blank flag values in `U/DwhCsv.java`; reuse the existing «legg inn kobling under Produkter → Kildenavn» text for new product names
-- [ ] T025 [P] [US4] Tests in `T/DwhCsvFlaggTest.java` and `T/DwhFlaggImportIT.java` for both cases, plus header with `flag_inv_dpv` but no `flag_inv_altinn` ⇒ legacy behaviour with a warning (plan R/Design)
+- [x] T024 [US4] Make the reject messages precise (line, column, value) for bad/blank flag values in `U/DwhCsv.java`; reuse the existing «legg inn kobling under Produkter → Kildenavn» text for new product names
+- [x] T025 [P] [US4] Tests in `T/DwhCsvFlaggTest.java` and `T/DwhFlaggImportIT.java` for both cases, plus header with `flag_inv_dpv` but no `flag_inv_altinn` ⇒ legacy behaviour with a warning (plan R/Design)
 
 ## Phase 7: Polish & cross-cutting
 

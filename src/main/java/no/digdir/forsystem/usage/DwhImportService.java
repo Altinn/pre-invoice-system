@@ -149,7 +149,8 @@ public class DwhImportService {
                     + " i andre måneder, " + fil.rapport().dpv() + " DPV og " + fil.rapport().utelatt()
                     + " utelatt av datavarehuset.");
         }
-        Forhaandsvisning fv = bygg(periode, filnavn, fil.brukte(), fil.avviste(), raadata, stagetImportId);
+        Forhaandsvisning fv = bygg(periode, filnavn, fil.brukte(), fil.avviste(), fil.advarsler(), raadata,
+                stagetImportId);
         return fil.flagget() ? fv.medFil(fil.rapport(), fv.kildegrupper()) : fv;
     }
 
@@ -226,20 +227,23 @@ public class DwhImportService {
         if (flagget != null) {
             return fraFil(periode, filnavn(periode), flagget, raadata, stagetImportId);
         }
-        return bygg(periode, filnavn(periode), DwhRespons.les(raadata.innhold()), List.of(), raadata, stagetImportId);
+        return bygg(periode, filnavn(periode), DwhRespons.les(raadata.innhold()), List.of(), List.of(), raadata,
+                stagetImportId);
     }
 
     /** {@code lesAvviste}: rows the file reader already rejected, merged into the staging report. */
     private Forhaandsvisning bygg(Periode periode, String filnavn, List<DwhRad> rader, List<AvvistRad> lesAvviste,
-                                  Raadata raadata, Long stagetImportId) {
+                                  List<String> lesAdvarsler, Raadata raadata, Long stagetImportId) {
         if (rader.isEmpty() && lesAvviste.isEmpty()) {
             throw new Regelbrudd("Ingen bruksdata i datavarehus for " + periode.norskLabel() + " ennå");
         }
         DwhAggregering.Resultat agg = DwhAggregering.aggreger(periode, rader, kobling());
         List<AvvistRad> avviste = new ArrayList<>(lesAvviste);
         avviste.addAll(agg.avviste());
+        List<String> advarsler = new ArrayList<>(lesAdvarsler);
+        advarsler.addAll(kryssjekkKunderegister(rader));
         return usage.vurder(periode, filnavn, Kilde.DWH, agg.rader(), avviste,
-                kryssjekkKunderegister(rader), raadata, stagetImportId)
+                advarsler, raadata, stagetImportId)
                 .medFil(null, agg.kildegrupper());
     }
 

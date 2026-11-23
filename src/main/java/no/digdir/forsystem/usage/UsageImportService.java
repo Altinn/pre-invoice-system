@@ -182,6 +182,13 @@ public class UsageImportService {
         detaljer.put("filnavn", fv.filnavn());
         detaljer.put("kilde", fv.kilde().name());
         detaljer.put("antall", fv.antallGyldige());
+        if (fv.filrapport() != null) {
+            DwhFilrapport fr = fv.filrapport();
+            detaljer.put("brukte", fr.brukt());
+            detaljer.put("utelatt", fr.utelatt());
+            detaljer.put("dpv", fr.dpv());
+            detaljer.put("utenforPerioden", fr.utenforPerioden());
+        }
         if (lagret.harRaadata()) {
             detaljer.put("raadataSha256", lagret.raadataSha256());
         }

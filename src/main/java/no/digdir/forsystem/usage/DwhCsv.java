@@ -63,7 +63,7 @@ public final class DwhCsv {
      * {@code rapport} is null for an older export; {@code kunder} come from the used rows only.
      */
     public record Fil(boolean flagget, List<DwhRad> brukte, List<AvvistRad> avviste, DwhFilrapport rapport,
-                      List<KundeIFil> kunder) {
+                      List<KundeIFil> kunder, List<String> advarsler) {
     }
 
     private DwhCsv() {
@@ -272,8 +272,9 @@ public final class DwhCsv {
             if ("0".equals(v)) {
                 return Boolean.FALSE;
             }
-            avviste.add(new AvvistRad("linje " + linje, "ugyldig " + kolonne + ": «" + (v == null ? "" : v)
-                    + "» (forventet 0 eller 1)"));
+            avviste.add(new AvvistRad("linje " + linje, "kolonne " + kolonne + ": "
+                    + (v == null || v.isEmpty() ? "tom verdi" : "ugyldig verdi «" + v + "»")
+                    + " (forventet 0 eller 1)"));
             return null;
         }
 
@@ -291,7 +292,11 @@ public final class DwhCsv {
                     ? new DwhFilrapport(totalt, antallBrukt, utenfor, dpv, utelatt, avviste.size(),
                             utenforPerMaaned, volum, arsaker, utelattPerOrg)
                     : null;
-            return new Fil(flagget, brukte, avviste, rapport, List.copyOf(kunder.values()));
+            List<String> advarsler = !flagget && hode.contains(FLAGG_DPV)
+                    ? List.of("Fila har " + FLAGG_DPV + " men ikke " + FLAGG_ALTINN
+                            + ": den leses som en eksport uten flagg, og alle rader brukes.")
+                    : List.of();
+            return new Fil(flagget, brukte, avviste, rapport, List.copyOf(kunder.values()), advarsler);
         }
     }
 
