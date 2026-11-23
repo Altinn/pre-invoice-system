@@ -15,6 +15,11 @@ spring:
   threads:
     virtual:
       enabled: true
+  servlet:
+    # The datavarehus's three-month export is ~30 MB (specs/017); Spring's default is 1 MB per file.
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
 
 # Structured JSON logs on stdout (ECS layout), consumable by any log platform (docs/02).
 logging:

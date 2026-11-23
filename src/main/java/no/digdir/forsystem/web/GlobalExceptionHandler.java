@@ -29,6 +29,14 @@ class GlobalExceptionHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    String forStorFil(HttpServletRequest request, Model model) {
+        model.addAttribute("melding", "Fila er for stor. Grensen er 100 MB; eksporten fra datavarehuset for tre måneder er rundt 30 MB.");
+        model.addAttribute("tilbake", tilbake(request));
+        return "feil";
+    }
+
     @ExceptionHandler(Regelbrudd.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     String regelbrudd(Regelbrudd e, Model model, HttpServletRequest request, HttpServletResponse response) {

@@ -144,12 +144,12 @@ class BruksdataController {
         if (!(session.getAttribute(DWH_FIL) instanceof DwhFil f)) {
             throw new Regelbrudd("Ingen opplastet datavarehus-fil. Last den opp på nytt.");
         }
-        return visDwhFil(session, model, dwh.opprettManglendeKunder(f.innhold()));
+        return visDwhFil(session, model, dwh.opprettManglendeKunder(f.innhold(), f.periode()));
     }
 
     private String visDwhFil(HttpSession session, Model model, DwhImportService.Kundeoppretting resultat) {
         DwhFil f = (DwhFil) session.getAttribute(DWH_FIL);
-        model.addAttribute("manglendeKunder", dwh.manglendeKunder(f.innhold()));
+        model.addAttribute("manglendeKunder", dwh.manglendeKunder(f.innhold(), f.periode()));
         model.addAttribute("kundeoppretting", resultat);
         Forhaandsvisning fv = dwh.forhaandsvisFil(f.periode(), f.filnavn(), f.innhold());
         var kandidat = kandidater.opprettHvisEksportert(fv);

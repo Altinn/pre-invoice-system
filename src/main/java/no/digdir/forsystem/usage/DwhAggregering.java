@@ -24,7 +24,7 @@ final class DwhAggregering {
     record Maal(String produktkode, Bruksdatatype type) {
     }
 
-    record Resultat(List<RaaBruksrad> rader, List<AvvistRad> avviste) {
+    record Resultat(List<RaaBruksrad> rader, List<AvvistRad> avviste, List<DwhKildegruppe> kildegrupper) {
     }
 
     private DwhAggregering() {
@@ -34,6 +34,7 @@ final class DwhAggregering {
         Map<String, BigDecimal> summer = new LinkedHashMap<>();
         Map<String, String[]> nøkkelDeler = new LinkedHashMap<>();
         Map<String, Integer> ukjente = new LinkedHashMap<>();
+        Map<String, Gruppe> grupper = new LinkedHashMap<>();
         List<AvvistRad> avviste = new ArrayList<>();
 
         for (DwhRad rad : kilde) {
@@ -54,6 +55,10 @@ final class DwhAggregering {
                     continue;
                 }
                 verdi = rad.antall();
+                if (verdi == null && rad.erFlagget()) {
+                    // A flagged row with NULL quantity is a zero-count day (specs/017).
+                    verdi = BigDecimal.ZERO;
+                }
                 if (verdi == null) {
                     avviste.add(new AvvistRad(ref, "mangler quantity"));
                     continue;
@@ -69,7 +74,20 @@ final class DwhAggregering {
                     continue;
                 }
             }
+            if (rad.erFlagget() && maal.type().erVolum() && verdi.signum() == 0) {
+                continue; // a zero day neither creates a usage row nor a source group
+            }
             String nøkkel = rad.organisasjonsnummer() + "/" + maal.produktkode() + "/" + maal.type();
+            if (rad.erFlagget()) {
+                String gnøkkel = nøkkel + "/" + rad.kildetabell() + "/" + rad.ressurs();
+                Gruppe g = grupper.computeIfAbsent(gnøkkel, k -> new Gruppe(rad.organisasjonsnummer(),
+                        maal.produktkode(), maal.type().name(), rad.kildetabell(), rad.ressurs()));
+                g.dagsrader++;
+                g.sum = g.sum.add(verdi);
+                if (rad.regel() != null) {
+                    g.regler.add(rad.regel());
+                }
+            }
             summer.merge(nøkkel, verdi, BigDecimal::add);
             nøkkelDeler.putIfAbsent(nøkkel, new String[]{rad.organisasjonsnummer(), maal.produktkode(), maal.type().name()});
         }
@@ -86,6 +104,30 @@ final class DwhAggregering {
             rader.add(new RaaBruksrad(nøkkel, periodeTekst, d[0], d[1], d[2],
                     volum ? sum.toPlainString() : null, volum ? null : sum.toPlainString()));
         });
-        return new Resultat(rader, avviste);
+        List<DwhKildegruppe> kildegrupper = grupper.values().stream()
+                .map(g -> new DwhKildegruppe(g.orgnr, g.produktkode, g.type, g.kildetabell, g.ressurs,
+                        g.dagsrader, g.sum, List.copyOf(g.regler)))
+                .toList();
+        return new Resultat(rader, avviste, kildegrupper);
+    }
+
+    /** Mutable accumulator for one source group while aggregating. */
+    private static final class Gruppe {
+        final String orgnr;
+        final String produktkode;
+        final String type;
+        final String kildetabell;
+        final String ressurs;
+        int dagsrader;
+        BigDecimal sum = BigDecimal.ZERO;
+        final java.util.Set<String> regler = new java.util.LinkedHashSet<>();
+
+        Gruppe(String orgnr, String produktkode, String type, String kildetabell, String ressurs) {
+            this.orgnr = orgnr;
+            this.produktkode = produktkode;
+            this.type = type;
+            this.kildetabell = kildetabell;
+            this.ressurs = ressurs;
+        }
     }
 }
