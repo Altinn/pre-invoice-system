@@ -235,6 +235,28 @@ alter table bruksdata_import
         check (kilde <> 'DWH' or (raadata_url is not null and raadata_sha256 is not null and hentet_at is not null));
 ```
 
+```sql
+-- V16 (specs/017): grouped source of each imported usage row; insert-only, a superseded import keeps its rows.
+create table bruksdata_kilde (
+    id bigint generated always as identity primary key,
+    import_id bigint not null references bruksdata_import,
+    organisasjonsnummer text not null,
+    produkt_id bigint not null references produkt,
+    type text not null check (type in ('BRUKSVOLUM', 'AZURE_KOSTNAD', 'SMS_KOSTNAD')),
+    kildetabell text,                          -- DWH source_table
+    ressurs text,                              -- resource_id without urn:altinn:resource:
+    antall_dagsrader integer not null check (antall_dagsrader > 0),
+    antall numeric,                            -- volume types
+    belop numeric(14,2),                       -- cost types, øre-rounded
+    regel text[] not null default '{}',        -- distinct regel texts, verbatim
+    unique nulls not distinct (import_id, organisasjonsnummer, produkt_id, type, kildetabell, ressurs)
+);
+create index bruksdata_kilde_import_org on bruksdata_kilde (import_id, organisasjonsnummer);
+```
+
+Per (import, orgnr, produkt, type) the groups sum to the matching `bruksdata` row. Imports from files
+without flags have no groups.
+
 No seed rows for `produkt_kildenavn`: an unmapped name rejects the import. A scheduled fetch stores a
 `MOTTATT` import (payload archived, no `bruksdata` rows) that a FORVALTER confirms; confirming
 re-validates from the archive and moves it to `VALIDERT`.

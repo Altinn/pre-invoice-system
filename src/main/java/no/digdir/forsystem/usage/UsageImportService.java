@@ -41,6 +41,7 @@ public class UsageImportService {
     private final ProduktRepository produkter;
     private final BruksdataImportRepository importer;
     private final BruksdataRepository bruksdata;
+    private final BruksdataKildeRepository kilder;
     private final KjoringStatusPort kjoringStatus;
     private final AuditService audit;
     private final BrukerContext brukerContext;
@@ -49,12 +50,13 @@ public class UsageImportService {
 
     UsageImportService(UsageDataSource usageDataSource, ProduktRepository produkter,
                        BruksdataImportRepository importer, BruksdataRepository bruksdata,
-                       KjoringStatusPort kjoringStatus, AuditService audit, BrukerContext brukerContext,
+                       BruksdataKildeRepository kilder, KjoringStatusPort kjoringStatus, AuditService audit, BrukerContext brukerContext,
                        FileArchive arkiv, DwhEgenskaper dwh) {
         this.usageDataSource = usageDataSource;
         this.produkter = produkter;
         this.bruksdata = bruksdata;
         this.importer = importer;
+        this.kilder = kilder;
         this.kjoringStatus = kjoringStatus;
         this.audit = audit;
         this.brukerContext = brukerContext;
@@ -176,17 +178,53 @@ public class UsageImportService {
                         b.produktId(), b.type(), b.antall(), b.belop()))
                 .toList();
         bruksdata.saveAll(medImport);
+        lagreKilder(fv, lagret.id());
 
         Map<String, Object> detaljer = new LinkedHashMap<>();
         detaljer.put("periode", fv.periode().toString());
         detaljer.put("filnavn", fv.filnavn());
         detaljer.put("kilde", fv.kilde().name());
         detaljer.put("antall", fv.antallGyldige());
+        if (fv.filrapport() != null) {
+            DwhFilrapport fr = fv.filrapport();
+            detaljer.put("brukte", fr.brukt());
+            detaljer.put("utelatt", fr.utelatt());
+            detaljer.put("dpv", fr.dpv());
+            detaljer.put("utenforPerioden", fr.utenforPerioden());
+        }
         if (lagret.harRaadata()) {
             detaljer.put("raadataSha256", lagret.raadataSha256());
         }
         audit.logg(Handling.IMPORTERTE, "BRUKSDATA_IMPORT", lagret.id(), detaljer);
         return lagret;
+    }
+
+    /**
+     * The source groups of the committed usage rows (specs/017 FR-008). Always inserted under the new import:
+     * a superseded import keeps its own groups. Cost groups are rounded to øre like the usage rows.
+     */
+    private void lagreKilder(Forhaandsvisning fv, Long importId) {
+        if (fv.kildegrupper() == null || fv.kildegrupper().isEmpty()) {
+            return;
+        }
+        Map<String, Long> kodeTilId = new LinkedHashMap<>();
+        produkter.findAllByOrderByKode().forEach(p -> kodeTilId.put(p.kode(), p.id()));
+        List<BruksdataKilde> rader = new ArrayList<>();
+        for (DwhKildegruppe g : fv.kildegrupper()) {
+            Bruksdatatype type = Bruksdatatype.valueOf(g.type());
+            rader.add(new BruksdataKilde(null, importId, g.organisasjonsnummer(), kodeTilId.get(g.produktkode()),
+                    g.type(), g.kildetabell(), g.ressurs(), g.antallDagsrader(),
+                    type.erVolum() ? g.sum() : null,
+                    type.erVolum() ? null : g.sum().setScale(2, RoundingMode.HALF_UP),
+                    g.regler().toArray(String[]::new)));
+        }
+        kilder.saveAll(rader);
+    }
+
+    /** The source groups of an import, for the detail page. Empty for imports without them. */
+    @Transactional(readOnly = true)
+    public List<BruksdataKilde> kilder(Long importId) {
+        return kilder.findByImportIdOrderByOrganisasjonsnummerAscProduktIdAscTypeAscKildetabellAscRessursAsc(importId);
     }
 
     /** The import row to persist: a new CSV row, a new DWH row (archiving the payload), or the staged row. */

@@ -42,35 +42,36 @@ Paths: `U` = `src/main/java/no/digdir/forsystem/usage`, `T` = `src/test/java/no/
 **Goal**: preview shows used / other months / DPV / excluded with a balancing control sum.
 **Independent test**: report counts equal counts computed independently from the fixture; sum equals total rows (SC-003).
 
-- [ ] T015 [US2] Fill `DwhFilrapport` in the reader/service: per-class counts, other-month counts per month, volume per product and class, excluded per verbatim `regel` reason, top excluded organisations incl. «ukjent orgnr»
-- [ ] T016 [US2] Render the report in `R/templates/bruksdata/forhandsvis.html` per contracts/upload-ui.md (including kontrollsum line); keep Thymeleaf conventions checked by `TemplateKonvensjonTest`
-- [ ] T017 [P] [US2] Test `T/DwhFilrapportTest.java`: counts, kontrollsum, unknown `regel` tokens passed through unchanged (FR-013)
-- [ ] T018 [US2] Add `brukte`/`utelatt`/`dpv`/`utenforPerioden` counts to the `IMPORTERTE` audit details in `U/UsageImportService.java` (FR-015) and assert it in `T/DwhFlaggImportIT.java`
+- [x] T015 [US2] Fill `DwhFilrapport` in the reader/service: per-class counts, other-month counts per month, volume per product and class, excluded per verbatim `regel` reason, top excluded organisations incl. «ukjent orgnr»
+- [x] T016 [US2] Render the report in `R/templates/bruksdata/forhandsvis.html` per contracts/upload-ui.md (including kontrollsum line); keep Thymeleaf conventions checked by `TemplateKonvensjonTest`
+- [x] T017 [P] [US2] Test `T/DwhFilrapportTest.java`: counts, kontrollsum, unknown `regel` tokens passed through unchanged (FR-013)
+- [x] T018 [US2] Add `brukte`/`utelatt`/`dpv`/`utenforPerioden` counts to the `IMPORTERTE` audit details in `U/UsageImportService.java` (FR-015) and assert it in `T/DwhFlaggImportIT.java`
 
 ## Phase 5: User Story 3 — Trace usage back to DWH sources (P2)
 
 **Goal**: each imported usage row shows its source groups.
 **Independent test**: groups for one (orgnr, product) sum to the usage figure; superseded imports keep theirs.
 
-- [ ] T019 [US3] Flyway `R/db/migration/V16__bruksdata_kilde.sql` per data-model.md (unique `nulls not distinct`, index, FKs)
-- [ ] T020 [P] [US3] Create `U/BruksdataKilde.java` and `U/BruksdataKildeRepository.java` (Spring Data JDBC, text[] for `regel`)
-- [ ] T021 [US3] Persist groups in `U/UsageImportService.java#importer` (also for staged DWH confirms); never delete on re-import
-- [ ] T022 [US3] Show groups per usage row in `web/BruksdataController.java` + `R/templates/bruksdata/detalj.html`; «ingen kildedetaljer» for imports without groups (contracts/upload-ui.md)
-- [ ] T023 [US3] Extend `T/DwhFlaggImportIT.java`: group sums equal usage rows for every row; re-import keeps old import's groups; archived file sha256 recorded
+- [x] T019 [US3] Flyway `R/db/migration/V16__bruksdata_kilde.sql` per data-model.md (unique `nulls not distinct`, index, FKs)
+- [x] T020 [P] [US3] Create `U/BruksdataKilde.java` and `U/BruksdataKildeRepository.java` (Spring Data JDBC, text[] for `regel`)
+- [x] T021 [US3] Persist groups in `U/UsageImportService.java#importer` (also for staged DWH confirms); never delete on re-import
+- [x] T022 [US3] Show groups per usage row in `web/BruksdataController.java` + `R/templates/bruksdata/detalj.html`; «ingen kildedetaljer» for imports without groups (contracts/upload-ui.md)
+- [x] T023 [US3] Extend `T/DwhFlaggImportIT.java`: group sums equal usage rows for every row; re-import keeps old import's groups; archived file sha256 recorded
 
 ## Phase 6: User Story 4 — Unknown input fails loudly (P3)
 
 **Independent test**: flag `2`/blank and a new product name each give a clear, line-numbered message.
 
-- [ ] T024 [US4] Make the reject messages precise (line, column, value) for bad/blank flag values in `U/DwhCsv.java`; reuse the existing «legg inn kobling under Produkter → Kildenavn» text for new product names
-- [ ] T025 [P] [US4] Tests in `T/DwhCsvFlaggTest.java` and `T/DwhFlaggImportIT.java` for both cases, plus header with `flag_inv_dpv` but no `flag_inv_altinn` ⇒ legacy behaviour with a warning (plan R/Design)
+- [x] T024 [US4] Make the reject messages precise (line, column, value) for bad/blank flag values in `U/DwhCsv.java`; reuse the existing «legg inn kobling under Produkter → Kildenavn» text for new product names
+- [x] T025 [P] [US4] Tests in `T/DwhCsvFlaggTest.java` and `T/DwhFlaggImportIT.java` for both cases, plus header with `flag_inv_dpv` but no `flag_inv_altinn` ⇒ legacy behaviour with a warning (plan R/Design)
 
 ## Phase 7: Polish & cross-cutting
 
-- [ ] T026 [P] Update `docs/csv-format.md` (flagged export section, columns, row classes, one-period-per-upload) and `docs/03-datamodel.md` (`bruksdata_kilde`)
-- [ ] T027 [P] Update `docs/brukerveiledning.md` and `docs/runbook.md` (upload limit, preview breakdown, drill-down, DPV note) and the Bruksdata page help text if present
-- [ ] T028 Measure upload + preview on the real 30 MB file locally per quickstart.md step 2 (< 30 s, no OOM); if the session-held `byte[]` or heap is a problem, record the finding and adjust research R2
-- [ ] T029 Run `mvn verify` green; walk quickstart.md steps 1–5; fix anything found
+- [x] T026 [P] Update `docs/csv-format.md` (flagged export section, columns, row classes, one-period-per-upload) and `docs/03-datamodel.md` (`bruksdata_kilde`)
+- [x] T027 [P] Update `docs/brukerveiledning.md` and `docs/runbook.md` (upload limit, preview breakdown, drill-down, DPV note) and the Bruksdata page help text if present
+- [x] T028 **Measured 2026-11-23 on a substitute for the real file** (see the result below). Measure upload + preview on the real 30 MB file locally per quickstart.md step 2 (< 30 s, no OOM); if the session-held `byte[]` or heap is a problem, record the finding and adjust research R2
+  - Result: upload + preview of a 31.9 MB, 129 544-row, three-month flagged export for 2026-10 took **1.3 s** (HTTP 200) on a local app with `-Xmx768m` (the pod's 1 Gi limit at 75 %), no OutOfMemory. The report was correct: 26 092 used, 7 391 DPV, 27 296 excluded, 68 765 in other months, control sum 129 544. The file was built from the DWH API (Aug–Oct 2026, same columns as the export) with organisation names and invoice references replaced by fakes; it is not the original 30 MB file and is not in the repo. Not measured: confirm of the import with product names mapped (the test database had no Kildenavn mappings, so the product-name rejects were expected); tt02. No change to research R2 needed.
+- [x] T029 Run `mvn verify` green; walk quickstart.md steps 1–5; fix anything found
 - [ ] T030 Commit as conventional commit(s) on `017-dwh-flagg-import` (spec/plan artifacts separate from code if preferred), then open a PR
 
 ## Dependencies & order

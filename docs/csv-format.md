@@ -68,6 +68,35 @@ the column order changed) and `transaction_date` (as in the API). Columns are ma
 and extra columns don't matter. Cost amounts may carry many decimals; they are stored to the øre. The
 column names are not yet an agreed contract with the datavarehus (OQ-4).
 
+## The flagged export (specs/017)
+
+The newer export (`Mv_altinn_usage_last_3m_flag`) adds `source_table`, `resource_id`, `regel`,
+`flag_inv_altinn` and `flag_inv_dpv`, and covers about three months. Its header containing
+`flag_inv_altinn` switches the reader to *flagged* mode; without it the file is read exactly as above.
+(A header with `flag_inv_dpv` but no `flag_inv_altinn` is read as unflagged, with a warning.)
+
+Every row gets one class, in this order:
+
+| Class | Condition | Effect |
+|---|---|---|
+| Other month | transaction date outside the chosen period | counted per month, never an error |
+| DPV | `flag_inv_dpv = 1` | counted, not billed here (OQ-26) |
+| Used | `flag_inv_altinn = 1`, in the period | validated and aggregated into usage |
+| Excluded | anything else | counted per `regel` reason |
+
+- **One period per upload.** Pick the period; the rest of the file is reported, not imported. Upload the
+  same file again for the next month.
+- Only used rows are validated. Placeholder orgnr, names and NULL quantities on the others never fail the
+  file. A used row needs a 9-digit orgnr and numeric quantity/amount; a NULL quantity on a volume product is 0.
+- A flag value other than `0` or `1` (or blank) rejects that row, naming line, column and value.
+- `resource_id` is normalised by dropping the `urn:altinn:resource:` prefix. `regel` is shown verbatim and
+  never interpreted (OQ-25). Repeated day rows are summed (OQ-27).
+- The preview shows used / other months / DPV / excluded with a control sum that always equals the file's
+  row count. A flagged file with no used rows in the period is refused with that breakdown.
+- Upload limit is 100 MB (`spring.servlet.multipart.*`).
+- The used rows' source groups (table, resource, day rows, sum, `regel`) are saved with the import in
+  `bruksdata_kilde` and shown on the import's page.
+
 ## One upload, format recognised
 
 *Bruksdata → Last opp fil* takes both files. The header row decides: a column `organisation_number`

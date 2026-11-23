@@ -94,8 +94,8 @@ class DwhCsvFlaggTest {
 
         assertThat(fil.brukte()).isEmpty();
         assertThat(fil.avviste()).extracting(a -> a.referanse() + " " + a.aarsak()).containsExactly(
-                "linje 2 ugyldig flag_inv_altinn: «2» (forventet 0 eller 1)",
-                "linje 3 ugyldig flag_inv_altinn: «» (forventet 0 eller 1)");
+                "linje 2 kolonne flag_inv_altinn: ugyldig verdi «2» (forventet 0 eller 1)",
+                "linje 3 kolonne flag_inv_altinn: tom verdi (forventet 0 eller 1)");
         assertThat(fil.rapport().balanserer()).isTrue();
     }
 
@@ -143,5 +143,16 @@ class DwhCsvFlaggTest {
         assertThat(fil.flagget()).isFalse();
         assertThat(fil.rapport()).isNull();
         assertThat(fil.brukte()).hasSize(4).allMatch(r -> r.flaggAltinn() == null);
+    }
+
+    @Test
+    void dpvFlagWithoutAltinnFlagIsReadAsLegacyWithAWarning() {
+        String fil = "\"organisation_number\",\"product_name\",\"quantity\",\"amount_nok\",\"transaction_date\","
+                + "\"flag_inv_dpv\"\n\"123456789\",\"Melding\",5,NULL,\"2026-10-03\",1\n";
+        var res = DwhCsv.lesFil(fil.getBytes(StandardCharsets.UTF_8), OKTOBER);
+
+        assertThat(res.flagget()).isFalse();
+        assertThat(res.brukte()).hasSize(1);
+        assertThat(res.advarsler()).singleElement().asString().contains("flag_inv_dpv").contains("flag_inv_altinn");
     }
 }
