@@ -69,7 +69,8 @@ Paths: `U` = `src/main/java/no/digdir/forsystem/usage`, `T` = `src/test/java/no/
 
 - [x] T026 [P] Update `docs/csv-format.md` (flagged export section, columns, row classes, one-period-per-upload) and `docs/03-datamodel.md` (`bruksdata_kilde`)
 - [x] T027 [P] Update `docs/brukerveiledning.md` and `docs/runbook.md` (upload limit, preview breakdown, drill-down, DPV note) and the Bruksdata page help text if present
-- [ ] T028 **BLOCKED** (the real 30 MB export is not in the repo; not measured with a substitute) Measure upload + preview on the real 30 MB file locally per quickstart.md step 2 (< 30 s, no OOM); if the session-held `byte[]` or heap is a problem, record the finding and adjust research R2
+- [x] T028 **Measured 2026-11-23 on a substitute for the real file** (see the result below). Measure upload + preview on the real 30 MB file locally per quickstart.md step 2 (< 30 s, no OOM); if the session-held `byte[]` or heap is a problem, record the finding and adjust research R2
+  - Result: upload + preview of a 31.9 MB, 129 544-row, three-month flagged export for 2026-10 took **1.3 s** (HTTP 200) on a local app with `-Xmx768m` (the pod's 1 Gi limit at 75 %), no OutOfMemory. The report was correct: 26 092 used, 7 391 DPV, 27 296 excluded, 68 765 in other months, control sum 129 544. The file was built from the DWH API (Aug–Oct 2026, same columns as the export) with organisation names and invoice references replaced by fakes; it is not the original 30 MB file and is not in the repo. Not measured: confirm of the import with product names mapped (the test database had no Kildenavn mappings, so the product-name rejects were expected); tt02. No change to research R2 needed.
 - [x] T029 Run `mvn verify` green; walk quickstart.md steps 1–5; fix anything found
 - [ ] T030 Commit as conventional commit(s) on `017-dwh-flagg-import` (spec/plan artifacts separate from code if preferred), then open a PR
 
