@@ -67,10 +67,10 @@ Paths: `U` = `src/main/java/no/digdir/forsystem/usage`, `T` = `src/test/java/no/
 
 ## Phase 7: Polish & cross-cutting
 
-- [ ] T026 [P] Update `docs/csv-format.md` (flagged export section, columns, row classes, one-period-per-upload) and `docs/03-datamodel.md` (`bruksdata_kilde`)
-- [ ] T027 [P] Update `docs/brukerveiledning.md` and `docs/runbook.md` (upload limit, preview breakdown, drill-down, DPV note) and the Bruksdata page help text if present
-- [ ] T028 Measure upload + preview on the real 30 MB file locally per quickstart.md step 2 (< 30 s, no OOM); if the session-held `byte[]` or heap is a problem, record the finding and adjust research R2
-- [ ] T029 Run `mvn verify` green; walk quickstart.md steps 1–5; fix anything found
+- [x] T026 [P] Update `docs/csv-format.md` (flagged export section, columns, row classes, one-period-per-upload) and `docs/03-datamodel.md` (`bruksdata_kilde`)
+- [x] T027 [P] Update `docs/brukerveiledning.md` and `docs/runbook.md` (upload limit, preview breakdown, drill-down, DPV note) and the Bruksdata page help text if present
+- [ ] T028 **BLOCKED** (the real 30 MB export is not in the repo; not measured with a substitute) Measure upload + preview on the real 30 MB file locally per quickstart.md step 2 (< 30 s, no OOM); if the session-held `byte[]` or heap is a problem, record the finding and adjust research R2
+- [x] T029 Run `mvn verify` green; walk quickstart.md steps 1–5; fix anything found
 - [ ] T030 Commit as conventional commit(s) on `017-dwh-flagg-import` (spec/plan artifacts separate from code if preferred), then open a PR
 
 ## Dependencies & order

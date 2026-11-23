@@ -30,6 +30,12 @@ derived from today's date.
    product name must be mapped under *Produkter → Kildenavn* first. A file with any reject imports nothing —
    fix it and re-upload. Re-importing a period supersedes it: the previous import becomes `AVVIST`
    and its rows are kept for traceability.
+   Uploading the DWH's flagged export (`flag_inv_altinn`; limit 100 MB): the preview first shows *Innholdet
+   i fila* — used / other months / DPV / excluded, with a control sum equal to the file's row count. Only
+   rows flagged for Altinn invoicing in the chosen period are imported, so upload the same file once per
+   month. DPV rows are counted but not billed here (OQ-26). After confirming, each usage row on the
+   import's page expands to its source groups (table, resource, day rows, `regel`). See
+   [csv-format.md](csv-format.md).
 3. **Generate** (FORVALTER) under *Kjøringer*: choose the period and **Generer**. Review the run:
    the invoice table and the control findings.
    - **BLOKKERENDE** findings must be resolved before approval (fix the data, **Forkast** the run,
