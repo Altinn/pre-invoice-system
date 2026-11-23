@@ -136,14 +136,30 @@ public class DwhImportService {
      */
     @Transactional(readOnly = true)
     public Forhaandsvisning forhaandsvisFil(Periode periode, String filnavn, byte[] innhold) {
-        List<DwhRad> rader = DwhCsv.les(innhold);
-        return bygg(periode, filnavn, rader, new Raadata(innhold, OffsetDateTime.now(), null, null), null);
+        return fraFil(periode, filnavn, DwhCsv.lesFil(innhold, periode),
+                new Raadata(innhold, OffsetDateTime.now(), null, null), null);
     }
 
-    /** Organisations in an uploaded export that have no customer in the registry yet. */
+    /** The preview of a read export: a flagged one gets its report; an empty flagged one is explained. */
+    private Forhaandsvisning fraFil(Periode periode, String filnavn, DwhCsv.Fil fil, Raadata raadata,
+                                    Long stagetImportId) {
+        if (fil.flagget() && fil.brukte().isEmpty() && fil.avviste().isEmpty()) {
+            throw new Regelbrudd("Ingen rader i fila er merket for Altinn-fakturering i " + periode.norskLabel()
+                    + ". Fila har " + fil.rapport().totalt() + " rader: " + fil.rapport().utenforPerioden()
+                    + " i andre måneder, " + fil.rapport().dpv() + " DPV og " + fil.rapport().utelatt()
+                    + " utelatt av datavarehuset.");
+        }
+        Forhaandsvisning fv = bygg(periode, filnavn, fil.brukte(), fil.avviste(), raadata, stagetImportId);
+        return fil.flagget() ? fv.medFil(fil.rapport(), fv.kildegrupper()) : fv;
+    }
+
+    /**
+     * Organisations in an uploaded export that have no customer in the registry yet. For a flagged export only
+     * organisations with used rows count: the rest carry placeholder orgnr and names (specs/017).
+     */
     @Transactional(readOnly = true)
-    public List<DwhCsv.KundeIFil> manglendeKunder(byte[] innhold) {
-        return DwhCsv.kunder(innhold).stream()
+    public List<DwhCsv.KundeIFil> manglendeKunder(byte[] innhold, Periode periode) {
+        return DwhCsv.lesFil(innhold, periode).kunder().stream()
                 .filter(k -> kunder.findByOrganisasjonsnummer(k.organisasjonsnummer()).isEmpty())
                 .toList();
     }
@@ -155,10 +171,10 @@ public class DwhImportService {
      * is created on its own, through the registry's normal validation and audit, so one refused orgnr
      * does not stop the others. A stopgap until customers come from CRM (OQ-5).
      */
-    public Kundeoppretting opprettManglendeKunder(byte[] innhold) {
+    public Kundeoppretting opprettManglendeKunder(byte[] innhold, Periode periode) {
         List<String> opprettet = new ArrayList<>();
         List<String> feilet = new ArrayList<>();
-        for (DwhCsv.KundeIFil k : manglendeKunder(innhold)) {
+        for (DwhCsv.KundeIFil k : manglendeKunder(innhold, periode)) {
             try {
                 String navn = k.navn() == null ? k.organisasjonsnummer() : k.navn();
                 Kunde ny = kundeService.opprett(k.organisasjonsnummer(), navn, null, Avtalestatus.AKTIV);
@@ -206,17 +222,25 @@ public class DwhImportService {
     }
 
     private Forhaandsvisning bygg(Periode periode, Raadata raadata, Long stagetImportId) {
-        return bygg(periode, filnavn(periode), DwhRespons.les(raadata.innhold()), raadata, stagetImportId);
+        DwhCsv.Fil flagget = DwhRespons.lesFlagget(raadata.innhold(), periode);
+        if (flagget != null) {
+            return fraFil(periode, filnavn(periode), flagget, raadata, stagetImportId);
+        }
+        return bygg(periode, filnavn(periode), DwhRespons.les(raadata.innhold()), List.of(), raadata, stagetImportId);
     }
 
-    private Forhaandsvisning bygg(Periode periode, String filnavn, List<DwhRad> rader, Raadata raadata,
-                                  Long stagetImportId) {
-        if (rader.isEmpty()) {
+    /** {@code lesAvviste}: rows the file reader already rejected, merged into the staging report. */
+    private Forhaandsvisning bygg(Periode periode, String filnavn, List<DwhRad> rader, List<AvvistRad> lesAvviste,
+                                  Raadata raadata, Long stagetImportId) {
+        if (rader.isEmpty() && lesAvviste.isEmpty()) {
             throw new Regelbrudd("Ingen bruksdata i datavarehus for " + periode.norskLabel() + " ennå");
         }
         DwhAggregering.Resultat agg = DwhAggregering.aggreger(periode, rader, kobling());
-        return usage.vurder(periode, filnavn, Kilde.DWH, agg.rader(), agg.avviste(),
-                kryssjekkKunderegister(rader), raadata, stagetImportId);
+        List<AvvistRad> avviste = new ArrayList<>(lesAvviste);
+        avviste.addAll(agg.avviste());
+        return usage.vurder(periode, filnavn, Kilde.DWH, agg.rader(), avviste,
+                kryssjekkKunderegister(rader), raadata, stagetImportId)
+                .medFil(null, agg.kildegrupper());
     }
 
     private Map<String, DwhAggregering.Maal> kobling() {
