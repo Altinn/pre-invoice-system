@@ -39,6 +39,7 @@ class DwhFlaggImportIT extends IntegrationTest {
     @Autowired KundeRepository kunder;
     @Autowired BruksdataImportRepository importer;
     @Autowired BruksdataRepository bruksdata;
+    @Autowired BruksdataKildeRepository kilder;
     @Autowired no.digdir.forsystem.common.HendelsesloggRepository hendelser;
 
     private void kobleProdukter() {
@@ -228,5 +229,55 @@ class DwhFlaggImportIT extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Helt nytt produkt")))
                 .andExpect(content().string(Matchers.containsString("Kildenavn")));
+    }
+
+    private Long importer(MockHttpSession session, String maaned) throws Exception {
+        mvc.perform(multipart("/bruksdata/last-opp").file(fil(FlaggFiksturer.bytes())).param("periode", maaned)
+                        .session(session).with(csrf()))
+                .andExpect(status().isOk());
+        mvc.perform(post("/bruksdata/bekreft").session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        return importer.findAll().stream()
+                .filter(i -> "VALIDERT".equals(i.status()) && i.periode().toString().equals(maaned + "-01"))
+                .map(BruksdataImport::id).max(Long::compare).orElseThrow();
+    }
+
+    @Test
+    void sourceGroupsSumToEveryUsageRowAndSurviveAReImport() throws Exception {
+        kobleProdukter();
+        Long første = importer(new MockHttpSession(), "2026-10");
+
+        var grupper = kilder.findByImportIdOrderByOrganisasjonsnummerAscProduktIdAscTypeAscKildetabellAscRessursAsc(første);
+        assertThat(grupper).isNotEmpty();
+        for (Bruksdata b : bruksdata.findByImportId(første)) {
+            var deres = grupper.stream().filter(g -> g.organisasjonsnummer().equals(b.organisasjonsnummer())
+                    && g.produktId().equals(b.produktId()) && g.type().equals(b.type())).toList();
+            assertThat(deres).as(b.organisasjonsnummer() + "/" + b.produktId()).isNotEmpty();
+            BigDecimal sum = deres.stream().map(g -> g.antall() != null ? g.antall() : g.belop())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            assertThat(sum).isEqualByComparingTo(b.antall() != null ? b.antall() : b.belop());
+            assertThat(deres).allSatisfy(g -> assertThat(g.antallDagsrader()).isPositive());
+        }
+        assertThat(importer.findById(første).orElseThrow().raadataSha256()).hasSize(64);
+
+        // A re-import supersedes the first import; its groups stay and the new import has its own.
+        Long andre = importer(new MockHttpSession(), "2026-10");
+        assertThat(andre).isNotEqualTo(første);
+        assertThat(importer.findById(første).orElseThrow().status()).isEqualTo("AVVIST");
+        assertThat(kilder.findByImportIdOrderByOrganisasjonsnummerAscProduktIdAscTypeAscKildetabellAscRessursAsc(første))
+                .hasSameSizeAs(grupper);
+        assertThat(kilder.findByImportIdOrderByOrganisasjonsnummerAscProduktIdAscTypeAscKildetabellAscRessursAsc(andre))
+                .hasSameSizeAs(grupper);
+    }
+
+    @Test
+    void detailPageShowsSourceGroupsPerUsageRow() throws Exception {
+        kobleProdukter();
+        Long id = importer(new MockHttpSession(), "2026-10");
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/bruksdata/" + id))
+                .andExpect(status().isOk())
+                .andExpect(content().string(Matchers.containsString("Kilder (")))
+                .andExpect(content().string(Matchers.containsString("Dagsrader")));
     }
 }

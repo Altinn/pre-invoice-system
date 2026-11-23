@@ -52,11 +52,11 @@ Paths: `U` = `src/main/java/no/digdir/forsystem/usage`, `T` = `src/test/java/no/
 **Goal**: each imported usage row shows its source groups.
 **Independent test**: groups for one (orgnr, product) sum to the usage figure; superseded imports keep theirs.
 
-- [ ] T019 [US3] Flyway `R/db/migration/V16__bruksdata_kilde.sql` per data-model.md (unique `nulls not distinct`, index, FKs)
-- [ ] T020 [P] [US3] Create `U/BruksdataKilde.java` and `U/BruksdataKildeRepository.java` (Spring Data JDBC, text[] for `regel`)
-- [ ] T021 [US3] Persist groups in `U/UsageImportService.java#importer` (also for staged DWH confirms); never delete on re-import
-- [ ] T022 [US3] Show groups per usage row in `web/BruksdataController.java` + `R/templates/bruksdata/detalj.html`; «ingen kildedetaljer» for imports without groups (contracts/upload-ui.md)
-- [ ] T023 [US3] Extend `T/DwhFlaggImportIT.java`: group sums equal usage rows for every row; re-import keeps old import's groups; archived file sha256 recorded
+- [x] T019 [US3] Flyway `R/db/migration/V16__bruksdata_kilde.sql` per data-model.md (unique `nulls not distinct`, index, FKs)
+- [x] T020 [P] [US3] Create `U/BruksdataKilde.java` and `U/BruksdataKildeRepository.java` (Spring Data JDBC, text[] for `regel`)
+- [x] T021 [US3] Persist groups in `U/UsageImportService.java#importer` (also for staged DWH confirms); never delete on re-import
+- [x] T022 [US3] Show groups per usage row in `web/BruksdataController.java` + `R/templates/bruksdata/detalj.html`; «ingen kildedetaljer» for imports without groups (contracts/upload-ui.md)
+- [x] T023 [US3] Extend `T/DwhFlaggImportIT.java`: group sums equal usage rows for every row; re-import keeps old import's groups; archived file sha256 recorded
 
 ## Phase 6: User Story 4 — Unknown input fails loudly (P3)
 

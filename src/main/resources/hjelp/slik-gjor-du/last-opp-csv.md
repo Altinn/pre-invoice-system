@@ -51,7 +51,9 @@ Har eksporten kolonnen `flag_inv_altinn`, er det datavarehuset som avgjør hva s
 - **Utelatt av datavarehuset**: rader uten flagg, med datavarehusets egen årsak (kolonnen `regel`).
 - **Kontrollsum**: summen av gruppene er alltid lik antall rader i fila. Stemmer den ikke, er noe galt med fila.
 
-Er flagget noe annet enn 0 eller 1, eller tomt, avvises raden med linjenummer, kolonne og verdi. Har en rad som skal brukes et produktnavn forsystem ikke kjenner, står det hvilket navn du må koble under Produkter → Kildenavn.
+Er flagget noe annet enn 0 eller 1, eller tomt, avvises raden med linjenummer, kolonne og verdi. Etter importen åpner du importen under [Bruksdata](/bruksdata) og ser «Kilder» under hver bruksrad: datavarehusets kildetabell og ressurs, antall dagsrader, summen og `regel`-teksten. Kildene summerer til raden. Importer uten flagg har ingen kildedetaljer.
+
+Har en rad som skal brukes et produktnavn forsystem ikke kjenner, står det hvilket navn du må koble under Produkter → Kildenavn.
 
 ## Alt eller ingenting
 

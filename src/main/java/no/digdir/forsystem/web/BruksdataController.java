@@ -191,6 +191,10 @@ class BruksdataController {
         BruksdataImport imp = service.hentImport(id);
         model.addAttribute("import", imp);
         model.addAttribute("rader", service.rader(id));
+        // Source groups per usage row, keyed «orgnr|produktId|type» (specs/017).
+        model.addAttribute("kilder", service.kilder(id).stream().collect(Collectors.groupingBy(
+                k -> k.organisasjonsnummer() + "|" + k.produktId() + "|" + k.type(),
+                LinkedHashMap::new, Collectors.toList())));
         model.addAttribute("produktnavnPerId", produkter.alle().stream()
                 .collect(Collectors.toMap(Produkt::id, Produkt::navn)));
         kandidater.sisteSammenligningForKandidat(id)

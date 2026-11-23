@@ -43,18 +43,40 @@
         <tr><th>Orgnr</th><th>Produkt</th><th>Type</th><th class="hoyre">Antall</th><th class="hoyre">Beløp (eksl. mva)</th></tr>
         </thead>
         <tbody>
-        <tr th:each="r : ${rader}">
+        <th:block th:each="r : ${rader}" th:with="grupper=${kilder.get(r.organisasjonsnummer() + '|' + r.produktId() + '|' + r.type())}">
+        <tr>
             <td th:text="${r.organisasjonsnummer()}">123456789</td>
             <td th:text="${produktnavnPerId.get(r.produktId())} ?: ${r.produktId()}">Melding</td>
             <td th:text="${r.type()}">BRUKSVOLUM</td>
             <td class="hoyre" th:text="${@tall.mengde(r.antall())}">100,00</td>
             <td class="hoyre" th:text="${@tall.belop(r.belop())}">—</td>
         </tr>
+        <tr class="kilder" th:if="${grupper != null}">
+            <td colspan="5">
+                <details>
+                    <summary th:text="|Kilder (${grupper.size()})|">Kilder</summary>
+                    <table class="ds-table" data-size="sm">
+                        <thead><tr><th>Kildetabell</th><th>Ressurs</th><th class="hoyre">Dagsrader</th>
+                            <th class="hoyre">Sum</th><th>Regel</th></tr></thead>
+                        <tbody><tr th:each="g : ${grupper}">
+                            <td th:text="${g.kildetabell()} ?: '—'">tabell</td>
+                            <td th:text="${g.ressurs()} ?: '—'">ressurs</td>
+                            <td class="hoyre" th:text="${@tall.antall(g.antallDagsrader())}">1</td>
+                            <td class="hoyre" th:text="${g.antall() != null} ? ${@tall.mengde(g.antall())} : ${@tall.belop(g.belop())}">1</td>
+                            <td th:text="${#strings.arrayJoin(g.regel(), '; ')}">regel</td>
+                        </tr></tbody>
+                    </table>
+                </details>
+            </td>
+        </tr>
+        </th:block>
         <tr th:if="${rader.isEmpty()}">
             <td colspan="5" class="tom">Ingen rader.</td>
         </tr>
         </tbody>
     </table>
+    <p class="ds-paragraph liten" th:if="${fv == null and kilder.isEmpty() and !rader.isEmpty()}">Ingen kildedetaljer
+        for denne importen (fila hadde ikke flagg, eller importen er fra før kildedetaljer ble lagret).</p>
 </main>
 </body>
 </html>
