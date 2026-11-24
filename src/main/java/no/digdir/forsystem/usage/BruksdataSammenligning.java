@@ -17,10 +17,11 @@ public record BruksdataSammenligning(
         Integer uendredeRader,
         String opprettetAv,
         OffsetDateTime opprettetAt,
-        Long erstattetAvId) {
+        Long erstattetAvId,
+        Integer uendredeKunder) {
 
     public BruksdataSammenligning medStatus(String nyStatus, Long nyErstattetAvId) {
         return new BruksdataSammenligning(id, periode, kandidatImportId, grunnlagKjoringId,
-                nyStatus, uendredeRader, opprettetAv, opprettetAt, nyErstattetAvId);
+                nyStatus, uendredeRader, opprettetAv, opprettetAt, nyErstattetAvId, uendredeKunder);
     }
 }

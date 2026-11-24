@@ -95,7 +95,7 @@ abstract class BillingFixture extends IntegrationTest {
 
     private static final class Kundespek {
         final String orgnr;
-        final String navn;
+        String navn;
         final List<String> kundenummer = new ArrayList<>();
         String fakturareferanse;
         String bestillingsnummer;
@@ -121,6 +121,12 @@ abstract class BillingFixture extends IntegrationTest {
                     + "lenger (specs/018)");
         }
         kundespek.get(kundeId).kundenummer.add(kundenummer);
+        synkKundedata();
+    }
+
+    /** The name the DWH delivers from now on (e.g. CRM renamed the customer). */
+    void navn(Long kundeId, String navn) {
+        kundespek.get(kundeId).navn = navn;
         synkKundedata();
     }
 

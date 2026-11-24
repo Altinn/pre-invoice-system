@@ -19,6 +19,22 @@ is touched.
 Delivery: stories 1–3 in one PR (they share the schema and page), story 4 in a second PR, stories
 5–6 only after OQ-6/OQ-29 answers, with their own plan update.
 
+## As built (stories 1–3)
+
+Deviations from the design below, decided while implementing:
+
+- No `korrigeringskjoring_kunde` table: the selected customers follow from the selected product
+  changes (`bruksdata_endring.kundeavvik_id`), and a customer cannot be ticked without its changes.
+- No `korrigeringsmetode` column yet: it only matters for story 5 and is added with it.
+- The candidate's customer values are copied onto `bruksdata_kundeavvik` (no FK to `bruksdata_kunde`);
+  both are insert-only.
+- `ENDRET_NAVN` does not refuse a delta (the name is not in LG04); FR-011 was narrowed accordingly.
+- The net difference in kroner is computed for display from the baseline run's price version
+  (`FakturakjoringService.enhetspriser`), rounded per line as generation does; it is not stored.
+- «Velg alle» posts `alle=true`, resolved server-side to every customer of the comparison.
+- Expand/collapse is a button with `aria-expanded`/`aria-controls`; without JavaScript the product rows
+  are shown (a `<noscript>` style).
+
 ## Technical Context
 
 **Language/Version**: Java 21

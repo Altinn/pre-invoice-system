@@ -105,6 +105,8 @@ public class NullstillingService {
         jdbc.update("delete from korrigeringskjoring_endring where kjoring_id in (" + KJORINGER + ")", p);
         jdbc.update("delete from bruksdata_endring where sammenligning_id in "
                 + "(select id from bruksdata_sammenligning where periode = ?)", p);
+        jdbc.update("delete from bruksdata_kundeavvik where sammenligning_id in "
+                + "(select id from bruksdata_sammenligning where periode = ?)", p);
         jdbc.queryForList("""
                 with k as (delete from fakturakjoring where periode = ?),
                      s as (delete from bruksdata_sammenligning where periode = ?)

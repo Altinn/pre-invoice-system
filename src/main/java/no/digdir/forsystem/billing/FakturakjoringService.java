@@ -32,6 +32,8 @@ import no.digdir.forsystem.registry.ProduktRepository;
 import no.digdir.forsystem.usage.Bruksdata;
 import no.digdir.forsystem.usage.BruksdataImport;
 import no.digdir.forsystem.usage.BruksdataKunde;
+import no.digdir.forsystem.usage.Kundeavvik;
+import no.digdir.forsystem.usage.KundeavvikRepository;
 import no.digdir.forsystem.usage.Kundedata;
 import no.digdir.forsystem.usage.BruksdataImportRepository;
 import no.digdir.forsystem.usage.BruksdataEndring;
@@ -73,6 +75,7 @@ public class FakturakjoringService {
     private final BruksdataImportRepository usageImports;
     private final BruksdataSammenligningRepository sammenligninger;
     private final BruksdataEndringRepository endringer;
+    private final KundeavvikRepository kundeavvik;
     private final KorrigeringskjoringEndringRepository valgteEndringer;
     private final KjoringVersjonService versjoner;
     private final AuditService audit;
@@ -85,7 +88,7 @@ public class FakturakjoringService {
                           ProduktRepository produkter, PrisRepository priser,
                           PrisversjonRepository prisversjoner, UsageImportService usage, BruksdataImportRepository usageImports,
                           BruksdataSammenligningRepository sammenligninger,
-                          BruksdataEndringRepository endringer,
+                          BruksdataEndringRepository endringer, KundeavvikRepository kundeavvik,
                           KorrigeringskjoringEndringRepository valgteEndringer,
                           KjoringVersjonService versjoner,
                           AuditService audit, BrukerContext brukerContext) {
@@ -103,6 +106,7 @@ public class FakturakjoringService {
         this.usageImports = usageImports;
         this.sammenligninger = sammenligninger;
         this.endringer = endringer;
+        this.kundeavvik = kundeavvik;
         this.valgteEndringer = valgteEndringer;
         this.versjoner = versjoner;
         this.audit = audit;
@@ -144,6 +148,78 @@ public class FakturakjoringService {
         return kjoring;
     }
 
+    /**
+     * Generate a delta correction for the ticked customers (specs/019 FR-009): every pending product change of
+     * each customer. {@code alle} ticks every customer of the comparison a delta can correct, also those on other
+     * pages.
+     */
+    @Transactional
+    public Fakturakjoring genererKorrigeringForKunder(Long sammenligningId, List<String> orgnr, boolean alle,
+                                                      String aarsak) {
+        List<Kundeavvik> avvik = kundeavvik.findBySammenligningIdOrderByOrganisasjonsnummer(sammenligningId);
+        List<Kundeavvik> valgte;
+        if (alle) {
+            // «Velg alle» means every customer a delta can correct; the others cannot be ticked on the page.
+            Set<Long> medEndring = endringer.findBySammenligningIdOrderById(sammenligningId).stream()
+                    .filter(e -> e.avvistAt() == null).map(BruksdataEndring::kundeavvikId)
+                    .collect(Collectors.toSet());
+            valgte = avvik.stream()
+                    .filter(a -> a.hindrerDifferanse().isEmpty() && medEndring.contains(a.id())).toList();
+        } else {
+            Set<String> onsket = orgnr == null ? Set.of() : new LinkedHashSet<>(orgnr);
+            valgte = avvik.stream().filter(a -> onsket.contains(a.organisasjonsnummer())).toList();
+            if (valgte.size() != onsket.size()) {
+                throw new Regelbrudd("En eller flere valgte kunder finnes ikke i sammenligningen");
+            }
+        }
+        if (valgte.isEmpty()) {
+            throw new Regelbrudd("Velg minst én kunde som skal være med i korrigeringen");
+        }
+        avvisKundeverdiendringer(valgte);
+        Set<Long> valgteIder = valgte.stream().map(Kundeavvik::id).collect(Collectors.toSet());
+        List<BruksdataEndring> kundenesEndringer = endringer.findBySammenligningIdOrderById(sammenligningId).stream()
+                .filter(e -> valgteIder.contains(e.kundeavvikId()) && e.avvistAt() == null).toList();
+        Set<Long> medEndring = kundenesEndringer.stream().map(BruksdataEndring::kundeavvikId)
+                .collect(Collectors.toSet());
+        List<Kundeavvik> utenEndring = valgte.stream().filter(a -> !medEndring.contains(a.id())).toList();
+        if (!utenEndring.isEmpty()) {
+            // Only a changed name: it is not in the invoice file, so there is nothing a correction could change.
+            throw new Regelbrudd("Disse kundene har ingen endring i bruk som kan korrigeres: "
+                    + kunder(utenEndring) + ". Fjern krysset for dem.");
+        }
+        return genererKorrigering(sammenligningId,
+                kundenesEndringer.stream().map(BruksdataEndring::id).toList(), aarsak);
+    }
+
+    /**
+     * A delta cannot correct a changed fakturareferanse, bestillingsnummer or kundenummer: the delta invoice would
+     * carry the new value while the invoice it corrects carried the old one (specs/019 FR-011). Awaits the credit
+     * mechanism, TODO(OQ-6).
+     */
+    private void avvisKundeverdiendringer(List<Kundeavvik> valgte) {
+        List<Kundeavvik> hindret = valgte.stream().filter(a -> !a.hindrerDifferanse().isEmpty()).toList();
+        if (!hindret.isEmpty()) {
+            throw new Regelbrudd("Endret fakturareferanse, bestillingsnummer eller kundenummer kan ikke korrigeres "
+                    + "med differanser før avregningsmåten er avklart med Økonomi (OQ-6). Fjern krysset for "
+                    + kunder(hindret) + ".");
+        }
+    }
+
+    private static String kunder(List<Kundeavvik> avvik) {
+        return avvik.stream().map(a -> a.navn().equals(a.organisasjonsnummer())
+                        ? a.organisasjonsnummer() : a.navn() + " (" + a.organisasjonsnummer() + ")")
+                .collect(Collectors.joining(", "));
+    }
+
+    /** Unit prices of a run's price version per product id; a correction prices its deltas with these. */
+    @Transactional(readOnly = true)
+    public Map<Long, BigDecimal> enhetspriser(Long kjoringId) {
+        Map<Long, BigDecimal> ut = new LinkedHashMap<>();
+        priser.findByPrisversjonId(hent(kjoringId).prisversjonId())
+                .forEach(p -> ut.put(p.produktId(), p.enhetspris()));
+        return ut;
+    }
+
     /** Generate a draft containing only the explicitly selected signed differences. */
     @Transactional
     public Fakturakjoring genererKorrigering(Long sammenligningId, List<Long> endringIder, String aarsak) {
@@ -180,6 +256,8 @@ public class FakturakjoringService {
                         || e.avvistAt() != null)) {
             throw new Regelbrudd("En eller flere valgte endringer tilhører ikke den åpne sammenligningen");
         }
+        Set<Long> kundeIder = valgte.stream().map(BruksdataEndring::kundeavvikId).collect(Collectors.toSet());
+        avvisKundeverdiendringer(kundeavvik.findAllById(kundeIder));
         BruksdataImport kandidat = usageImports.findById(sammenligning.kandidatImportId())
                 .orElseThrow(() -> new Regelbrudd("Fant ikke kandidatimport " + sammenligning.kandidatImportId()));
         Prisversjon prisversjon = prisversjoner.findById(grunnlag.prisversjonId())

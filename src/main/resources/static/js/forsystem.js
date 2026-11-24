@@ -45,29 +45,36 @@
     document.addEventListener('input', ryddOppHvisGyldig);
     document.addEventListener('change', ryddOppHvisGyldig);
 
-    // ---- Correction comparison selection ---------------------------------------------------
-    // Checkboxes start unchecked. The summary keeps volume and pass-through cost separate because
-    // they are different units and must never be presented as one invented total.
+    // ---- Correction comparison: customers (specs/019) ---------------------------------------
+    // Checkboxes start unchecked; one per customer. «Velg alle» ticks every customer of the comparison,
+    // also those on other pages: the hidden `alle` field tells the server, and the summary then shows the
+    // comparison's totals. Unticking any customer turns it back into an explicit selection.
+    function kroner(tall) {
+        return tall.toLocaleString('nb-NO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
     function oppdaterEndringsutvalg(skjema) {
-        var bokser = Array.prototype.slice.call(skjema.querySelectorAll('[data-endring-checkbox]'));
-        var omraade = skjema.closest('section') || skjema;
+        var bokser = Array.prototype.slice.call(skjema.querySelectorAll('[data-endring-checkbox]:not(:disabled)'));
+        var omraade = skjema.closest('[data-endring-omraade]') || skjema.closest('section') || skjema;
+        var alleFelt = skjema.querySelector('[data-velg-alle-felt]');
         var valgte = bokser.filter(function (boks) { return boks.checked; });
-        var volum = 0;
-        var kostnad = 0;
-        valgte.forEach(function (boks) {
-            var delta = Number(boks.getAttribute('data-endring-delta')) || 0;
-            if (boks.getAttribute('data-endring-type') === 'BRUKSVOLUM') volum += delta;
-            else kostnad += delta;
-        });
-        var antall = omraade.querySelector('[data-valgt-antall]');
-        var volumFelt = omraade.querySelector('[data-valgt-volum]');
-        var kostnadFelt = omraade.querySelector('[data-valgt-kostnad]');
+        var alleValgt = bokser.length > 0 && valgte.length === bokser.length;
+        if (alleFelt && !alleValgt) alleFelt.value = 'false';
+        var heleSammenligningen = alleFelt && alleFelt.value === 'true';
+        var antall = valgte.length;
+        var belop = 0;
+        valgte.forEach(function (boks) { belop += Number(boks.getAttribute('data-kunde-belop')) || 0; });
+        if (heleSammenligningen) {
+            antall = Number(omraade.getAttribute('data-alle-antall')) || antall;
+            belop = Number(omraade.getAttribute('data-alle-belop')) || belop;
+        }
+        var antallFelt = omraade.querySelector('[data-valgt-antall]');
+        var belopFelt = omraade.querySelector('[data-valgt-belop]');
         var knapp = skjema.querySelector('[data-velg-alle]');
-        if (antall) antall.textContent = String(valgte.length);
-        if (volumFelt) volumFelt.textContent = String(volum);
-        if (kostnadFelt) kostnadFelt.textContent = kostnad.toFixed(2);
-        if (knapp) knapp.textContent = bokser.length > 0 && valgte.length === bokser.length
-            ? 'Fjern alle valg' : 'Velg alle';
+        if (antallFelt) antallFelt.textContent = String(antall);
+        if (belopFelt) belopFelt.textContent = kroner(belop);
+        if (knapp) knapp.textContent = alleValgt
+            ? 'Fjern alle valg' : (knapp.getAttribute('data-velg-alle-tekst') || 'Velg alle');
     }
 
     document.addEventListener('change', function (e) {
@@ -82,7 +89,23 @@
         var bokser = Array.prototype.slice.call(skjema.querySelectorAll('[data-endring-checkbox]:not(:disabled)'));
         var velg = bokser.some(function (boks) { return !boks.checked; });
         bokser.forEach(function (boks) { boks.checked = velg; });
+        var alleFelt = skjema.querySelector('[data-velg-alle-felt]');
+        if (alleFelt) alleFelt.value = velg ? 'true' : 'false';
         oppdaterEndringsutvalg(skjema);
+    });
+
+    // «+» shows a customer's products; without this file they are shown at once (<noscript> style).
+    document.addEventListener('click', function (e) {
+        var knapp = e.target.closest('[data-utvid]');
+        if (!knapp) return;
+        var maal = document.getElementById(knapp.getAttribute('aria-controls'));
+        if (!maal) return;
+        var apen = knapp.getAttribute('aria-expanded') === 'true';
+        maal.hidden = apen;
+        knapp.setAttribute('aria-expanded', apen ? 'false' : 'true');
+        knapp.textContent = apen ? '+' : '−';
+        var navn = knapp.getAttribute('aria-label') || '';
+        knapp.setAttribute('aria-label', apen ? navn.replace(/^Skjul/, 'Vis') : navn.replace(/^Vis/, 'Skjul'));
     });
 
     // ---- «Funn akseptert» checkboxes submit at once (specs/013) -----------------------------
