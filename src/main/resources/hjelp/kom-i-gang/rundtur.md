@@ -9,6 +9,21 @@ nokkelord: [meny, navigasjon, toppmeny, oversikt]
 ---
 Toppmenyen er lik på alle sider. Rekkefølgen følger arbeidsflyten: først registrene, så bruken, så kjøringene.
 
+## Forsiden
+
+[Forsiden](/) viser hvor faktureringen står for **én periode** og hva som er neste steg. Perioden velges alltid ut fra dataene, aldri ut fra dagens dato: den eldste måneden med en kjøring som ikke er ferdig (generert eller godkjent), ellers den nyeste måneden det finnes bruksdata eller en kjøring for. Korrigeringskjøringer bytter ikke periode.
+
+| Del | Hva den viser |
+|---|---|
+| Velkomst | En setning om hvor perioden står, og én knapp til neste steg. Knappen tilpasses rollen din. |
+| Månedsløpet | Bruksdata hentet, generert, kontrollert og godkjent, eksportert. |
+| Nøkkeltall | Fakturagrunnlag med endring mot forrige eksporterte periode, antall fakturaer og hvor mange som er under terskel, transaksjoner, og når bruksdata sist ble hentet fra datavarehuset. |
+| Per produkt | Fakturagrunnlaget fordelt på produkt, eller bruksvolumet før kjøringen er generert. |
+| Trenger oppmerksomhet | Blokkerende funn, advarsler som ikke er vurdert, uferdige korrigeringer, ny bruksdata som avviker fra det som er fakturert, nyere bruksdata, produkter uten konto eller artikkel-id, og manglende aktiv prisversjon. Tom liste betyr «Alt i rute». |
+| Siste aktivitet | De seks nyeste hendelsene fra hendelsesloggen. Nedlastinger er utelatt. |
+
+Kortet **Ny i forsystem?** leder hit, til Læringssenteret.
+
 ## Produkter
 
 [Produkter](/produkter) viser de fem Altinn-produktene som faktureres, med kontering (konto, dimensjoner og artikkel-id). Manglende kontering blokkerer fakturering. Under **Kildenavn** kobler du produktnavnene fra datavarehuset til produktene i forsystem, slik at en import fra datavarehuset ikke avvises.

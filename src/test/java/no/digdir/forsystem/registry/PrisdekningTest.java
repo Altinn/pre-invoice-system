@@ -19,6 +19,21 @@ class PrisdekningTest {
     }
 
     @Test
+    void dekkerFollowsTheSameBoundaries() {
+        var apen = Prisdekning.fra(LocalDate.of(2027, 1, 15), null);
+        assertThat(apen.dekker(Periode.av(2027, 1))).isFalse();
+        assertThat(apen.dekker(Periode.av(2027, 2))).isTrue();
+        assertThat(apen.dekker(Periode.av(2030, 6))).isTrue();
+
+        var lukket = Prisdekning.fra(LocalDate.of(2027, 1, 1), LocalDate.of(2027, 3, 15));
+        assertThat(lukket.dekker(Periode.av(2026, 12))).isFalse();
+        assertThat(lukket.dekker(Periode.av(2027, 3))).isTrue();
+        assertThat(lukket.dekker(Periode.av(2027, 4))).isFalse();
+
+        assertThat(Prisdekning.fra(LocalDate.of(2027, 1, 5), LocalDate.of(2027, 1, 20)).dekker(Periode.av(2027, 1))).isFalse();
+    }
+
+    @Test
     void midMonthStartCoversFromTheNextMonth() {
         var d = Prisdekning.fra(LocalDate.of(2027, 1, 15), LocalDate.of(2027, 12, 31));
         assertThat(d.forste()).isEqualTo(Periode.av(2027, 2));
