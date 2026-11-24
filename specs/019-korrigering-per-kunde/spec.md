@@ -254,8 +254,10 @@ On each credit invoice, the FORVALTER enters, by hand, the Unit4 invoice number 
 Unit4. The value is stored on the credit invoice, shown on its detail page and in the spreadsheet,
 and written to the LG04 field VIS confirms.
 
-**Why this priority**: The ticket asks for it, and OQ-6 records that Økonomi will need it. Its LG04
-field («presumably `text1`», docs/07 OQ-6), format and whether it is mandatory are unconfirmed.
+**Why this priority**: The ticket asks for it, and OQ-6 records that Økonomi will need it. The LG04
+field is confirmed (2026-11-24): `text1`, a 100-character text field at 0-based offset 3544–3643.
+Still unconfirmed: whether it goes on the header line only or on every line of the order, the
+allowed format of the value, and whether it is mandatory.
 
 **Acceptance Scenarios** (field, format and rules confirmed under OQ-6 before building):
 
@@ -355,9 +357,10 @@ field («presumably `text1`», docs/07 OQ-6), format and whether it is mandatory
 - **FR-019**: The data recorded by FR-004/FR-010 (invoiced customer values per customer and the
   links from each change to the invoiced lines) MUST be sufficient to build a full credit of what
   was invoiced to a customer without reading anything that can change later.
-- **FR-020**: The credited invoice number MUST NOT be given an LG04 offset, length, format or
-  mandatory rule until OQ-6 confirms them; any placeholder is marked `TODO(OQ-6)`. The existing
-  correction export gate MUST remain closed.
+- **FR-020**: The credited invoice number goes in LG04 `text1` (100 characters, 0-based offset
+  3544, confirmed 2026-11-24); a longer value is refused, never shortened. Which lines carry it,
+  its format and whether it is mandatory MUST NOT be assumed until OQ-6/OQ-29 (c) confirm them
+  (`TODO(OQ-6)`). The existing correction export gate MUST remain closed.
 
 **Documentation**
 
@@ -414,9 +417,10 @@ field («presumably `text1`», docs/07 OQ-6), format and whether it is mandatory
   difference, positive or negative)? One for all cases, or chosen per correction?
 - **(b) «To kjøringer per endring»**: should the credit and the new invoice be in the same LG04 file,
   in two files, or in two separately approved runs? In which order must Unit4 receive them?
-- **(c) Credited invoice number**: which LG04 field (presumably `text1`, OQ-6), its length and
-  format, whether it is mandatory on every credit, and whether one credit can settle several
-  invoices.
+- **(c) Credited invoice number**: ~~which LG04 field and its length~~ — answered 2026-11-24:
+  `text1`, 100 characters, positions 3545–3644 counted from 1 (offset 3544 from 0), unused by FEL
+  today. Still open: header line only or every line of the order, the allowed format, whether it
+  is mandatory on every credit, and whether one credit can settle several invoices.
 - **(d) Versioning start**: corrections start after **export** today (before export, a re-import
   replaces). Should a generated but not exported run also count as «forrige kjøring»?
 - **(e) Reference-only change**: should it be invoiced as full credit + new invoice with the same
