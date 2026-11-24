@@ -31,6 +31,13 @@ public record Prisdekning(Periode forste, Periode siste) {
         return forste == null;
     }
 
+    /** Whether a run for {@code periode} uses a version with this coverage. */
+    public boolean dekker(Periode periode) {
+        return !ingen()
+                && !periode.førsteDag().isBefore(forste.førsteDag())
+                && (siste == null || !periode.førsteDag().isAfter(siste.førsteDag()));
+    }
+
     /** The coverage in plain Norwegian, as shown on the price version's page. */
     public String tekst() {
         if (ingen()) {
