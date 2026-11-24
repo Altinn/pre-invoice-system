@@ -16,10 +16,8 @@ seksjoner:
     grupper:
       - tittel: Priser og produkter
         artikler: [lag-prisversjon, endre-pris-eller-terskelverdi, legg-inn-kontering, koble-kildenavn]
-      - tittel: Kunder
-        artikler: [legg-til-fakturareferanse, legg-til-kundenummerregel, avvikende-fakturamottaker]
       - tittel: Bruksdata
-        artikler: [last-opp-csv, importer-periode-pa-nytt, opprett-kunder-fra-fila]
+        artikler: [last-opp-csv, importer-periode-pa-nytt, rett-kundedata]
       - tittel: Kjøringer
         artikler: [endre-fakturatekster, forkast-og-generer-pa-nytt, sjekk-ut-advarsler, finn-en-faktura,
                    last-ned-fakturagrunnlag, kopier-epost-til-regnskap, lag-korrigeringskjoring]
@@ -53,8 +51,8 @@ jeg-vil:
     artikkel: slik-gjor-du/legg-inn-kontering
   - tekst: laste opp bruksdata fra en CSV-fil
     artikkel: slik-gjor-du/last-opp-csv
-  - tekst: legge inn fakturareferanse for en kunde
-    artikkel: slik-gjor-du/legg-til-fakturareferanse
+  - tekst: rette kundenummer eller fakturareferanse
+    artikkel: slik-gjor-du/rett-kundedata
   - tekst: forstå et kontrollfunn
     artikkel: oppslag/kontrollfunn
   - tekst: sjekke ut advarsler før godkjenning

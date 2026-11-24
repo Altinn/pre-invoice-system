@@ -42,6 +42,7 @@ public class UsageImportService {
     private final BruksdataImportRepository importer;
     private final BruksdataRepository bruksdata;
     private final BruksdataKildeRepository kilder;
+    private final BruksdataKundeRepository kundeRader;
     private final KjoringStatusPort kjoringStatus;
     private final AuditService audit;
     private final BrukerContext brukerContext;
@@ -50,13 +51,14 @@ public class UsageImportService {
 
     UsageImportService(UsageDataSource usageDataSource, ProduktRepository produkter,
                        BruksdataImportRepository importer, BruksdataRepository bruksdata,
-                       BruksdataKildeRepository kilder, KjoringStatusPort kjoringStatus, AuditService audit, BrukerContext brukerContext,
+                       BruksdataKildeRepository kilder, BruksdataKundeRepository kundeRader, KjoringStatusPort kjoringStatus, AuditService audit, BrukerContext brukerContext,
                        FileArchive arkiv, DwhEgenskaper dwh) {
         this.usageDataSource = usageDataSource;
         this.produkter = produkter;
         this.bruksdata = bruksdata;
         this.importer = importer;
         this.kilder = kilder;
+        this.kundeRader = kundeRader;
         this.kjoringStatus = kjoringStatus;
         this.audit = audit;
         this.brukerContext = brukerContext;
@@ -67,8 +69,12 @@ public class UsageImportService {
     @Transactional(readOnly = true)
     public Forhaandsvisning forhaandsvis(Periode periode, String filnavn, InputStream innhold)
             throws IOException {
-        return vurder(periode, filnavn, Kilde.CSV, usageDataSource.lesRader(periode, innhold),
-                List.of(), List.of(), null, null);
+        List<RaaBruksrad> rader = usageDataSource.lesRader(periode, innhold);
+        Kundedata.Samler kunder = new Kundedata.Samler();
+        rader.forEach(r -> kunder.legg(r.organisasjonsnummer(), r.kundenavn(), r.kundenummer(),
+                r.fakturareferanse(), r.bestillingsnummer()));
+        return vurder(periode, filnavn, Kilde.CSV, rader, List.of(), List.of(), null, null)
+                .medKunder(kunder.resultat());
     }
 
     /**
@@ -179,6 +185,7 @@ public class UsageImportService {
                 .toList();
         bruksdata.saveAll(medImport);
         lagreKilder(fv, lagret.id());
+        lagreKunder(fv, lagret.id());
 
         Map<String, Object> detaljer = new LinkedHashMap<>();
         detaljer.put("periode", fv.periode().toString());
@@ -219,6 +226,32 @@ public class UsageImportService {
                     g.regler().toArray(String[]::new)));
         }
         kilder.saveAll(rader);
+    }
+
+    /**
+     * The customer values of the committed usage (specs/018): one row per organisation in the valid rows, also
+     * when the source delivered nothing for it, so generation can tell «no kundenummer» from «no row».
+     */
+    private void lagreKunder(Forhaandsvisning fv, Long importId) {
+        Map<String, Kundedata> perOrgnr = new LinkedHashMap<>();
+        fv.kunder().forEach(k -> perOrgnr.put(k.organisasjonsnummer(), k));
+        Set<String> orgnr = new java.util.TreeSet<>();
+        fv.gyldige().forEach(b -> orgnr.add(b.organisasjonsnummer()));
+        List<BruksdataKunde> rader = new ArrayList<>();
+        for (String o : orgnr) {
+            Kundedata k = perOrgnr.get(o);
+            rader.add(k == null
+                    ? new BruksdataKunde(null, importId, o, null, null, null, null, new String[0])
+                    : new BruksdataKunde(null, importId, o, k.navn(), k.kundenummer(), k.fakturareferanse(),
+                            k.bestillingsnummer(), k.motstridende().toArray(String[]::new)));
+        }
+        kundeRader.saveAll(rader);
+    }
+
+    /** The customer values an import delivered, by orgnr (specs/018). */
+    @Transactional(readOnly = true)
+    public List<BruksdataKunde> kundedata(Long importId) {
+        return kundeRader.findByImportIdOrderByOrganisasjonsnummer(importId);
     }
 
     /** The source groups of an import, for the detail page. Empty for imports without them. */

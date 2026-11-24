@@ -29,12 +29,6 @@ import no.digdir.forsystem.billing.Fakturakjoring;
 import no.digdir.forsystem.billing.FakturakjoringRepository;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
-import no.digdir.forsystem.registry.Kunde;
-import no.digdir.forsystem.registry.KundeReferanse;
-import no.digdir.forsystem.registry.KundeReferanseRepository;
-import no.digdir.forsystem.registry.KundeRepository;
-import no.digdir.forsystem.registry.KundenummerRegel;
-import no.digdir.forsystem.registry.KundenummerRegelRepository;
 import no.digdir.forsystem.registry.Prisversjon;
 import no.digdir.forsystem.registry.PrisversjonRepository;
 import no.digdir.forsystem.registry.ProduktKildenavnService;
@@ -67,9 +61,6 @@ class DwhImportServiceIT extends IntegrationTest {
     @Autowired ProduktRepository produkter;
     @Autowired BruksdataRepository bruksdata;
     @Autowired BruksdataImportRepository importer;
-    @Autowired KundeRepository kunder;
-    @Autowired KundeReferanseRepository referanser;
-    @Autowired KundenummerRegelRepository kundenummerRegler;
     @Autowired PrisversjonRepository prisversjoner;
     @Autowired FakturakjoringRepository kjoringer;
     @Autowired MockMvc mvc;
@@ -140,18 +131,21 @@ class DwhImportServiceIT extends IntegrationTest {
     }
 
     @Test
-    void customerReferenceMismatchIsAWarningNotAReject() throws IOException {
+    void customerValuesOfTheApiGoWithThePreviewWithoutWarnings() throws IOException {
         svar("januar-ok.json");
-        Kunde k = kunder.save(new Kunde(null, "123456789", "Testetat", null, "AKTIV", "MANUELL", "test",
-                OffsetDateTime.now()));
-        kundenummerRegler.save(new KundenummerRegel(null, k.id(), "9999", null, null, null));
-        referanser.save(new KundeReferanse(null, k.id(), null, "TESTREF1", null));
 
         Forhaandsvisning fv = dwh.forhaandsvis(JAN);
 
+        // specs/018: CRM via the DWH is the only customer source, so there is nothing to compare with.
         assertThat(fv.kanImporteres()).isTrue();
-        assertThat(fv.advarsler()).singleElement().satisfies(a -> assertThat(a)
-                .contains("123456789").contains("kundenummer 1234").contains("9999"));
+        assertThat(fv.advarsler()).noneMatch(a -> a.contains("kunderegister"));
+        assertThat(fv.kunder()).anySatisfy(k -> {
+            assertThat(k.organisasjonsnummer()).isEqualTo("123456789");
+            assertThat(k.navn()).isEqualTo("testetat");
+            assertThat(k.kundenummer()).isEqualTo("1234");
+            assertThat(k.fakturareferanse()).isEqualTo("TESTREF1");
+            assertThat(k.harMotstridende()).isFalse();
+        });
     }
 
     @Test

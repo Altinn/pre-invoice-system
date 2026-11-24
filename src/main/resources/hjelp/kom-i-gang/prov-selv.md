@@ -49,7 +49,6 @@ Vil du kjøre samme måned om igjen, også etter eksport, bruker du **Testverkt�
 
 - produkter, kontering og kildenavn
 - prisversjoner og priser
-- kunder
 - hendelsesloggen. Selve nullstillingen blir logget der.
 
 Etterpå viser siden hvor mange kjøringer, fakturaer, importer og filer som ble slettet. Du kan så laste opp bruksdata og generere måneden på nytt.

@@ -10,7 +10,7 @@ Terskelverdien er et minstebeløp. En kunde som har brukt for lite i en måned, 
 ## Slik virker den
 
 - Terskelverdien står på **prisversjonen**. En ny prisversjon starter på 40,00 kr eksl. mva per kunde per måned.
-- Forsystem summerer kundens beløp over **alle produkter og alle kundenumre**, per organisasjonsnummer.
+- Forsystem summerer kundens beløp over **alle produkter**, per organisasjonsnummer.
 - Er summen **over** terskelverdien, fakturerer forsystem alt kunden har brukt. Er den **lik eller under**, blir det ingen faktura.
 - Beløpet regnes eksl. mva.
 - Terskelverdien kan endres mens prisversjonen er UTKAST, og låses når den aktiveres.
@@ -21,13 +21,13 @@ Terskelverdien sjekkes etter at bruken er gruppert i fakturaer. Se [Slik grupper
 
 Alle tall her er oppdiktede, bare for å vise regelen. Anta en terskelverdi på 40,00 kr.
 
-| Kunde | Faktura 1 | Faktura 2 | Samlet | Resultat |
+| Kunde | Melding | Varsling | Samlet | Resultat |
 |---|---|---|---|---|
-| A | 30,00 | 15,00 | 45,00 | Begge fakturaene lages, for 45 er over 40 |
+| A | 30,00 | 15,00 | 45,00 | Faktura, for 45 er over 40 |
 | B | 25,00 | 15,00 | 40,00 | Ingen faktura, for 40 er ikke over 40 |
 | C | 10,00 | | 10,00 | Ingen faktura |
 
-Legg merke til kunde A. Hver faktura er under terskelverdien, men summen er over, og da faktureres begge.
+Legg merke til kunde A. Hvert produkt er under terskelverdien, men summen er over, og da faktureres alt.
 
 ## Hva du ser i en kjøring
 

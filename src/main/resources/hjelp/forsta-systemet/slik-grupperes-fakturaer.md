@@ -1,63 +1,39 @@
 ---
 tittel: Slik grupperes fakturaer
-sammendrag: Hvorfor en kunde kan få flere fakturaer, og hvordan kundenummer, produkt og referanse avgjør hvilke linjer som havner sammen.
-oppdatert: 2026-11-17
-relatert: [slik-gjor-du/legg-til-kundenummerregel, slik-gjor-du/legg-til-fakturareferanse, slik-gjor-du/avvikende-fakturamottaker, oppslag/kontrollfunn, forsta-systemet/terskelverdi]
-nokkelord: [kundenummer, servicekode, tilleggstekst, delt referanse, flere fakturaer, avvikende mottaker, kundenummerregel]
+sammendrag: Hver organisasjon med bruk får én faktura, med kundenummer og referanse slik datavarehuset leverer dem fra CRM.
+oppdatert: 2026-11-24
+relatert: [slik-gjor-du/rett-kundedata, oppslag/kontrollfunn, forsta-systemet/terskelverdi]
+nokkelord: [kundenummer, delt referanse, flere fakturaer, fakturamottaker, gruppering]
 ---
-Under FinMod er det ikke slik at én kunde alltid får én faktura. Forsystem grupperer bruken etter noen få regler. Når du kjenner reglene, forstår du hvorfor antall fakturaer i en kjøring ikke alltid er lik antall kunder.
+Forsystem lager **én faktura per organisasjon** som har bruk i måneden. Hvert produkt blir én eller flere linjer på fakturaen.
 
-## Hovedregelen
+## Kundedata kommer med bruken
 
-Bruken slås sammen per **kunde og kundenummer**. Hver slik gruppe blir én faktura, og hvert produkt i gruppen blir én eller flere linjer på den.
+Forsystem har ikke noe eget kunderegister. Navn, kundenummer, fakturareferanse («Deres referanse») og bestillingsnummer registreres i CRM og kommer med bruksdataene fra datavarehuset. Fakturaen får verdiene fra importen kjøringen bygger på. Se [Rett kundedata](../slik-gjor-du/rett-kundedata.md).
 
-Kundenummeret er kundens id i Unit4. Det er ikke det samme som organisasjonsnummeret.
+Kundenummeret er kundens id i Unit4. Det er ikke det samme som organisasjonsnummeret. To organisasjoner kan ha samme kundenummer, og de får likevel hver sin faktura.
 
-- En kunde med ett kundenummer får vanligvis én faktura.
-- En kunde med to kundenumre får to fakturaer.
-- To kunder kan dele ett kundenummer, og de får likevel hver sin faktura, for gruppen er kunde pluss kundenummer.
+## Når kundedata mangler eller ikke stemmer
 
-Organisasjonsnummer og kundenummer er altså ikke et til ett. Det er derfor kundenummer er en egen regel i registeret, og ikke et felt på kunden.
+- Leverer datavarehuset ikke noe kundenummer for organisasjonen, får kjøringen det blokkerende funnet `MANGLER_KUNDENUMMER`, og bruken kommer ikke med.
+- Har radene for samme organisasjon ulikt kundenummer, fakturareferanse eller bestillingsnummer, får kjøringen det blokkerende funnet `MOTSTRIDENDE_KUNDEDATA`. Forsystem velger ikke én av verdiene.
+- Mangler bare fakturareferansen, får fakturaen advarselen `MANGLER_FAKTURAREFERANSE`.
 
-## Hvilket kundenummer en linje får
+Kjøringen kan ikke godkjennes med blokkerende funn. Se [Kontrollfunn](../oppslag/kontrollfunn.md).
 
-Hver kunde har én eller flere **kundenummerregler**. En regel gjelder enten ett bestemt produkt eller alle produkter, og kan ha en **servicekode** og en **tilleggstekst**.
+## Referanse og bestillingsnummer
 
-For hver bruksrad velger forsystem regelen slik:
+Alle linjene på fakturaen får samme fakturareferanse og bestillingsnummer. Står bestillingsnummer tomt, brukes fakturareferansen.
 
-1. En regel for akkurat dette produktet, hvis den finnes.
-2. Ellers en regel som gjelder alle produkter.
-3. Finnes ingen av dem, kan ikke raden faktureres.
-
-Eksempel med oppdiktede navn og kundenumre. Kunde A har to regler, 1111 for Melding og 2222 for alle andre produkter. Bruk av Melding havner da på fakturaen for 1111, og bruk av Varsling på fakturaen for 2222. Kunde A får to fakturaer.
-
-Servicekoden lagres på fakturalinjene. Tilleggsteksten brukes når flere virksomheter deler ett kundenummer, slik at de kan skilles fra hverandre.
-
-## Hva som skjer når regelen mangler
-
-Mangler en kunde en passende regel, får kjøringen et blokkerende funn, `MANGLER_KUNDENUMMER`, og bruken for det produktet kommer ikke med. Kjøringen kan ikke godkjennes før det er rettet. Se [Kontrollfunn](../oppslag/kontrollfunn.md). Hvordan du legger inn en regel, står i [Legg til en kundenummerregel](../slik-gjor-du/legg-til-kundenummerregel.md).
-
-Hvis bruken tilhører et organisasjonsnummer uten registrert kunde, gir det `MANGLER_KUNDE` i stedet.
-
-## Referanser og delte fakturaer
-
-Hver linje får fakturareferanse («Deres referanse») og bestillingsnummer fra kunden.
-
-- En referanse uten produkt er standarden for kunden.
-- En referanse med produkt gjelder bare det produktet og **erstatter** standarden for det produktet. Står fakturareferanse tomt på en slik rad, får linjen ingen referanse, og det gir en advarsel.
-- Står bestillingsnummer tomt, brukes fakturareferansen.
-
-En faktura kan ikke ha mer enn ett par av fakturareferanse og bestillingsnummer i LG04-filen. Har linjene på samme faktura ulike par, deles fakturaen i filen i én ordre per par, og kjøringen får advarselen `DELT_REFERANSE` slik at du ser det før godkjenning. I forsystem er det fortsatt én faktura. Det er først i LG04-filen og i Unit4 at den blir flere. Dette er ikke prøvd mot Unit4 ennå og skal verifiseres i desembers prøvekjøring (OQ-1).
-
-Se [Legg til en fakturareferanse](../slik-gjor-du/legg-til-fakturareferanse.md).
+Kjøringer fra før kunderegisteret ble fjernet, kan ha fakturaer med ulike referanser per produkt. Slike fakturaer deles i én ordre per referanse i LG04-filen og har advarselen `DELT_REFERANSE`.
 
 ## Hvem som mottar fakturaen
 
-Fakturaen går som regel til kunden selv. Har kunden en **avvikende fakturamottaker** satt, står den virksomhetens organisasjonsnummer som mottaker i stedet. Bruken ligger likevel under kunden som genererte den. Reglene for avvikende mottaker er ikke endelig avklart (OQ-7). Se [Avvikende fakturamottaker](../slik-gjor-du/avvikende-fakturamottaker.md).
+Organisasjonen selv mottar fakturaen. Datavarehuset leverer ingen annen fakturamottaker. Om det skal være mulig, er et åpent spørsmål (OQ-7, OQ-28).
 
 ## Terskelverdi kommer etter grupperingen
 
-Først grupperes bruken i fakturaer. Deretter sjekkes terskelverdien mot kundens samlede beløp over alle kundenumrene. Se [Terskelverdi](terskelverdi.md).
+Først grupperes bruken i fakturaer. Deretter sjekkes terskelverdien mot organisasjonens samlede beløp. Se [Terskelverdi](terskelverdi.md).
 
 > [!TIP]
 > Reglene her gjelder en vanlig kjøring. En korrigeringskjøring følger andre regler, se [Korrigering og avregning](korrigering-og-avregning.md).

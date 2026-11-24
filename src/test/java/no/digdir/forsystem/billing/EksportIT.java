@@ -38,7 +38,7 @@ class EksportIT extends BillingFixture {
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);      // 3.00
         bruk(imp, JAN, "100000001", "formidling", Bruksdatatype.BRUKSVOLUM, "10", null);  // 20.00
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         godkjennEtterAksept(kj.id());
         return kj;
     }
@@ -89,28 +89,22 @@ class EksportIT extends BillingFixture {
 
     @Test
     void anInvoiceWithTwoReferencesBecomesTwoOrders() {
+        // Since specs/018 an organisation has one reference, so only runs generated before it can carry two.
+        // The LG04 split must keep working for them: simulate such a run by giving one line its own reference.
         settKontoAlle();
         Long v = aktivVersjon(LocalDate.of(2027, 1, 1), null).id();
         pris(v, "melding", "1.0000");
         pris(v, "formidling", "2.0000");
         Long k = kunde("100000001", "Kunde", "AKTIV", null).id();
         regel(k, "KN1", null, null, null);
-        referanse(k, "melding", "REF-MELDING", null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);
         bruk(imp, JAN, "100000001", "formidling", Bruksdatatype.BRUKSVOLUM, "10", null);
-        var kj = tjeneste.generer(JAN);
-        var faktura = tjeneste.fakturaer(kj.id()).get(0);
+        var kj = generer(JAN);
         assertThat(tjeneste.fakturaer(kj.id())).hasSize(1);
-        // A visible warning before approval, not a block (FR-009).
-        assertThat(tjeneste.funnForFaktura(faktura.id()))
-                .filteredOn(f -> "DELT_REFERANSE".equals(f.kode()))
-                .singleElement()
-                .satisfies(f -> {
-                    assertThat(f.alvorlighet()).isEqualTo("ADVARSEL");
-                    assertThat(f.melding()).contains("REF-MELDING").contains("ingen referanse")
-                            .contains("2 fakturaer i Unit4");
-                });
+        assertThat(tjeneste.funn(kj.id())).noneMatch(f -> "DELT_REFERANSE".equals(f.kode()));
+        jdbc.update("update fakturalinje set fakturareferanse = 'REF-MELDING', bestillingsnummer = 'REF-MELDING' "
+                + "where produkt_id = ?", produktId("melding"));
         godkjennEtterAksept(kj.id());
 
         eksport.eksporter(kj.id());
@@ -153,7 +147,7 @@ class EksportIT extends BillingFixture {
         regel(k, "KN1", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
-        var kj = tjeneste.generer(JAN); // GENERERT, not approved
+        var kj = generer(JAN); // GENERERT, not approved
         assertThatThrownBy(() -> eksport.eksporter(kj.id()))
                 .isInstanceOf(Regelbrudd.class).hasMessageContaining("godkjent");
     }

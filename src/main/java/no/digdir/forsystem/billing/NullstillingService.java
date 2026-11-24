@@ -110,6 +110,9 @@ public class NullstillingService {
                      s as (delete from bruksdata_sammenligning where periode = ?)
                 select 1
                 """, p, p);
+        // The import's customer values (specs/018) and source groups (specs/017) go with it.
+        jdbc.update("delete from bruksdata_kunde where import_id in (" + IMPORTER + ")", p);
+        jdbc.update("delete from bruksdata_kilde where import_id in (" + IMPORTER + ")", p);
         int rader = jdbc.update("delete from bruksdata where import_id in (" + IMPORTER + ")", p);
         jdbc.update("delete from bruksdata_import where periode = ?", p);
 

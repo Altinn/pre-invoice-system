@@ -56,7 +56,7 @@ class KontrollerEksportIT extends BillingFixture {
         regel(k, "KN1", null, null, null);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
         bruk(imp, JAN, "999999999", "melding", Bruksdatatype.BRUKSVOLUM, "7", null);
-        return tjeneste.generer(JAN);
+        return generer(JAN);
     }
 
     private String csv(String url, Object... args) throws Exception {
@@ -84,7 +84,7 @@ class KontrollerEksportIT extends BillingFixture {
                 + "funn_akseptert,akseptert_av,akseptert_tidspunkt");
         assertThat(linjer).hasSize(1 + tjeneste.funn(kj.id()).size());
         // Blocking first, with no acceptance column; the accepted warning names who.
-        assertThat(linjer.get(1)).startsWith("2027-01,BLOKKERENDE,MANGLER_KUNDE,").endsWith(",,,");
+        assertThat(linjer.get(1)).startsWith("2027-01,BLOKKERENDE,MANGLER_KUNDENUMMER,").endsWith(",,,");
         assertThat(linjer).anySatisfy(l -> assertThat(l)
                 .startsWith("2027-01,ADVARSEL,MANGLER_FAKTURAREFERANSE,")
                 .contains(",KN1,Kunde En,ja,okonomi,20").doesNotContain("nei"));
@@ -111,7 +111,7 @@ class KontrollerEksportIT extends BillingFixture {
         assertThat(ikkeFakturert.lines().toList()).containsExactly(
                 "periode,organisasjonsnummer,produkt,type,antall,belop_eksl_mva,kode,arsak",
                 ikkeFakturert.lines().skip(1).findFirst().orElseThrow());
-        assertThat(ikkeFakturert).contains("2027-01,999999999,melding,BRUKSVOLUM,7.00,,MANGLER_KUNDE,");
+        assertThat(ikkeFakturert).contains("2027-01,999999999,melding,BRUKSVOLUM,7.00,,MANGLER_KUNDENUMMER,");
 
         try (var wb = xlsx("/kjoringer/{id}/avstemming-bruksdata.xlsx", kj.id())) {
             var rad = wb.getSheet("avstemming-bruksdata").getRow(1);
@@ -152,7 +152,7 @@ class KontrollerEksportIT extends BillingFixture {
                 List.of(), List.of(), List.of("eksportert kjøring finnes"), List.of(),
                 new Raadata("eksport-v2".getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null), null);
         var sammenligning = kandidater.opprettHvisEksportert(fv).orElseThrow();
-        var korrigering = tjeneste.genererKorrigering(sammenligning.sammenligning().id(),
+        var korrigering = genererKorrigering(sammenligning.sammenligning().id(),
                 List.of(sammenligning.endringer().getFirst().id()), "Retting");
 
         assertThatThrownBy(() -> eksport.liste(korrigering.id(), "avstemming-bruksdata", "csv"))

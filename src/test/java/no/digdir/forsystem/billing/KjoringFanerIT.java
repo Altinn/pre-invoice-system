@@ -40,7 +40,7 @@ class KjoringFanerIT extends BillingFixture {
         for (int i = 0; i < ukjente; i++) {
             bruk(imp, JAN, "90000000" + i, "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
         }
-        return tjeneste.generer(JAN);
+        return generer(JAN);
     }
 
     private String hent(String url, Object... args) throws Exception {
@@ -123,7 +123,7 @@ class KjoringFanerIT extends BillingFixture {
             regel(k, "KN" + i, null, null, null);
             bruk(imp, JAN, orgnr, "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
         }
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
 
         String side1 = hent("/kjoringer/{id}/fakturaer", kj.id());
         assertThat(side1).contains("data-current=\"1\"", "data-total=\"2\"", "aria-current=\"true\"",

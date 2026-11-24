@@ -20,7 +20,7 @@ class KjoringStatemaskinIT extends BillingFixture {
         regel(k, "KN1", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
-        return tjeneste.generer(JAN);
+        return generer(JAN);
     }
 
     @Test
@@ -45,11 +45,11 @@ class KjoringStatemaskinIT extends BillingFixture {
     void secondRunForSamePeriodBlockedUntilFirstForkastet() {
         var forste = renKjoring();
         // Partial unique index: only one non-FORKASTET run per period.
-        assertThatThrownBy(() -> tjeneste.generer(JAN))
+        assertThatThrownBy(() -> generer(JAN))
                 .isInstanceOf(Regelbrudd.class).hasMessageContaining("aktiv kjøring");
 
         tjeneste.forkast(forste.id());
-        var andre = tjeneste.generer(JAN);
+        var andre = generer(JAN);
         assertThat(andre.id()).isNotEqualTo(forste.id());
         assertThat(tjeneste.hent(forste.id()).status()).isEqualTo("FORKASTET");
         assertThat(tjeneste.hent(andre.id()).status()).isEqualTo("GENERERT");

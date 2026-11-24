@@ -39,9 +39,9 @@ class DwhCsvTest {
 
     @Test
     void oneCustomerPerOrganisation() throws IOException {
-        var kunder = DwhCsv.kunder(eksport());
+        var kunder = DwhRad.kundedata(DwhCsv.les(eksport()));
 
-        assertThat(kunder).extracting(DwhCsv.KundeIFil::organisasjonsnummer)
+        assertThat(kunder).extracting(Kundedata::organisasjonsnummer)
                 .containsExactly("100000001", "100000002", "100000003");
         assertThat(kunder.get(0).navn()).isEqualTo("testetat en");
         assertThat(kunder.get(0).bestillingsnummer()).isNull();

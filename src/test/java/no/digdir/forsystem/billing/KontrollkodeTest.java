@@ -20,6 +20,17 @@ class KontrollkodeTest {
     void severitiesMatchHowGenerationRaisesThem() {
         assertThat(Arrays.stream(Kontrollkode.values()).filter(k -> k.alvorlighet() == Alvorlighet.BLOKKERENDE))
                 .containsExactlyInAnyOrder(Kontrollkode.MANGLER_KUNDE, Kontrollkode.MANGLER_KUNDENUMMER,
-                        Kontrollkode.INAKTIV_AVTALE, Kontrollkode.MANGLER_PRIS, Kontrollkode.MANGLER_KONTERING);
+                        Kontrollkode.MOTSTRIDENDE_KUNDEDATA, Kontrollkode.INAKTIV_AVTALE, Kontrollkode.MANGLER_PRIS,
+                        Kontrollkode.MANGLER_KONTERING);
+    }
+
+    @Test
+    void retiredCodesKeepTheirDefinitionAndAreNotActive() {
+        // specs/018: no longer raised, but findings on older runs still render.
+        assertThat(Arrays.stream(Kontrollkode.values()).filter(Kontrollkode::utgatt))
+                .containsExactlyInAnyOrder(Kontrollkode.MANGLER_KUNDE, Kontrollkode.INAKTIV_AVTALE,
+                        Kontrollkode.AKTIV_KUNDE_UTEN_BRUK);
+        assertThat(Kontrollkode.aktive()).doesNotContain(Kontrollkode.MANGLER_KUNDE, Kontrollkode.INAKTIV_AVTALE,
+                Kontrollkode.AKTIV_KUNDE_UTEN_BRUK).contains(Kontrollkode.MOTSTRIDENDE_KUNDEDATA);
     }
 }

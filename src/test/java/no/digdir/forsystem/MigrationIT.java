@@ -34,8 +34,9 @@ class MigrationIT {
         // to its finding, V11 freezes the customer name on faktura (specs/002), and V12 adds
         // immutable comparison data plus versioned correction runs (specs/007), and V13 stores the
         // invoice texts per run (specs/009), V14 the invoice threshold (specs/011), and V15 accepted
-        // control findings (specs/013), and V16 the DWH source groups (specs/017).
-        assertThat(applied).isEqualTo(16);
+        // control findings (specs/013), and V16 the DWH source groups (specs/017). V17 keeps the customer
+        // values per import and V18 drops the customer registry (specs/018).
+        assertThat(applied).isEqualTo(18);
     }
 
     @Test

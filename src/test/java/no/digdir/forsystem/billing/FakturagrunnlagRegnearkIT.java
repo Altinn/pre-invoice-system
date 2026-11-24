@@ -16,7 +16,6 @@ import java.util.List;
 import no.digdir.forsystem.archive.FileArchive;
 import no.digdir.forsystem.common.HendelsesloggRepository;
 import no.digdir.forsystem.export.EksportService;
-import no.digdir.forsystem.registry.Kunde;
 import no.digdir.forsystem.usage.Bruksdatatype;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -61,7 +60,7 @@ class FakturagrunnlagRegnearkIT extends BillingFixture {
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);
         bruk(imp, JAN, "100000001", "varsling", Bruksdatatype.SMS_KOSTNAD, null, "12.50");
-        return tjeneste.generer(JAN);
+        return generer(JAN);
     }
 
     @Test
@@ -124,15 +123,10 @@ class FakturagrunnlagRegnearkIT extends BillingFixture {
     @Test
     void customerNameIsFrozenAtGeneration() throws Exception {
         var kj = generert();
-        Kunde k = kunder.findById(kundeId).orElseThrow();
-        kunder.save(new Kunde(k.id(), k.organisasjonsnummer(), "Nytt navn kommune", k.fakturamottakerOrgnr(),
-                k.avtalestatus(), k.kilde(), k.oppdatertAv(), k.oppdatertAt()));
+        // A later import with another name (specs/018) does not rewrite the generated invoice.
+        jdbc.update("update bruksdata_kunde set virksomhetsnavn = 'Nytt navn kommune'");
 
         assertThat(csv(kj)).contains("Oslo kommune").doesNotContain("Nytt navn kommune");
-
-        // An invoice generated before the name was frozen shows today's name, marked as such.
-        jdbc.update("update faktura set kundenavn = null where kjoring_id = ?", kj.id());
-        assertThat(csv(kj)).contains("Nytt navn kommune (nåværende navn)");
     }
 
     @Test

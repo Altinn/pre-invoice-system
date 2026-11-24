@@ -52,7 +52,7 @@ class HjelpSokTest {
             "kontering, slik-gjor-du/legg-inn-kontering",
             "LG04, slik-gjor-du/er-lg04-lastet-ned",
             "forkast, slik-gjor-du/forkast-og-generer-pa-nytt",
-            "fakturareferanse, slik-gjor-du/legg-til-fakturareferanse",
+            "fakturareferanse, slik-gjor-du/rett-kundedata",
             "kildenavn, slik-gjor-du/koble-kildenavn",
             "prisversjon, slik-gjor-du/lag-prisversjon",
             "advarsel, oppslag/kontrollfunn",

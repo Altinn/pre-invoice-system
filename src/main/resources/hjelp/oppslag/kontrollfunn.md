@@ -5,7 +5,7 @@ oppdatert: 2026-11-17
 apne-i-appen: /kjoringer
 apne-i-appen-tekst: Åpne Kjøringer
 relatert: [manedsrutinen/4-kontrollfunn, slik-gjor-du/sjekk-ut-advarsler, slik-gjor-du/forkast-og-generer-pa-nytt, nar-noe-gar-galt/godkjenn-er-gra]
-nokkelord: [kontrollkode, blokkerende, advarsel, funn akseptert, MANGLER_KUNDE, MANGLER_KUNDENUMMER, MANGLER_PRIS, MANGLER_KONTERING, terskel]
+nokkelord: [kontrollkode, blokkerende, advarsel, funn akseptert, MANGLER_KUNDENUMMER, MOTSTRIDENDE_KUNDEDATA, MANGLER_PRIS, MANGLER_KONTERING, terskel]
 ---
 Kontrollene kjøres automatisk når du genererer en kjøring. Du ser funnene på fanen [Kontroller](knapp:) i kjøringen.
 

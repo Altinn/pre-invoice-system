@@ -8,9 +8,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 import no.digdir.forsystem.common.Periode;
-import no.digdir.forsystem.registry.Avtalestatus;
-import no.digdir.forsystem.registry.Kunde;
-import no.digdir.forsystem.registry.KundeService;
 import no.digdir.forsystem.registry.Prisversjon;
 import no.digdir.forsystem.registry.PrisversjonService;
 import no.digdir.forsystem.registry.Produkt;
@@ -26,7 +23,10 @@ import org.springframework.stereotype.Component;
 /**
  * Seeds a realistic, clearly-fake dataset on startup under the {@code demo} profile, so the whole
  * monthly cycle can be demonstrated locally end-to-end (docs/04 Phase 5). Covers every structural
- * FinMod special case from docs/01. Idempotent — skips if customers already exist.
+ * FinMod special case that still exists after specs/018. Idempotent — skips if usage is already imported.
+ *
+ * <p>There is no customer registry: customer values (name, kundenummer, fakturareferanse, bestillingsnummer)
+ * come with the usage, here as the optional columns of the demo CSV.
  *
  * <p>All accounting codes and prices here are LOUD DEMO placeholders (never real values — CLAUDE.md):
  * the price version is named "…(DEMO)" and kontering is "DEMO…". Real kontering/prices are OQ-2.
@@ -40,26 +40,23 @@ class Demodata implements ApplicationRunner {
     private final ProduktService produktService;
     private final ProduktRepository produkter;
     private final PrisversjonService prisversjoner;
-    private final KundeService kunder;
     private final UsageImportService usage;
 
     Demodata(ProduktService produktService, ProduktRepository produkter, PrisversjonService prisversjoner,
-             KundeService kunder, UsageImportService usage) {
+             UsageImportService usage) {
         this.produktService = produktService;
         this.produkter = produkter;
         this.prisversjoner = prisversjoner;
-        this.kunder = kunder;
         this.usage = usage;
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        if (!kunder.alle().isEmpty()) {
+        if (usage.gjeldendeImport(JANUAR_2027).isPresent()) {
             return; // already seeded
         }
         settDemoKontering();
         aktivPrisliste();
-        seedKunder();
         importerBruk();
     }
 
@@ -87,34 +84,6 @@ class Demodata implements ApplicationRunner {
         prisversjoner.settPris(v.id(), produktId(kode), new BigDecimal(pris));
     }
 
-    private void seedKunder() {
-        // Normal customer, several products under one kundenummer.
-        Long oslo = kunder.opprett("958935420", "Oslo kommune", null, Avtalestatus.AKTIV).id();
-        kunder.leggTilRegel(oslo, "KN-1001", null, null, null);
-        // Fakturareferanse without bestillingsnummer: the invoice gets the reference in both fields (specs/012).
-        kunder.leggTilReferanse(oslo, null, "DEMO-OSLO-REF", null);
-
-        // Deviating recipient: usage on one org, invoiced to another legal entity.
-        Long helgeland = kunder.opprett("912345678", "Digitale Helgeland", "964338442", Avtalestatus.AKTIV).id();
-        kunder.leggTilRegel(helgeland, "KN-1002", null, null, null);
-
-        // Two kundenummer for one customer (different servicekode per product) → two invoices.
-        Long udir = kunder.opprett("970018131", "Utdanningsdirektoratet", null, Avtalestatus.AKTIV).id();
-        kunder.leggTilRegel(udir, "KN-2001", produktId("melding"), "UDIR-A", null);
-        kunder.leggTilRegel(udir, "KN-2002", produktId("autorisasjon"), "UDIR-B", null);
-
-        // Shared kundenummer across two customers, distinguished by tilleggstekst.
-        Long polDir = kunder.opprett("915429785", "Politidirektoratet", null, Avtalestatus.AKTIV).id();
-        kunder.leggTilRegel(polDir, "KN-3000", null, null, "Politidirektoratet");
-        Long politiet = kunder.opprett("983998006", "Politiet", null, Avtalestatus.AKTIV).id();
-        kunder.leggTilRegel(politiet, "KN-3000", null, null, "Politi- og lensmannsetaten");
-
-        // Product-specific fakturareferanse + bestillingsnummer.
-        Long trondelag = kunder.opprett("817920632", "Trøndelag fylkeskommune", null, Avtalestatus.AKTIV).id();
-        kunder.leggTilRegel(trondelag, "KN-1003", null, null, null);
-        kunder.leggTilReferanse(trondelag, produktId("appinfra"), "REF-APP-2027", "BEST-99");
-    }
-
     private void importerBruk() {
         try (InputStream csv = new ClassPathResource("demo/bruk-2027-01.csv").getInputStream()) {
             var forhaandsvisning = usage.forhaandsvis(JANUAR_2027, "bruk-2027-01.csv", csv);
@@ -131,6 +100,6 @@ class Demodata implements ApplicationRunner {
     // Kept for readability of the seeded set.
     @SuppressWarnings("unused")
     private static final List<String> DEKKER = List.of(
-            "normal", "avvikende-mottaker", "to-kundenummer", "delt-kundenummer", "produktspesifikk-referanse",
+            "normal", "delt-kundenummer", "uten-fakturareferanse", "bestillingsnummer",
             "gjennomstrømningskostnader");
 }

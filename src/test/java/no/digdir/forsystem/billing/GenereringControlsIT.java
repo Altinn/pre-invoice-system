@@ -24,14 +24,94 @@ class GenereringControlsIT extends BillingFixture {
     }
 
     @Test
-    void manglerKundeFires() {
+    void usageWithoutCustomerDataGivesMissingKundenummerNotMissingCustomer() {
+        // specs/018: there is no registry, so an orgnr the DWH delivered nothing for lacks a kundenummer.
         settKontoAlle();
         standardVersjon();
         Long imp = nyImport(JAN);
-        bruk(imp, JAN, "100000009", "melding", Bruksdatatype.BRUKSVOLUM, "1", null); // no kunde
-        var kj = tjeneste.generer(JAN);
-        assertThat(koder(kj.id())).contains("MANGLER_KUNDE");
+        bruk(imp, JAN, "100000009", "melding", Bruksdatatype.BRUKSVOLUM, "1", null); // no customer values
+        var kj = generer(JAN);
+        assertThat(koder(kj.id())).containsExactly("MANGLER_KUNDENUMMER").doesNotContain("MANGLER_KUNDE");
+        assertThat(tjeneste.funn(kj.id()).getFirst().melding())
+                .isEqualTo("Importen har ikke kundenummer for 100000009");
         assertThat(tjeneste.harBlokkerende(kj.id())).isTrue();
+        assertThatThrownBy(() -> tjeneste.godkjenn(kj.id())).isInstanceOf(Regelbrudd.class);
+    }
+
+    @Test
+    void customerValuesOfTheImportReachTheInvoiceAndItsLines() {
+        settKontoAlle();
+        Long v = standardVersjon();
+        pris(v, "varsling", "1.0000");
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
+        bruk(imp, JAN, "100000001", "varsling", Bruksdatatype.BRUKSVOLUM, "100", null);
+        jdbc.update("insert into bruksdata_kunde (import_id, organisasjonsnummer, virksomhetsnavn, kundenummer, "
+                + "fakturareferanse, bestillingsnummer) values (?, '100000001', 'alfa kommune', 'K-A', 'REF-A', null)",
+                imp);
+
+        var kj = generer(JAN);
+
+        assertThat(tjeneste.fakturaer(kj.id())).singleElement().satisfies(f -> {
+            assertThat(f.organisasjonsnummer()).isEqualTo("100000001");
+            assertThat(f.kundenavn()).isEqualTo("alfa kommune");   // as delivered, never prettified
+            assertThat(f.kundenummer()).isEqualTo("K-A");
+            assertThat(f.fakturamottakerOrgnr()).isEqualTo("100000001");
+            assertThat(f.tilleggstekst()).isNull();
+            assertThat(tjeneste.linjer(f.id())).hasSize(2).allSatisfy(l -> {
+                assertThat(l.fakturareferanse()).isEqualTo("REF-A");
+                assertThat(l.bestillingsnummer()).isEqualTo("REF-A");   // fallback (specs/012)
+                assertThat(l.servicekode()).isNull();
+            });
+        });
+        assertThat(tjeneste.harBlokkerende(kj.id())).isFalse();
+    }
+
+    @Test
+    void conflictingCustomerValuesBlockWithoutPickingOne() {
+        settKontoAlle();
+        standardVersjon();
+        Long k = kunde("100000002", "Annen", "AKTIV", null).id();
+        regel(k, "K-B", null, null, null);
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
+        bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
+        jdbc.update("insert into bruksdata_kunde (import_id, organisasjonsnummer, virksomhetsnavn, kundenummer, "
+                + "motstridende) values (?, '100000001', 'alfa', '5663', '{\"kundenummer: 5663 | 5664\"}')", imp);
+
+        var kj = generer(JAN);
+
+        assertThat(tjeneste.funn(kj.id())).filteredOn(f -> "MOTSTRIDENDE_KUNDEDATA".equals(f.kode()))
+                .singleElement().satisfies(f -> {
+                    assertThat(f.alvorlighet()).isEqualTo("BLOKKERENDE");
+                    assertThat(f.melding()).isEqualTo(
+                            "Importen har motstridende kundedata for alfa (100000001): kundenummer: 5663 | 5664");
+                });
+        // Only the other organisation is invoiced.
+        assertThat(tjeneste.fakturaer(kj.id())).extracting(Faktura::organisasjonsnummer).containsExactly("100000002");
+        assertThatThrownBy(() -> tjeneste.godkjenn(kj.id())).isInstanceOf(Regelbrudd.class);
+    }
+
+    @Test
+    void aNewImportChangesTheValuesOnRegenerationButNotOnAnApprovedRun() {
+        settKontoAlle();
+        standardVersjon();
+        Long k = kunde("100000001", "Alfa", "AKTIV", null).id();
+        regel(k, "KN1", null, null, null);
+        referanse(k, null, "REF-GAMMEL", null);
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
+        var forste = generer(JAN);
+        Long forsteFaktura = tjeneste.fakturaer(forste.id()).getFirst().id();
+
+        tjeneste.forkast(forste.id());
+        referanse(k, null, "REF-NY", null);
+        var andre = generer(JAN);
+
+        assertThat(tjeneste.linjer(tjeneste.fakturaer(andre.id()).getFirst().id()))
+                .extracting(Fakturalinje::fakturareferanse).containsOnly("REF-NY");
+        // The earlier run keeps the values it was generated with.
+        assertThat(tjeneste.linjer(forsteFaktura)).extracting(Fakturalinje::fakturareferanse).containsOnly("REF-GAMMEL");
     }
 
     @Test
@@ -45,7 +125,7 @@ class GenereringControlsIT extends BillingFixture {
         // 60M units × 200 kr = 12 billion kr > numeric(12,2).
         bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "60000000", null);
 
-        assertThatThrownBy(() -> tjeneste.generer(JAN))
+        assertThatThrownBy(() -> generer(JAN))
                 .isInstanceOf(Regelbrudd.class)
                 .hasMessageContaining("Stor bruker")
                 .hasMessageContaining("maksgrensen");
@@ -58,20 +138,8 @@ class GenereringControlsIT extends BillingFixture {
         kunde("100000001", "Uten regel", "AKTIV", null); // no kundenummer_regel
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         assertThat(koder(kj.id())).contains("MANGLER_KUNDENUMMER");
-    }
-
-    @Test
-    void inaktivAvtaleFires() {
-        settKontoAlle();
-        standardVersjon();
-        Long k = kunde("100000001", "Inaktiv", "INAKTIV", null).id();
-        regel(k, "KN1", null, null, null);
-        Long imp = nyImport(JAN);
-        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
-        var kj = tjeneste.generer(JAN);
-        assertThat(koder(kj.id())).contains("INAKTIV_AVTALE");
     }
 
     @Test
@@ -82,7 +150,7 @@ class GenereringControlsIT extends BillingFixture {
         regel(k, "KN1", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         assertThat(koder(kj.id())).contains("MANGLER_PRIS");
     }
 
@@ -94,7 +162,7 @@ class GenereringControlsIT extends BillingFixture {
         regel(k, "KN1", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         assertThat(koder(kj.id())).contains("MANGLER_KONTERING");
     }
 
@@ -106,48 +174,14 @@ class GenereringControlsIT extends BillingFixture {
         regel(k, "KN1", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
-        var blokkert = tjeneste.generer(JAN);
+        var blokkert = generer(JAN);
         assertThatThrownBy(() -> tjeneste.godkjenn(blokkert.id()))
                 .isInstanceOf(Regelbrudd.class).hasMessageContaining("blokkerende");
 
         // Fix the data (set kontering), forkast, regenerate → approval succeeds.
         tjeneste.forkast(blokkert.id());
         settKontoAlle();
-        var ren = tjeneste.generer(JAN);
-        assertThat(tjeneste.harBlokkerende(ren.id())).isFalse();
-        godkjennEtterAksept(ren.id());
-        assertThat(tjeneste.hent(ren.id()).status()).isEqualTo("GODKJENT");
-    }
-
-    @Test
-    void activeCustomerWithoutUsageGetsAWarningThatDoesNotBlock() {
-        settKontoAlle();
-        standardVersjon();
-        Long a = kunde("100000001", "Med bruk", "AKTIV", null).id();
-        regel(a, "KN1", null, null, null);
-        kunde("100000002", "Uten bruk", "AKTIV", null);
-        kunde("100000003", "Inaktiv uten bruk", "INAKTIV", null);
-        Long b = kunde("100000004", "Blokkert bruk", "AKTIV", null).id();   // usage, but no kundenummer rule
-        Long imp = nyImport(JAN);
-        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "5", null);
-        bruk(imp, JAN, "100000004", "melding", Bruksdatatype.BRUKSVOLUM, "5", null);
-
-        var kj = tjeneste.generer(JAN);
-
-        var utenBruk = tjeneste.funn(kj.id()).stream()
-                .filter(f -> "AKTIV_KUNDE_UTEN_BRUK".equals(f.kode())).toList();
-        assertThat(utenBruk).singleElement().satisfies(f -> {
-            assertThat(f.alvorlighet()).isEqualTo("ADVARSEL");
-            assertThat(f.melding()).isEqualTo("Kunde Uten bruk (100000002) har aktiv avtale, men ingen bruk i perioden");
-        });
-        // The blocked customer had usage, so it gets MANGLER_KUNDENUMMER, not the no-usage warning.
-        assertThat(koder(kj.id())).contains("MANGLER_KUNDENUMMER");
-
-        // The warning alone never blocks approval.
-        tjeneste.forkast(kj.id());
-        regel(b, "KN4", null, null, null);
-        var ren = tjeneste.generer(JAN);
-        assertThat(koder(ren.id())).contains("AKTIV_KUNDE_UTEN_BRUK");
+        var ren = generer(JAN);
         assertThat(tjeneste.harBlokkerende(ren.id())).isFalse();
         godkjennEtterAksept(ren.id());
         assertThat(tjeneste.hent(ren.id()).status()).isEqualTo("GODKJENT");
@@ -161,7 +195,7 @@ class GenereringControlsIT extends BillingFixture {
         regel(k, "KN1", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "0", null); // 0 × price = 0.00
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         assertThat(koder(kj.id())).contains("NULLBELOP");
         assertThat(tjeneste.harBlokkerende(kj.id())).isFalse(); // advarsel only
     }
@@ -177,7 +211,7 @@ class GenereringControlsIT extends BillingFixture {
         regel(kFast, "KN1", null, null, null);
         Long impDes = nyImport(des);
         bruk(impDes, des, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null); // sum 100.00
-        tjeneste.generer(des);
+        generer(des);
 
         // January: existing customer jumps > 30 %, plus a brand-new customer.
         Long impJan = nyImport(JAN);
@@ -186,7 +220,7 @@ class GenereringControlsIT extends BillingFixture {
         regel(kNy, "KN2", null, null, null);
         bruk(impJan, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "5", null);
 
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         assertThat(koder(kj.id())).contains("STORT_AVVIK", "NY_KUNDE");
     }
 }

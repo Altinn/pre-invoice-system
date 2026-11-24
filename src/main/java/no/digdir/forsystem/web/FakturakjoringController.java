@@ -107,7 +107,10 @@ class FakturakjoringController {
     String kontroller(@PathVariable Long id, Model model) {
         var fane = fane(id, model);
         model.addAttribute("funngrupper", Funngruppe.av(fane.funn()));
-        model.addAttribute("kontrollkoder", Kontrollkode.values());
+        // Retired codes (specs/018) are explained only on runs that still carry them.
+        model.addAttribute("kontrollkoder", java.util.Arrays.stream(Kontrollkode.values())
+                .filter(k -> !k.utgatt() || fane.funn().stream().anyMatch(f -> k.name().equals(f.kode())))
+                .toList());
         model.addAttribute("avstemming", fane.kjoring().erKorrigering() ? null : avstemming.forKjoring(id));
         model.addAttribute("antallValgteEndringer", fane.kjoring().erKorrigering()
                 ? kjoringer.valgteEndringIder(id).size() : 0);

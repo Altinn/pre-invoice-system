@@ -18,7 +18,7 @@ class FakturautvalgTest {
     private final Map<Long, String> navn = new LinkedHashMap<>();
 
     private void faktura(long id, int ordre, String kundenavn, String kundenummer, String orgnr, String belop) {
-        fakturaer.add(new Faktura(id, 1L, id, UUID.randomUUID(), ordre, kundenummer, kundenavn, null, orgnr,
+        fakturaer.add(new Faktura(id, 1L, orgnr, UUID.randomUUID(), ordre, kundenummer, kundenavn, null, orgnr,
                 new BigDecimal(belop)));
         navn.put(id, kundenavn);
     }

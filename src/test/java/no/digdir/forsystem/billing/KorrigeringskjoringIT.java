@@ -39,14 +39,14 @@ class KorrigeringskjoringIT extends BillingFixture {
         Long prisversjon = aktivVersjon(JAN.førsteDag(), null).id();
         pris(prisversjon, "melding", "2.0000");
         Long kunde = kunde("100000001", "Kunde", "AKTIV", null).id();
-        regel(kunde, "KN1", null, "S1", null);
+        regel(kunde, "KN1", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
         bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
         Long kunde2 = kunde("100000002", "Kunde 2", "AKTIV", null).id();
-        regel(kunde2, "KN2", null, "S2", null);
+        regel(kunde2, "KN2", null, null, null);
 
-        Fakturakjoring v1 = tjeneste.generer(JAN);
+        Fakturakjoring v1 = generer(JAN);
         int v1Linjer = tjeneste.grunnlagslinjer(v1.id()).size();
         kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
 
@@ -61,7 +61,7 @@ class KorrigeringskjoringIT extends BillingFixture {
         BruksdataEndring valgt = sammenligning.endringer().stream()
                 .filter(e -> e.organisasjonsnummer().equals("100000001")).findFirst().orElseThrow();
 
-        Fakturakjoring v2 = tjeneste.genererKorrigering(
+        Fakturakjoring v2 = genererKorrigering(
                 sammenligning.sammenligning().id(), List.of(valgt.id()), "DWH korrigerte volumet");
 
         assertThat(v2.erKorrigering()).isTrue();
@@ -101,20 +101,20 @@ class KorrigeringskjoringIT extends BillingFixture {
         pris(prisversjon, "melding", "2.0000");
         Long kunde1 = kunde("100000001", "Kunde 1", "AKTIV", null).id();
         Long kunde2 = kunde("100000002", "Kunde 2", "AKTIV", null).id();
-        regel(kunde1, "KN1", null, "S1", null);
-        regel(kunde2, "KN2", null, "S2", null);
+        regel(kunde1, "KN1", null, null, null);
+        regel(kunde2, "KN2", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
         bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
 
-        Fakturakjoring v1 = tjeneste.generer(JAN);
+        Fakturakjoring v1 = generer(JAN);
         kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
         Long melding = produktId("melding");
         Forhaandsvisning fv = kandidat(melding, "candidate-partial-v2", "120", "15");
         var forste = kandidater.opprettHvisEksportert(fv).orElseThrow();
         BruksdataEndring valgt = forste.endringer().stream()
                 .filter(e -> e.organisasjonsnummer().equals("100000001")).findFirst().orElseThrow();
-        Fakturakjoring v2 = tjeneste.genererKorrigering(
+        Fakturakjoring v2 = genererKorrigering(
                 forste.sammenligning().id(), List.of(valgt.id()), "Første rettelse");
         kjoringer.save(v2.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
 
@@ -124,7 +124,7 @@ class KorrigeringskjoringIT extends BillingFixture {
         assertThat(andre.endringer()).singleElement()
                 .extracting(BruksdataEndring::organisasjonsnummer)
                 .isEqualTo("100000002");
-        Fakturakjoring v3 = tjeneste.genererKorrigering(
+        Fakturakjoring v3 = genererKorrigering(
                 andre.sammenligning().id(), List.of(andre.endringer().getFirst().id()), "Andre rettelse");
         assertThat(v3.versjon()).isEqualTo(3);
         assertThat(v3.forrigeKjoringId()).isEqualTo(v2.id());
@@ -137,18 +137,18 @@ class KorrigeringskjoringIT extends BillingFixture {
         pris(prisversjon, "melding", "2.0000");
         Long kunde1 = kunde("100000001", "Kunde 1", "AKTIV", null).id();
         Long kunde2 = kunde("100000002", "Kunde 2", "AKTIV", null).id();
-        regel(kunde1, "KN1", null, "S1", null);
-        regel(kunde2, "KN2", null, "S2", null);
+        regel(kunde1, "KN1", null, null, null);
+        regel(kunde2, "KN2", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
         bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
 
-        Fakturakjoring v1 = tjeneste.generer(JAN);
+        Fakturakjoring v1 = generer(JAN);
         kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
         var sammenligning = kandidater.opprettHvisEksportert(
                 kandidat(produktId("melding"), "candidate-discard", "120", "10")).orElseThrow();
         Long endringId = sammenligning.endringer().getFirst().id();
-        Fakturakjoring v2 = tjeneste.genererKorrigering(
+        Fakturakjoring v2 = genererKorrigering(
                 sammenligning.sammenligning().id(), List.of(endringId), "Utkast");
 
         tjeneste.forkast(v2.id());
@@ -158,7 +158,7 @@ class KorrigeringskjoringIT extends BillingFixture {
         mvc.perform(get("/kjoringer/{id}", v2.id()).with(user("leser").roles("LESER")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Tilbake til sammenligningen")));
-        Fakturakjoring v3 = tjeneste.genererKorrigering(
+        Fakturakjoring v3 = genererKorrigering(
                 sammenligning.sammenligning().id(), List.of(endringId), "Nytt utkast");
         assertThat(v3.versjon()).isEqualTo(3);
         assertThat(v3.forrigeKjoringId()).isEqualTo(v2.id());

@@ -35,7 +35,7 @@ class KjoringNesteStegIT extends BillingFixture {
         for (int i = 0; i < ukjente; i++) {
             bruk(imp, JAN, "90000000" + i, "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
         }
-        return tjeneste.generer(JAN);
+        return generer(JAN);
     }
 
     private String side(Long id) throws Exception {
@@ -80,8 +80,8 @@ class KjoringNesteStegIT extends BillingFixture {
                 .andReturn().getResponse().getContentAsString();
         // The findings table only: since specs/010 the code explanation above it lists every code too.
         String funn = kontroller.substring(kontroller.indexOf("<table class=\"ds-table funn\""), kontroller.indexOf("id=\"bruksdata\""));
-        assertThat(funn.split("<code>MANGLER_KUNDE</code>", -1)).as("one row for the code").hasSize(2);
-        assertThat(funn).contains("<td class=\"hoyre\">3</td>", "Vis alle 3 MANGLER_KUNDE");
+        assertThat(funn.split("<code>MANGLER_KUNDENUMMER</code>", -1)).as("one row for the code").hasSize(2);
+        assertThat(funn).contains("<td class=\"hoyre\">3</td>", "Vis alle 3 MANGLER_KUNDENUMMER");
     }
 
     @Test

@@ -58,7 +58,11 @@ class CsvUploadUsageSource implements UsageDataSource {
                         hent(felt, kolonneIndeks, "produktkode"),
                         hent(felt, kolonneIndeks, "type"),
                         hent(felt, kolonneIndeks, "antall"),
-                        hent(felt, kolonneIndeks, "belop")));
+                        hent(felt, kolonneIndeks, "belop"),
+                        hent(felt, kolonneIndeks, "kundenavn"),
+                        hent(felt, kolonneIndeks, "kundenummer"),
+                        hent(felt, kolonneIndeks, "fakturareferanse"),
+                        hent(felt, kolonneIndeks, "bestillingsnummer")));
             }
             if (kolonneIndeks == null) {
                 throw new Regelbrudd("CSV-filen er tom eller mangler kolonneoverskrifter");
@@ -80,8 +84,12 @@ class CsvUploadUsageSource implements UsageDataSource {
         return indeks;
     }
 
+    /** A column's value, or null when the column is absent (the customer columns are optional, specs/018). */
     private static String hent(String[] felt, Map<String, Integer> indeks, String kolonne) {
-        int i = indeks.get(kolonne);
+        Integer i = indeks.get(kolonne);
+        if (i == null) {
+            return null;
+        }
         if (i >= felt.length) {
             return null;
         }

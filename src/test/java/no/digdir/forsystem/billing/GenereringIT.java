@@ -35,20 +35,19 @@ class GenereringIT extends BillingFixture {
 
         Long k3 = kunde("100000003", "Ref AS", "AKTIV", null).id();
         regel(k3, "KN3", null, null, null);
-        referanse(k3, "varsling", "REF-V", "BEST-V");
+        referanse(k3, null, "REF-V", "BEST-V");
         bruk(imp, JAN, "100000003", "varsling", Bruksdatatype.BRUKSVOLUM, "2", null);
 
         Long k4 = kunde("100000004", "Udir", "AKTIV", null).id();
-        regel(k4, "KN4A", "melding", "S1", null);
-        regel(k4, "KN4B", "studio", "S2", null);
+        regel(k4, "KN4", null, null, null);
         bruk(imp, JAN, "100000004", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
         bruk(imp, JAN, "100000004", "studio", Bruksdatatype.BRUKSVOLUM, "1", null);
 
         Long k5a = kunde("100000005", "Politi A", "AKTIV", null).id();
-        regel(k5a, "KN-SHARED", null, null, "Politi A");
+        regel(k5a, "KN-SHARED", null, null, null);
         bruk(imp, JAN, "100000005", "autorisasjon", Bruksdatatype.BRUKSVOLUM, "1", null);
         Long k5b = kunde("100000006", "Politi B", "AKTIV", null).id();
-        regel(k5b, "KN-SHARED", null, null, "Politi B");
+        regel(k5b, "KN-SHARED", null, null, null);
         bruk(imp, JAN, "100000006", "autorisasjon", Bruksdatatype.BRUKSVOLUM, "1", null);
 
         Long k6 = kunde("100000007", "Azure AS", "AKTIV", null).id();
@@ -60,39 +59,40 @@ class GenereringIT extends BillingFixture {
     @Test
     void generatesExpectedInvoicesLinesSnapshotsAndRounding() {
         byggFixture();
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         var fakturaer = tjeneste.fakturaer(kj.id());
 
-        // K1..K4A,K4B,K5a,K5b,K6 = 8 invoices, ordre_nr sequential by (orgnr, kundenummer).
-        assertThat(fakturaer).hasSize(8);
-        assertThat(fakturaer).extracting(Faktura::ordreNr).containsExactly(1, 2, 3, 4, 5, 6, 7, 8);
+        // One invoice per orgnr (specs/018): K1..K4,K5a,K5b,K6 = 7, ordre_nr sequential by orgnr.
+        assertThat(fakturaer).hasSize(7);
+        assertThat(fakturaer).extracting(Faktura::ordreNr).containsExactly(1, 2, 3, 4, 5, 6, 7);
         assertThat(fakturaer).extracting(Faktura::kundenummer)
-                .containsExactly("KN1", "KN2", "KN3", "KN4A", "KN4B", "KN-SHARED", "KN-SHARED", "KN6");
+                .containsExactly("KN1", "KN2", "KN3", "KN4", "KN-SHARED", "KN-SHARED", "KN6");
 
         // Rounding: 3 × 1.6650 = 4.995 → 5.00 (half-up).
         Faktura k1 = fakturaer.get(0);
         assertThat(tjeneste.linjer(k1.id())).singleElement()
                 .satisfies(l -> assertThat(l.belop()).isEqualByComparingTo("5.00"));
 
-        // Deviating recipient snapshot.
-        assertThat(fakturaer.get(1).fakturamottakerOrgnr()).isEqualTo("999999999");
+        // The organisation itself receives the invoice: the DWH carries no deviating recipient (specs/018).
+        assertThat(fakturaer).allSatisfy(f -> assertThat(f.fakturamottakerOrgnr()).isEqualTo(f.organisasjonsnummer()));
 
-        // Product-specific reference snapshot.
-        assertThat(tjeneste.linjer(fakturaer.get(2).id())).singleElement()
-                .satisfies(l -> assertThat(l.fakturareferanse()).isEqualTo("REF-V"));
+        // Reference snapshot.
+        assertThat(tjeneste.linjer(fakturaer.get(2).id())).singleElement().satisfies(l -> {
+            assertThat(l.fakturareferanse()).isEqualTo("REF-V");
+            assertThat(l.bestillingsnummer()).isEqualTo("BEST-V");
+        });
 
-        // Two kundenummer for one customer → two invoices, each with its servicekode.
-        assertThat(tjeneste.linjer(fakturaer.get(3).id())).singleElement()
-                .satisfies(l -> assertThat(l.servicekode()).isEqualTo("S1"));
-        assertThat(tjeneste.linjer(fakturaer.get(4).id())).singleElement()
-                .satisfies(l -> assertThat(l.servicekode()).isEqualTo("S2"));
+        // One kundenummer per orgnr: both products on one invoice, no servicekode.
+        assertThat(tjeneste.linjer(fakturaer.get(3).id())).hasSize(2)
+                .allSatisfy(l -> assertThat(l.servicekode()).isNull());
 
-        // Shared kundenummer across two customers, distinguished by tilleggstekst.
-        assertThat(fakturaer.get(5).tilleggstekst()).isEqualTo("Politi A");
-        assertThat(fakturaer.get(6).tilleggstekst()).isEqualTo("Politi B");
+        // A shared kundenummer still gives one invoice per organisation; there is no tilleggstekst.
+        assertThat(fakturaer.get(4).organisasjonsnummer()).isEqualTo("100000005");
+        assertThat(fakturaer.get(5).organisasjonsnummer()).isEqualTo("100000006");
+        assertThat(fakturaer).allSatisfy(f -> assertThat(f.tilleggstekst()).isNull());
 
         // Pass-through cost lines: no antall/enhetspris/pris, belop from usage; total = exact sum.
-        Faktura azure = fakturaer.get(7);
+        Faktura azure = fakturaer.get(6);
         var azureLinjer = tjeneste.linjer(azure.id());
         assertThat(azureLinjer).hasSize(2)
                 .allSatisfy(l -> {
@@ -102,17 +102,17 @@ class GenereringIT extends BillingFixture {
                 });
         assertThat(azure.sumBelop()).isEqualByComparingTo("1050.50");
 
-        // Kontering set + all priced + all have kunde/regel + all AKTIV → no blocking findings.
+        // Kontering set + all priced + every orgnr has a kundenummer → no blocking findings.
         assertThat(tjeneste.harBlokkerende(kj.id())).isFalse();
     }
 
     @Test
     void generationIsDeterministic() {
         byggFixture();
-        var forste = signatur(tjeneste.generer(JAN).id());
+        var forste = signatur(generer(JAN).id());
         // Re-run after discarding: same inputs must yield identical invoices and lines.
         tjeneste.forkast(tjeneste.alle().get(0).id());
-        var andre = signatur(tjeneste.generer(JAN).id());
+        var andre = signatur(generer(JAN).id());
         assertThat(andre).isEqualTo(forste);
     }
 
