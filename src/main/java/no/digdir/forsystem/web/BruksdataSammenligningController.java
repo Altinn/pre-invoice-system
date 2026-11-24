@@ -58,9 +58,12 @@ class BruksdataSammenligningController {
         Map<Long, BigDecimal> enhetspriser = kjoringer.enhetspriser(grunnlag.id());
         Map<Long, List<BruksdataEndring>> perKunde = resultat.endringerPerKunde();
 
-        List<KundeRad> rader = resultat.kundeavvik().stream()
+        List<KundeRad> alleRader = resultat.kundeavvik().stream()
                 .map(a -> KundeRad.av(a, perKunde.getOrDefault(a.id(), List.of()), enhetspriser))
                 .toList();
+        // Dismissed customers are listed apart and cannot be ticked (FR-017).
+        List<KundeRad> rader = alleRader.stream().filter(r -> !r.avvik().erAvvist()).toList();
+        List<KundeRad> avviste = alleRader.stream().filter(r -> r.avvik().erAvvist()).toList();
 
         String kundeFilter = kunde == null ? "" : kunde.strip().toLowerCase(Locale.ROOT);
         String kundenummerFilter = kundenummer == null ? "" : kundenummer.strip();
@@ -99,6 +102,8 @@ class BruksdataSammenligningController {
         model.addAttribute("kandidat", resultat.kandidat());
         model.addAttribute("kunder", filtrert.subList(fra, til));
         model.addAttribute("antallKunder", rader.size());
+        model.addAttribute("antallAvvik", alleRader.size());
+        model.addAttribute("avviste", avviste);
         model.addAttribute("antallFiltrert", filtrert.size());
         model.addAttribute("antallEndringer", resultat.endringer().size());
         model.addAttribute("perKategori", perKategori);
@@ -113,9 +118,32 @@ class BruksdataSammenligningController {
         model.addAttribute("valgtKategori", kategori == null ? "" : kategori);
         model.addAttribute("valgtFortegn", fortegn == null ? "" : fortegn);
         model.addAttribute("grunnlag", grunnlag);
+        // «Sammenlign på nytt» when no run is in progress (FR-013); «utdatert» when a later version was exported.
+        var status = kjoringer.korrigeringsstatus(resultat.sammenligning().periode());
+        model.addAttribute("kanSammenligneIgjen", status.paagaaende() == null);
+        model.addAttribute("paagaaende", status.paagaaende());
+        model.addAttribute("utdatert", status.sisteEksporterteId() != null
+                && !status.sisteEksporterteId().equals(grunnlag.id()));
         model.addAttribute("produktnavn", produktnavn);
         model.addAttribute("produkter", produktliste);
         return "bruksdata/sammenligning";
+    }
+
+    @PostMapping("/{id}/paa-nytt")
+    String sammenlignPaaNytt(@PathVariable Long id) {
+        return "redirect:/bruksdata/sammenligninger/" + kandidater.sammenlignPaaNytt(id).sammenligning().id();
+    }
+
+    @PostMapping("/{id}/avvis")
+    String avvis(@PathVariable Long id, @RequestParam List<String> orgnr, @RequestParam String aarsak) {
+        kandidater.avvis(id, orgnr, aarsak);
+        return "redirect:/bruksdata/sammenligninger/" + id + "#avviste";
+    }
+
+    @PostMapping("/{id}/gjenopprett")
+    String gjenopprett(@PathVariable Long id, @RequestParam String orgnr) {
+        kandidater.gjenopprett(id, orgnr);
+        return "redirect:/bruksdata/sammenligninger/" + id;
     }
 
     @PostMapping("/{id}/kjoring")

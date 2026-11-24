@@ -163,7 +163,7 @@ public class FakturakjoringService {
             Set<Long> medEndring = endringer.findBySammenligningIdOrderById(sammenligningId).stream()
                     .filter(e -> e.avvistAt() == null).map(BruksdataEndring::kundeavvikId)
                     .collect(Collectors.toSet());
-            valgte = avvik.stream()
+            valgte = avvik.stream().filter(a -> !a.erAvvist())
                     .filter(a -> a.hindrerDifferanse().isEmpty() && medEndring.contains(a.id())).toList();
         } else {
             Set<String> onsket = orgnr == null ? Set.of() : new LinkedHashSet<>(orgnr);
@@ -174,6 +174,11 @@ public class FakturakjoringService {
         }
         if (valgte.isEmpty()) {
             throw new Regelbrudd("Velg minst én kunde som skal være med i korrigeringen");
+        }
+        List<Kundeavvik> avviste = valgte.stream().filter(Kundeavvik::erAvvist).toList();
+        if (!avviste.isEmpty()) {
+            throw new Regelbrudd("Disse kundene er avvist og kan ikke tas med: " + kunder(avviste)
+                    + ". Gjenopprett dem først.");
         }
         avvisKundeverdiendringer(valgte);
         Set<Long> valgteIder = valgte.stream().map(Kundeavvik::id).collect(Collectors.toSet());
@@ -209,6 +214,23 @@ public class FakturakjoringService {
         return avvik.stream().map(a -> a.navn().equals(a.organisasjonsnummer())
                         ? a.organisasjonsnummer() : a.navn() + " (" + a.organisasjonsnummer() + ")")
                 .collect(Collectors.joining(", "));
+    }
+
+    /**
+     * Where a period stands for corrections: the run in progress (GENERERT/GODKJENT), if any, and the latest
+     * exported run. Read by the comparison page (specs/019 FR-013).
+     */
+    @Transactional(readOnly = true)
+    public Korrigeringsstatus korrigeringsstatus(LocalDate periode) {
+        Fakturakjoring paagaaende = kjoringer.findByPeriodeAndStatusIn(periode,
+                List.of(Kjoringstatus.GENERERT.name(), Kjoringstatus.GODKJENT.name())).stream()
+                .findFirst().orElse(null);
+        Long sisteEksporterte = kjoringer.findFirstByPeriodeAndStatusOrderByVersjonDesc(
+                periode, Kjoringstatus.EKSPORTERT.name()).map(Fakturakjoring::id).orElse(null);
+        return new Korrigeringsstatus(paagaaende, sisteEksporterte);
+    }
+
+    public record Korrigeringsstatus(Fakturakjoring paagaaende, Long sisteEksporterteId) {
     }
 
     /** Unit prices of a run's price version per product id; a correction prices its deltas with these. */

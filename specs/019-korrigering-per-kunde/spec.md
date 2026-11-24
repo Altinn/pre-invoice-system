@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-24
 
-**Status**: Stories 1–3 implemented; story 4 ready; stories 5–6 specified as seams, gated on OQ-6 and OQ-29
+**Status**: Stories 1–4 implemented; stories 5–6 specified as seams, gated on OQ-6 and OQ-29
 
 **Input**: Ticket from Økonomi about corrections (summarised in English; the ticket is the authority):
 
@@ -334,12 +334,12 @@ field («presumably `text1`», docs/07 OQ-6), format and whether it is mandatory
 **Compare again and dismissal (story 4)**
 
 - **FR-013**: When the period's latest run is EKSPORTERT or FORKASTET (no run in progress) and a
-  candidate is retained, the comparison page and Bruksdata MUST offer «Sammenlign på nytt», which
+  candidate is retained, the comparison page (reached from Bruksdata) MUST offer «Sammenlign på nytt», which
   compares the latest candidate with the current effective invoiced basis without fetch or upload.
 - **FR-014**: «Sammenlign på nytt» MUST be idempotent per (candidate, baseline) and MUST supersede
   the open comparison as a new fetch does today.
-- **FR-015**: A FORVALTER MUST be able to dismiss one or more customers on an open comparison with a
-  required reason, and restore a dismissed customer while the comparison is open. Dismissal and
+- **FR-015**: A FORVALTER MUST be able to dismiss customers on an open comparison (one at a time on
+  the page) with a required reason, and restore a dismissed customer while the comparison is open. Dismissal and
   restore MUST be audit-logged with user, time, reason and the affected changes.
 - **FR-016**: When a comparison is recreated from the **same** candidate, a dismissal MUST carry over
   for a customer whose changes are identical (same keys and same old and new values) and MUST NOT

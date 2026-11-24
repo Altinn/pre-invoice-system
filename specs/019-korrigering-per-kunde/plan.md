@@ -35,6 +35,18 @@ Deviations from the design below, decided while implementing:
 - Expand/collapse is a button with `aria-expanded`/`aria-controls`; without JavaScript the product rows
   are shown (a `<noscript>` style).
 
+## As built (story 4)
+
+- V20 adds `avvist_av/at/aarsak` to `bruksdata_kundeavvik`; the customer's product changes get the same
+  values in their V12 columns, so the generation check on `avvist_at` keeps working.
+- «Sammenlign på nytt» lives on the comparison page (Bruksdata links there); it compares the period's
+  latest candidate, refuses while a run is GENERERT/GODKJENT, and the page warns when a newer version
+  has been exported since the comparison was made.
+- Dismissal is per customer on the page (a `<details>` with its own form via the `form` attribute, since
+  forms cannot nest); the service takes a list.
+- Carry-over compares a fingerprint of the customer deviation (categories, invoiced and candidate values,
+  and each product change's old/new value) with the latest earlier comparison of the same candidate.
+
 ## Technical Context
 
 **Language/Version**: Java 21

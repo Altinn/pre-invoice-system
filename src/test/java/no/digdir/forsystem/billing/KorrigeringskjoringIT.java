@@ -418,6 +418,131 @@ class KorrigeringskjoringIT extends BillingFixture {
         assertThat(v3.forrigeKjoringId()).isEqualTo(v2.id());
     }
 
+    /** V1 with three customers; a candidate where all three changed. */
+    private BruksdataKandidatService.Resultat treEndredeKunder(String innhold) {
+        settKontoAlle();
+        Long prisversjon = aktivVersjon(JAN.førsteDag(), null).id();
+        pris(prisversjon, "melding", "2.0000");
+        for (String orgnr : List.of("100000001", "100000002", "100000003")) {
+            Long kunde = kunde(orgnr, "Kunde " + orgnr.charAt(8), "AKTIV", null).id();
+            regel(kunde, "KN" + orgnr.charAt(8), null, null, null);
+        }
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
+        bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
+        bruk(imp, JAN, "100000003", "melding", Bruksdatatype.BRUKSVOLUM, "5", null);
+        Fakturakjoring v1 = generer(JAN);
+        kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
+        return kandidater.opprettHvisEksportert(fraDwh(treKunder(innhold))).orElseThrow();
+    }
+
+    private Forhaandsvisning treKunder(String innhold) {
+        Long melding = produktId("melding");
+        return new Forhaandsvisning(JAN, "ny-dwh.csv", Kilde.DWH, List.of(
+                volum("100000001", melding, "120"), volum("100000002", melding, "15"),
+                volum("100000003", melding, "6")),
+                List.of(), List.of(), List.of("eksportert kjøring finnes"), List.of(),
+                new Raadata(innhold.getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null), null);
+    }
+
+    private void eksporter(Fakturakjoring kjoring) {
+        kjoringer.save(kjoring.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
+    }
+
+    private int antallImporter() {
+        return jdbc.queryForObject("select count(*) from bruksdata_import", Integer.class);
+    }
+
+    @Test
+    void compareAgainAfterExportListsOnlyUntickedCustomersWithoutAFetch() throws Exception {
+        var forste = treEndredeKunder("candidate-compare-again");
+        Long forsteId = forste.sammenligning().id();
+        Fakturakjoring v2 = tjeneste.genererKorrigeringForKunder(forsteId, List.of("100000001"), false, "Kunde 1");
+        mvc.perform(get("/bruksdata/sammenligninger/{id}", forsteId).with(user("leser").roles("LESER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("er under arbeid")));
+        assertThatThrownBy(() -> kandidater.sammenlignPaaNytt(forsteId))
+                .isInstanceOf(Regelbrudd.class).hasMessageContaining("pågående kjøring");
+        eksporter(v2);
+        int importer = antallImporter();
+
+        mvc.perform(post("/bruksdata/sammenligninger/{id}/paa-nytt", forsteId)
+                        .with(user("forvalter").roles("FORVALTER")).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        var andre = kandidater.sammenlignPaaNytt(forsteId);
+
+        assertThat(antallImporter()).isEqualTo(importer);
+        assertThat(andre.sammenligning().id()).isNotEqualTo(forsteId);
+        assertThat(andre.sammenligning().grunnlagKjoringId()).isEqualTo(v2.id());
+        assertThat(andre.kandidat().id()).isEqualTo(forste.kandidat().id());
+        assertThat(andre.kundeavvik()).extracting(Kundeavvik::organisasjonsnummer)
+                .containsExactly("100000002", "100000003");
+        // Pressing it again changes nothing (idempotent per candidate and baseline).
+        assertThat(kandidater.sammenlignPaaNytt(andre.sammenligning().id()).sammenligning().id())
+                .isEqualTo(andre.sammenligning().id());
+        mvc.perform(get("/bruksdata/sammenligninger/{id}", forsteId).with(user("leser").roles("LESER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("En nyere versjon er eksportert")));
+    }
+
+    @Test
+    void dismissedCustomerCannotBeSelectedAndStaysDismissedOnTheSameCandidate() throws Exception {
+        var forste = treEndredeKunder("candidate-dismissal");
+        Long forsteId = forste.sammenligning().id();
+
+        assertThatThrownBy(() -> kandidater.avvis(forsteId, List.of("100000003"), " "))
+                .isInstanceOf(Regelbrudd.class).hasMessageContaining("Skriv hvorfor");
+        mvc.perform(post("/bruksdata/sammenligninger/{id}/avvis", forsteId)
+                        .with(user("forvalter").roles("FORVALTER")).with(csrf())
+                        .param("orgnr", "100000003").param("aarsak", "Avtalt med kunden"))
+                .andExpect(status().is3xxRedirection());
+
+        Kundeavvik avvist = kandidater.hent(forsteId).kundeavvik().stream()
+                .filter(a -> a.organisasjonsnummer().equals("100000003")).findFirst().orElseThrow();
+        assertThat(avvist.erAvvist()).isTrue();
+        assertThat(avvist.avvistAv()).isEqualTo("forvalter");
+        assertThat(avvist.avvistAarsak()).isEqualTo("Avtalt med kunden");
+        assertThat(kandidater.hent(forsteId).endringer()).filteredOn(e -> e.organisasjonsnummer().equals("100000003"))
+                .allMatch(e -> e.avvistAt() != null);
+        assertThat(jdbc.queryForObject("select count(*) from hendelseslogg where handling = 'AVVISTE' "
+                + "and entitet_id = ?", Integer.class, forsteId)).isOne();
+        mvc.perform(get("/bruksdata/sammenligninger/{id}", forsteId).with(user("leser").roles("LESER")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("Avtalt med kunden")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("1 avvist")));
+        assertThatThrownBy(() -> tjeneste.genererKorrigeringForKunder(
+                forsteId, List.of("100000003"), false, "Feil"))
+                .isInstanceOf(Regelbrudd.class).hasMessageContaining("er avvist");
+
+        // «Velg alle» leaves the dismissed customer out.
+        Fakturakjoring v2 = tjeneste.genererKorrigeringForKunder(forsteId, null, true, "Alle andre");
+        assertThat(tjeneste.fakturaer(v2.id())).extracting(Faktura::organisasjonsnummer)
+                .containsExactlyInAnyOrder("100000001", "100000002");
+        eksporter(v2);
+
+        // Compared again on the same candidate: identical deviation, so it stays dismissed.
+        var andre = kandidater.sammenlignPaaNytt(forsteId);
+        assertThat(andre.kundeavvik()).singleElement().satisfies(a -> {
+            assertThat(a.organisasjonsnummer()).isEqualTo("100000003");
+            assertThat(a.erAvvist()).isTrue();
+            assertThat(a.avvistAarsak()).isEqualTo("Avtalt med kunden");
+        });
+
+        kandidater.gjenopprett(andre.sammenligning().id(), "100000003");
+        assertThat(kandidater.hent(andre.sammenligning().id()).kundeavvik().getFirst().erAvvist()).isFalse();
+        assertThat(kandidater.hent(andre.sammenligning().id()).endringer()).allMatch(e -> e.avvistAt() == null);
+        assertThat(jdbc.queryForObject("select count(*) from hendelseslogg where handling = 'GJENOPPRETTET' "
+                + "and entitet_id = ?", Integer.class, andre.sammenligning().id())).isOne();
+    }
+
+    @Test
+    void aNewCandidateStartsWithoutDismissals() {
+        var forste = treEndredeKunder("candidate-before");
+        kandidater.avvis(forste.sammenligning().id(), List.of("100000003"), "Ikke nå");
+
+        var ny = kandidater.opprettHvisEksportert(fraDwh(treKunder("candidate-after"))).orElseThrow();
+
+        assertThat(ny.kandidat().id()).isNotEqualTo(forste.kandidat().id());
+        assertThat(ny.kundeavvik()).noneMatch(Kundeavvik::erAvvist);
+    }
+
     private static Forhaandsvisning kandidat(
             Long produktId, String innhold, String forsteAntall, String andreAntall) {
         return new Forhaandsvisning(JAN, "ny-dwh.csv", Kilde.DWH, List.of(

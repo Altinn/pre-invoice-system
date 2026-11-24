@@ -36,6 +36,13 @@ public record BruksdataEndring(
                 endring.gammeltBelop(), endring.nyttBelop(), endring.deltaBelop(), null, null, null, kundeavvikId);
     }
 
+    /** Dismissed with its customer (specs/019 FR-015), or restored when all three are null. */
+    public BruksdataEndring medAvvisning(String av, OffsetDateTime at, String aarsak) {
+        return new BruksdataEndring(id, sammenligningId, organisasjonsnummer, produktId, type, endringstype,
+                gammelBruksdataId, nyBruksdataId, gammeltAntall, nyttAntall, deltaAntall, gammeltBelop, nyttBelop,
+                deltaBelop, av, at, aarsak, kundeavvikId);
+    }
+
     public BigDecimal gammelVerdi() {
         return Bruksdatatype.valueOf(type).erVolum() ? gammeltAntall : gammeltBelop;
     }

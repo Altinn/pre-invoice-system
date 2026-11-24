@@ -19,7 +19,7 @@ Datavarehuset kan endre en måned som allerede er fakturert. Forsystem lar deg d
 3. Velge hvilke kunder som skal med, og begrunne valget. En kunde tas med med alle produktene sine.
 4. Lage en korrigeringskjøring (V2, deretter V3 og så videre) som bare inneholder differansene for de valgte kundene.
 
-Den opprinnelige kjøringen og alle kildedata blir stående uendret. Endringer du ikke velger, blir ikke borte. De dukker opp igjen ved neste sammenligning. Hver fakturalinje peker tilbake til endringen den korrigerer, og valg, begrunnelse, bruker og tidspunkt står i [Hendelseslogg](../slik-gjor-du/hvem-endret-hva.md).
+Den opprinnelige kjøringen og alle kildedata blir stående uendret. Kunder du ikke velger, blir ikke borte. Etter eksport trykker du [Sammenlign på nytt](knapp:), og de står der igjen, uten at du henter data på nytt. En kunde som ikke skal korrigeres, kan avvises med en begrunnelse. Hver fakturalinje peker tilbake til endringen den korrigerer, og valg, begrunnelse, bruker og tidspunkt står i [Hendelseslogg](../slik-gjor-du/hvem-endret-hva.md).
 
 Slik gjør du det: [Lag en korrigeringskjøring](../slik-gjor-du/lag-korrigeringskjoring.md).
 
@@ -44,6 +44,6 @@ Det betyr i praksis:
 - Korrigeringen bruker prisene fra den opprinnelige kjøringen.
 - Kundenummer, fakturareferanse og bestillingsnummer hentes fra den nye eksporten, slik CRM har dem nå. Er de endret siden kunden ble fakturert, kan kunden ikke tas med i en korrigering ennå (se over). Er en kunde helt borte fra den nye eksporten, krediteres den med verdiene den sist ble fakturert med.
 - Terskelverdien gjelder ikke korrigeringer.
-- Det finnes ingen knapp for å avvise en endring uten å fakturere den.
+- En avvist kunde faktureres ikke på nytt. Avvisningen kan angres så lenge sammenligningen er åpen.
 - Før eksport er det enklere: [forkast](../slik-gjor-du/forkast-og-generer-pa-nytt.md) kjøringen og generer på nytt.
 - «Testverktøy: nullstill periode» finnes bare i testmiljøet og er ikke en måte å korrigere på i produksjon.

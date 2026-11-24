@@ -55,7 +55,7 @@ public record KundeRad(Kundeavvik avvik, List<BruksdataEndring> endringer, Map<L
 
     /** Whether a delta correction can take this customer: it has product changes and no blocking change. */
     public boolean kanVelges() {
-        return !endringer.isEmpty() && !hindrerDifferanse();
+        return !avvik.erAvvist() && !endringer.isEmpty() && !hindrerDifferanse();
     }
 
     public boolean hindrerDifferanse() {

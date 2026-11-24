@@ -35,6 +35,12 @@ class KjoringStatusAdapter implements KjoringStatusPort {
     }
 
     @Override
+    public boolean finnesPaagaaendeKjoring(LocalDate periode) {
+        return kjoringer.existsByPeriodeAndStatusIn(periode,
+                List.of(Kjoringstatus.GENERERT.name(), Kjoringstatus.GODKJENT.name()));
+    }
+
+    @Override
     public Optional<EffektivtGrunnlag> effektivtGrunnlag(LocalDate periode) {
         Optional<Fakturakjoring> siste = kjoringer.findFirstByPeriodeAndStatusOrderByVersjonDesc(
                 periode, Kjoringstatus.EKSPORTERT.name());
