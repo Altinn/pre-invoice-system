@@ -1,6 +1,6 @@
 # Data model: Remove the customer registry (specs/018)
 
-One Flyway migration, `V17__kundedata_fra_dwh.sql`. Decisions in [research.md](research.md) D1, D5.
+Two Flyway migrations: `V17__kundedata_fra_dwh.sql` (additive: new table, orgnr on invoices, backfills, `kunde_id` nullable) and `V18__dropp_kunderegister.sql` (drops `kunde_id` and the registry tables). Decisions in [research.md](research.md) D1, D5.
 
 ## New: `bruksdata_kunde`
 
@@ -30,7 +30,7 @@ consistent: every orgnr in its `bruksdata` has exactly one `bruksdata_kunde` row
 |---|---|
 | + `organisasjonsnummer text NOT NULL` | backfilled from `kunde.organisasjonsnummer` via `kunde_id` |
 | `kundenavn` → NOT NULL | backfilled from `kunde.virksomhetsnavn` where NULL (invoices made before V11) |
-| − `kunde_id` | with `unique (kjoring_id, kunde_id, kundenummer)` |
+| − `kunde_id` | nullable in V17, dropped in V18 with `unique (kjoring_id, kunde_id, kundenummer)` |
 | + `unique (kjoring_id, organisasjonsnummer, kundenummer)` | new runs have one invoice per orgnr (FR-009). Old runs may have several kundenummer per orgnr, so kundenummer stays in the key |
 
 `tilleggstekst` stays (old invoices have values) and is NULL for new invoices.
@@ -38,12 +38,12 @@ consistent: every orgnr in its `bruksdata` has exactly one `bruksdata_kunde` row
 
 ## Changed: `faktura_under_terskel`
 
-`− kunde_id` (with its unique), `+ unique (kjoring_id, organisasjonsnummer, kundenummer)`.
+`− kunde_id` (nullable in V17, dropped with its unique in V18), `+ unique (kjoring_id, organisasjonsnummer, kundenummer)`.
 Already carries orgnr, name and kundenummer.
 
 ## Dropped
 
-`kunde_referanse`, `kundenummer_regel`, `kunde`, in that order. History lives on in `hendelseslogg`
+`kunde_referanse`, `kundenummer_regel`, `kunde`, in that order, in V18. History lives on in `hendelseslogg`
 (entities `KUNDE`, `KUNDE_REFERANSE`, `KUNDENUMMER_REGEL`) and in invoice snapshots.
 
 ## Unchanged, but read differently

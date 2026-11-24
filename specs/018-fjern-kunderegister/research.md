@@ -89,9 +89,9 @@ MANGLER_KUNDENUMMER at generation. Within one file, the conflict rule from D2 ap
 `unique (kjoring_id, kunde_id, kundenummer)`. `faktura` has no orgnr column. `faktura.kundenavn` (V11) is
 NULL for invoices made before 2026-10 and falls back to the live registry name.
 
-### Decision D5 — orgnr on the invoice, then drop the registry (V17)
+### Decision D5 — orgnr on the invoice, then drop the registry (V17 + V18)
 
-One migration, in this order:
+Two migrations: V17 does steps 1–2 and makes `kunde_id` nullable; V18 does steps 3–4 once no code reads the registry:
 
 1. `faktura` adds `organisasjonsnummer`, backfilled from `kunde`; `kundenavn` backfilled where NULL.
    Both then become NOT NULL.

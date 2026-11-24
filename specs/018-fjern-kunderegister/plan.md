@@ -12,7 +12,7 @@ from the run's own import instead of the registry: one invoice per orgnr, faktur
 Conflicting values within an import are recorded and become the blocking finding
 `MOTSTRIDENDE_KUNDEDATA`. A missing kundenummer stays the blocking `MANGLER_KUNDENUMMER`. The
 create-customers button, the deviation warnings and the hidden customer page go. The invoice gets its
-own orgnr column, and the registry tables are dropped in the same migration. Old runs keep everything
+own orgnr column (V17), and the registry tables are dropped in a separate V18. Old runs keep everything
 through their snapshots, and the three retired control codes still render.
 
 ## Technical Context
@@ -22,8 +22,8 @@ through their snapshots, and the three retired control codes still render.
 **Primary Dependencies**: existing only (Spring MVC, Spring Data JDBC, Flyway, Thymeleaf/htmx). This
 removes a dependency: the BRREG HTTP lookup.
 
-**Storage**: PostgreSQL 16. One migration `V17__kundedata_fra_dwh.sql`: new table, backfill,
-FK/column drop, three tables dropped ([data-model.md](data-model.md)).
+**Storage**: PostgreSQL 16. `V17__kundedata_fra_dwh.sql` (additive: new table, backfills) and
+`V18__dropp_kunderegister.sql` (FK/column drop, three tables dropped) ([data-model.md](data-model.md)).
 
 **Testing**: JUnit 5 + Testcontainers (`mvn verify`); `BillingFixture` rewritten around
 `bruksdata_kunde`; a migration IT from V16; LG04 golden files unchanged.
@@ -76,7 +76,8 @@ specs/018-fjern-kunderegister/
 ### Source Code (repository root)
 
 ```text
-src/main/resources/db/migration/V17__kundedata_fra_dwh.sql          # NEW
+src/main/resources/db/migration/V17__kundedata_fra_dwh.sql          # NEW (additive)
+src/main/resources/db/migration/V18__dropp_kunderegister.sql        # NEW (drops)
 src/main/java/no/digdir/forsystem/
 ├── usage/
 │   ├── BruksdataKunde.java, BruksdataKundeRepository.java          # NEW

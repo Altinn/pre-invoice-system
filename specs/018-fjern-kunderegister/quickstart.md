@@ -10,7 +10,7 @@ mvn verify
 
 Must pass, including:
 - LG04 golden-file tests, byte-identical (SC-004)
-- the V16 → V17 migration IT (orgnr and names backfilled, registry tables gone)
+- the V16 → V17 → V18 migration IT (orgnr and names backfilled, registry tables gone)
 - the import ITs: no customer notice, no create route (404), conflicts and missing kundenummer counted
 - the billing ITs: values from `bruksdata_kunde` reach invoice, lines and LG04 (SC-003);
   MANGLER_KUNDENUMMER and MOTSTRIDENDE_KUNDEDATA block approval
@@ -33,7 +33,7 @@ docker compose up
 
 ## Before deploying to tt02
 
-Dump the registry tables before V17 drops them (research D5):
+Dump the registry tables before V18 drops them (research D5):
 
 ```bash
 pg_dump --data-only -t kunde -t kunde_referanse -t kundenummer_regel "$DATABASE_URL" > kunderegister-før-018.sql
