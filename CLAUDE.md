@@ -70,5 +70,5 @@ stop and ask; do not guess around a blocking unknown.
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/017-dwh-flagg-import/plan.md
+at specs/018-fjern-kunderegister/plan.md
 <!-- SPECKIT END -->
