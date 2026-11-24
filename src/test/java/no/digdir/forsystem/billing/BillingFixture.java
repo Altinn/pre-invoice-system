@@ -21,6 +21,8 @@ import no.digdir.forsystem.usage.BruksdataImport;
 import no.digdir.forsystem.usage.BruksdataImportRepository;
 import no.digdir.forsystem.usage.BruksdataRepository;
 import no.digdir.forsystem.usage.Bruksdatatype;
+import no.digdir.forsystem.usage.Forhaandsvisning;
+import no.digdir.forsystem.usage.Kundedata;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -133,11 +135,16 @@ abstract class BillingFixture extends IntegrationTest {
         synkKundedata();
     }
 
-    /** Write the described customers as {@code bruksdata_kunde} rows of every import with usage for them. */
+    /**
+     * Write the described customers as {@code bruksdata_kunde} rows of every ordinary import with usage for them. A
+     * correction candidate is left alone: it must store the customer values its preview delivered itself.
+     */
     void synkKundedata() {
         for (Kundespek k : kundespek.values()) {
             List<Long> importIder = jdbc.queryForList(
-                    "select distinct import_id from bruksdata where organisasjonsnummer = ?", Long.class, k.orgnr);
+                    "select distinct b.import_id from bruksdata b join bruksdata_import i on i.id = b.import_id "
+                            + "where b.organisasjonsnummer = ? and i.status not in ('KANDIDAT', 'BEHANDLET')",
+                    Long.class, k.orgnr);
             for (Long importId : importIder) {
                 jdbc.update("delete from bruksdata_kunde where import_id = ? and organisasjonsnummer = ?",
                         importId, k.orgnr);
@@ -149,15 +156,22 @@ abstract class BillingFixture extends IntegrationTest {
         }
     }
 
+    /** The preview as the DWH would deliver it: with the test customers' values on its rows (specs/018). */
+    Forhaandsvisning fraDwh(Forhaandsvisning fv) {
+        return fv.medKunder(kundespek.values().stream()
+                .map(k -> new Kundedata(k.orgnr, k.navn, k.kundenummer.isEmpty() ? null : k.kundenummer.getFirst(),
+                        k.fakturareferanse, k.bestillingsnummer, List.of()))
+                .toList());
+    }
+
     /** {@code tjeneste.generer} with the test customers in place. */
     Fakturakjoring generer(Periode periode) {
         synkKundedata();
         return tjeneste.generer(periode);
     }
 
-    /** {@code tjeneste.genererKorrigering} with the test customers in place. */
+    /** {@code tjeneste.genererKorrigering}; the candidate's customer values come from its own preview. */
     Fakturakjoring genererKorrigering(Long sammenligningId, List<Long> endringIder, String aarsak) {
-        synkKundedata();
         return tjeneste.genererKorrigering(sammenligningId, endringIder, aarsak);
     }
 

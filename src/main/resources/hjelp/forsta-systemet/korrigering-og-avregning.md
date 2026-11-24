@@ -1,7 +1,7 @@
 ---
 tittel: Korrigering og avregning
 sammendrag: Forklarer hvordan en måned korrigeres etter eksport, hva som fungerer i dag, og hva som ikke er tilgjengelig i produksjon ennå.
-oppdatert: 2026-11-17
+oppdatert: 2026-11-24
 rolle: LESER
 apne-i-appen: /bruksdata
 apne-i-appen-tekst: Åpne Bruksdata
@@ -40,6 +40,7 @@ Det betyr i praksis:
 
 - Bare en komplett eksport fra datavarehuset kan være grunnlag. Forsystems eget CSV-format kan ikke brukes, fordi en rad som mangler, skal tolkes som fjernet.
 - Korrigeringen bruker prisene fra den opprinnelige kjøringen.
+- Kundenummer, fakturareferanse og bestillingsnummer hentes fra den nye eksporten, slik CRM har dem nå. Er en kunde helt borte fra den nye eksporten, krediteres den med verdiene den sist ble fakturert med.
 - Terskelverdien gjelder ikke korrigeringer.
 - Det finnes ingen knapp for å avvise en endring uten å fakturere den.
 - Før eksport er det enklere: [forkast](../slik-gjor-du/forkast-og-generer-pa-nytt.md) kjøringen og generer på nytt.

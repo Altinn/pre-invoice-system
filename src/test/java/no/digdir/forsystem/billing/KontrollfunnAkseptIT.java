@@ -218,7 +218,7 @@ class KontrollfunnAkseptIT extends BillingFixture {
                 volum("100000001", melding, "120"), volum("100000002", melding, "100")),
                 List.of(), List.of(), List.of("eksportert kjøring finnes"), List.of(),
                 new Raadata("aksept-v2".getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null), null);
-        var sammenligning = kandidater.opprettHvisEksportert(fv).orElseThrow();
+        var sammenligning = kandidater.opprettHvisEksportert(fraDwh(fv)).orElseThrow();
         BruksdataEndring endring = sammenligning.endringer().getFirst();
         var v2 = genererKorrigering(sammenligning.sammenligning().id(), List.of(endring.id()), "Retting");
         assertThat(advarsler(v2.id())).isNotEmpty();

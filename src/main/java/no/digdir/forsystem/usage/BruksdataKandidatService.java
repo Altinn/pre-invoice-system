@@ -156,6 +156,9 @@ public class BruksdataKandidatService {
                 arkivert.url(), arkivert.sha256(), arkivert.hentetAt()));
         bruksdata.saveAll(fv.gyldige().stream().map(rad -> new Bruksdata(null, kandidat.id(), rad.periode(),
                 rad.organisasjonsnummer(), rad.produktId(), rad.type(), rad.antall(), rad.belop())).toList());
+        // The correction run reads its customer values from the candidate (specs/018), as an ordinary run does
+        // from its import.
+        usage.lagreKunder(fv, kandidat.id());
         audit.logg(Handling.HENTET, "BRUKSDATA_IMPORT", kandidat.id(), Map.of(
                 "periode", fv.periode().toString(), "status", Importstatus.KANDIDAT.name(),
                 "antall", fv.antallGyldige(), "raadataSha256", forventetSha256));

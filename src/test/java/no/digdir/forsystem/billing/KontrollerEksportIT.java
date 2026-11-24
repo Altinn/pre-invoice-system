@@ -151,7 +151,7 @@ class KontrollerEksportIT extends BillingFixture {
                         Bruksdatatype.BRUKSVOLUM.name(), new BigDecimal("120"), null)),
                 List.of(), List.of(), List.of("eksportert kjøring finnes"), List.of(),
                 new Raadata("eksport-v2".getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null), null);
-        var sammenligning = kandidater.opprettHvisEksportert(fv).orElseThrow();
+        var sammenligning = kandidater.opprettHvisEksportert(fraDwh(fv)).orElseThrow();
         var korrigering = genererKorrigering(sammenligning.sammenligning().id(),
                 List.of(sammenligning.endringer().getFirst().id()), "Retting");
 

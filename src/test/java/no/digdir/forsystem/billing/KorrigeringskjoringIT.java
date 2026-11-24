@@ -57,7 +57,7 @@ class KorrigeringskjoringIT extends BillingFixture {
                 List.of(), List.of(), List.of("eksportert kjøring finnes"), List.of(),
                 new Raadata("candidate-v2".getBytes(java.nio.charset.StandardCharsets.UTF_8),
                         OffsetDateTime.now(), null, null), null);
-        var sammenligning = kandidater.opprettHvisEksportert(fv).orElseThrow();
+        var sammenligning = kandidater.opprettHvisEksportert(fraDwh(fv)).orElseThrow();
         BruksdataEndring valgt = sammenligning.endringer().stream()
                 .filter(e -> e.organisasjonsnummer().equals("100000001")).findFirst().orElseThrow();
 
@@ -95,6 +95,78 @@ class KorrigeringskjoringIT extends BillingFixture {
     }
 
     @Test
+    void correctionUsesCustomerValuesTheCandidateDelivered() {
+        settKontoAlle();
+        Long prisversjon = aktivVersjon(JAN.førsteDag(), null).id();
+        pris(prisversjon, "melding", "2.0000");
+        Long kunde1 = kunde("100000001", "Kunde 1", "AKTIV", null).id();
+        Long kunde2 = kunde("100000002", "Kunde 2", "AKTIV", null).id();
+        regel(kunde1, "KN1", null, null, null);
+        regel(kunde2, "KN2", null, null, null);
+        referanse(kunde1, null, "REF-V1", null);
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
+        bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
+        Fakturakjoring v1 = generer(JAN);
+        kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
+
+        // CRM changed the reference before the new fetch; the candidate brings it along.
+        referanse(kunde1, null, "REF-NY", "BEST-NY");
+        var sammenligning = kandidater.opprettHvisEksportert(
+                fraDwh(kandidat(produktId("melding"), "candidate-kundedata", "120", "10"))).orElseThrow();
+        Long kandidatId = sammenligning.kandidat().id();
+        assertThat(jdbc.queryForList("select organisasjonsnummer from bruksdata_kunde where import_id = ? "
+                + "order by organisasjonsnummer", String.class, kandidatId))
+                .containsExactly("100000001", "100000002");
+
+        Fakturakjoring v2 = genererKorrigering(sammenligning.sammenligning().id(),
+                List.of(sammenligning.endringer().getFirst().id()), "Volum rettet");
+
+        assertThat(tjeneste.funn(v2.id())).noneMatch(f -> "MANGLER_KUNDENUMMER".equals(f.kode()));
+        Faktura faktura = tjeneste.fakturaer(v2.id()).getFirst();
+        assertThat(faktura.kundenummer()).isEqualTo("KN1");
+        Fakturalinje linje = tjeneste.linjer(faktura.id()).getFirst();
+        assertThat(linje.fakturareferanse()).isEqualTo("REF-NY");
+        assertThat(linje.bestillingsnummer()).isEqualTo("BEST-NY");
+    }
+
+    @Test
+    void removedCustomerIsCreditedWithTheValuesItWasInvoicedWith() {
+        settKontoAlle();
+        Long prisversjon = aktivVersjon(JAN.førsteDag(), null).id();
+        pris(prisversjon, "melding", "2.0000");
+        Long kunde1 = kunde("100000001", "Kunde 1", "AKTIV", null).id();
+        Long kunde2 = kunde("100000002", "Kunde 2", "AKTIV", null).id();
+        regel(kunde1, "KN1", null, null, null);
+        regel(kunde2, "KN2", null, null, null);
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
+        bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
+        Fakturakjoring v1 = generer(JAN);
+        kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
+
+        // The new snapshot has no usage, and so no customer row, for 100000002.
+        Forhaandsvisning fv = new Forhaandsvisning(JAN, "ny-dwh.csv", Kilde.DWH,
+                List.of(volum("100000001", produktId("melding"), "100")),
+                List.of(), List.of(), List.of("eksportert kjøring finnes"), List.of(),
+                new Raadata("candidate-removal".getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null),
+                null);
+        var sammenligning = kandidater.opprettHvisEksportert(fraDwh(fv)).orElseThrow();
+        BruksdataEndring fjernet = sammenligning.endringer().stream().filter(
+                e -> e.organisasjonsnummer().equals("100000002")).findFirst().orElseThrow();
+        assertThat(fjernet.endringstype()).isEqualTo("FJERNET");
+
+        Fakturakjoring v2 = genererKorrigering(sammenligning.sammenligning().id(),
+                List.of(fjernet.id()), "Bruken var feilregistrert");
+
+        assertThat(tjeneste.funn(v2.id())).noneMatch(f -> "MANGLER_KUNDENUMMER".equals(f.kode()));
+        Faktura faktura = tjeneste.fakturaer(v2.id()).getFirst();
+        assertThat(faktura.organisasjonsnummer()).isEqualTo("100000002");
+        assertThat(faktura.kundenummer()).isEqualTo("KN2");
+        assertThat(faktura.sumBelop()).isEqualByComparingTo("-20.00");
+    }
+
+    @Test
     void exportedPartialV2LeavesOnlyUnselectedDifferenceForV3() {
         settKontoAlle();
         Long prisversjon = aktivVersjon(JAN.førsteDag(), null).id();
@@ -111,14 +183,14 @@ class KorrigeringskjoringIT extends BillingFixture {
         kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
         Long melding = produktId("melding");
         Forhaandsvisning fv = kandidat(melding, "candidate-partial-v2", "120", "15");
-        var forste = kandidater.opprettHvisEksportert(fv).orElseThrow();
+        var forste = kandidater.opprettHvisEksportert(fraDwh(fv)).orElseThrow();
         BruksdataEndring valgt = forste.endringer().stream()
                 .filter(e -> e.organisasjonsnummer().equals("100000001")).findFirst().orElseThrow();
         Fakturakjoring v2 = genererKorrigering(
                 forste.sammenligning().id(), List.of(valgt.id()), "Første rettelse");
         kjoringer.save(v2.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
 
-        var andre = kandidater.opprettHvisEksportert(fv).orElseThrow();
+        var andre = kandidater.opprettHvisEksportert(fraDwh(fv)).orElseThrow();
 
         assertThat(andre.sammenligning().grunnlagKjoringId()).isEqualTo(v2.id());
         assertThat(andre.endringer()).singleElement()
@@ -145,8 +217,8 @@ class KorrigeringskjoringIT extends BillingFixture {
 
         Fakturakjoring v1 = generer(JAN);
         kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
-        var sammenligning = kandidater.opprettHvisEksportert(
-                kandidat(produktId("melding"), "candidate-discard", "120", "10")).orElseThrow();
+        var sammenligning = kandidater.opprettHvisEksportert(fraDwh(
+                kandidat(produktId("melding"), "candidate-discard", "120", "10"))).orElseThrow();
         Long endringId = sammenligning.endringer().getFirst().id();
         Fakturakjoring v2 = genererKorrigering(
                 sammenligning.sammenligning().id(), List.of(endringId), "Utkast");
