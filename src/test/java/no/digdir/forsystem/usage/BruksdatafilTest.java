@@ -59,4 +59,36 @@ class BruksdatafilTest {
                 .isInstanceOf(Regelbrudd.class)
                 .hasMessage("Fila er tom");
     }
+
+    private static final String HODE = "\"organisation_number\",\"fakturareferanse\"\n";
+
+    @Test
+    void utf8WithNorwegianLettersIsAccepted() {
+        assertThat(Bruksdatafil.gjenkjenn(fil(HODE + "\"974760746\",\"Deres ref: Morten Møllers\"\n")))
+                .isEqualTo(Bruksdatafil.Format.DATAVAREHUS);
+        assertThat(Bruksdatafil.utf8(fil("Deres ref: Morten Møllers"))).hasSize(25);
+    }
+
+    @Test
+    void fileSavedAsAnsiIsRefusedWithTheLine() {
+        byte[] ansi = (HODE + "\"974760746\",\"Deres ref: Morten Møllers\"\n")
+                .getBytes(java.nio.charset.Charset.forName("windows-1252"));
+        assertThatThrownBy(() -> Bruksdatafil.gjenkjenn(ansi))
+                .isInstanceOf(Regelbrudd.class)
+                .hasMessageStartingWith("Fila er ikke lagret som UTF-8 (linje 2)")
+                .hasMessageContaining("CSV UTF-8");
+    }
+
+    @Test
+    void lettersConvertedWronglyOnceAreRefused() {
+        // UTF-8 read as Windows-1252 and saved again as UTF-8: «ø» becomes «Ã¸», 25 characters become 26.
+        String dobbel = new String(fil("Deres ref: Morten Møllers"), java.nio.charset.Charset.forName("windows-1252"));
+        assertThatThrownBy(() -> Bruksdatafil.gjenkjenn(fil(HODE + "\"974760746\",\"" + dobbel + "\"\n")))
+                .isInstanceOf(Regelbrudd.class)
+                .hasMessageStartingWith("Fila har æ, ø eller å som er konvertert feil («Ã¸», linje 2)");
+        for (String bokstav : new String[]{"æ", "å", "Æ", "Ø", "Å", "é"}) {
+            String feil = new String(fil(bokstav), java.nio.charset.Charset.forName("windows-1252"));
+            assertThatThrownBy(() -> Bruksdatafil.utf8(fil(feil))).as(bokstav).isInstanceOf(Regelbrudd.class);
+        }
+    }
 }

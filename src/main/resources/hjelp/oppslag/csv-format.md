@@ -1,7 +1,7 @@
 ---
 tittel: CSV-format for bruksdata
 sammendrag: Kolonnene, reglene og feilmeldingene for CSV-filene du laster opp under Bruksdata.
-oppdatert: 2026-11-17
+oppdatert: 2026-11-24
 rolle: FORVALTER
 apne-i-appen: /bruksdata
 apne-i-appen-tekst: Åpne Bruksdata
@@ -22,7 +22,7 @@ Opplastingen gjør ingenting før du har sett forhåndsvisningen og trykt [Bekre
 
 ## Forsystems eget format
 
-- Tegnsett UTF-8. En BOM først i fila er greit.
+- Tegnsett UTF-8. En BOM først i fila er greit. En fil i et annet tegnsett, for eksempel «ANSI» fra Excel, avvises, se [Fila kjennes ikke igjen](../nar-noe-gar-galt/fila-kjennes-ikke-igjen.md).
 - Skilletegn komma. Desimaltegn punktum. Ingen tusenskille.
 - Én overskriftsrad. Kolonnene gjenkjennes på navn, store eller små bokstaver, så rekkefølgen er likegyldig. Ekstra kolonner blir ignorert.
 - Én måling per rad. Alle seks kolonnene må finnes i overskriften, også de som er tomme.

@@ -1,7 +1,7 @@
 ---
 tittel: Hent bruksdata
 sammendrag: Du henter måneden fra datavarehuset, eller laster opp en fil, sjekker forhåndsvisningen og bekrefter importen.
-oppdatert: 2026-11-17
+oppdatert: 2026-11-24
 rolle: FORVALTER
 apne-i-appen: /bruksdata
 apne-i-appen-tekst: Åpne Bruksdata
@@ -35,7 +35,7 @@ Knappen vises bare når koblingen til datavarehuset er slått på.
 Bruk dette hvis datavarehuset ikke kan brukes.
 
 1. Velg **Periode** og **Fil** under Last opp fil, og trykk [Forhåndsvis](knapp:).
-2. Last opp fila slik du fikk den. Ikke åpne og lagre den i Excel først, for da kjennes den ikke igjen.
+2. Last opp fila slik du fikk den. Ikke åpne og lagre den i Excel først, for da kjennes den ikke igjen, eller æ, ø og å blir feil. Se [Fila kjennes ikke igjen](../nar-noe-gar-galt/fila-kjennes-ikke-igjen.md).
 3. Forsystemet gjenkjenner formatet selv, enten forsystemets eget CSV-format eller datavarehusets eksport. Forhåndsvisningen sier hvilket det ble. Formatet er beskrevet i [CSV-format](../oppslag/csv-format.md) og [Last opp CSV](../slik-gjor-du/last-opp-csv.md).
 
 ### Sjekk forhåndsvisningen og bekreft

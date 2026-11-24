@@ -6,7 +6,7 @@ fallback for when the DWH is unavailable or a period needs a manual correction.
 
 ## File
 
-- Encoding **UTF-8** (a leading BOM is tolerated).
+- Encoding **UTF-8** (a leading BOM is tolerated). Both upload formats are decoded strictly: a file that is not valid UTF-8 (e.g. saved from Excel as «ANSI»), or that carries æøå already converted wrongly once («Ã¸»), is refused with the line number.
 - Delimiter **comma** (`,`). Decimal separator **dot** (`.`). No thousands separators.
 - One **header row** (column order is free; columns are matched by name, case-insensitive).
 - One measurement per row.
