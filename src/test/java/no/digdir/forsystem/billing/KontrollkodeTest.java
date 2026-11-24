@@ -20,7 +20,8 @@ class KontrollkodeTest {
     void severitiesMatchHowGenerationRaisesThem() {
         assertThat(Arrays.stream(Kontrollkode.values()).filter(k -> k.alvorlighet() == Alvorlighet.BLOKKERENDE))
                 .containsExactlyInAnyOrder(Kontrollkode.MANGLER_KUNDE, Kontrollkode.MANGLER_KUNDENUMMER,
-                        Kontrollkode.MOTSTRIDENDE_KUNDEDATA, Kontrollkode.INAKTIV_AVTALE, Kontrollkode.MANGLER_PRIS,
+                        Kontrollkode.MOTSTRIDENDE_KUNDEDATA, Kontrollkode.FOR_LANG_REFERANSE,
+                        Kontrollkode.INAKTIV_AVTALE, Kontrollkode.MANGLER_PRIS,
                         Kontrollkode.MANGLER_KONTERING);
     }
 

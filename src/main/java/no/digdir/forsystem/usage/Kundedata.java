@@ -22,8 +22,23 @@ public record Kundedata(
         String bestillingsnummer,
         List<String> motstridende) {
 
+    /**
+     * Room for fakturareferanse and bestillingsnummer in the LG04 header (both c25). A longer value would be
+     * shortened in the file, so it blocks the run instead (the registry used to refuse it at entry).
+     */
+    public static final int MAKS_REFERANSELENGDE = 25;
+
     public Kundedata {
         motstridende = List.copyOf(motstridende);
+    }
+
+    /** Whether the fakturareferanse or bestillingsnummer does not fit its LG04 field. */
+    public boolean harForLangReferanse() {
+        return forLang(fakturareferanse) || forLang(bestillingsnummer);
+    }
+
+    public static boolean forLang(String verdi) {
+        return verdi != null && verdi.strip().length() > MAKS_REFERANSELENGDE;
     }
 
     public boolean harMotstridende() {

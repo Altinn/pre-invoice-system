@@ -7,6 +7,8 @@ MANGLER_KUNDENUMMER: |
   Kundenummeret kommer fra CRM via datavarehuset. Be den som forvalter kundedata i CRM om å legge det inn. Når det er med i datavarehuset, importerer du måneden på nytt, forkaster kjøringen og genererer på nytt. Se [Rett kundedata](../slik-gjor-du/rett-kundedata.md).
 MOTSTRIDENDE_KUNDEDATA: |
   Funnet viser verdiene som ikke stemmer. Forsystem velger ikke én av dem. Be den som forvalter kundedata i CRM om å rette organisasjonen, slik at datavarehuset leverer én verdi. Importer så måneden på nytt, forkast kjøringen og generer på nytt. Se [Rett kundedata](../slik-gjor-du/rett-kundedata.md).
+FOR_LANG_REFERANSE: |
+  Fakturareferansen og bestillingsnummeret har plass til 25 tegn i LG04-filen. Forsystem korter dem ikke, for en avkortet referanse når kunden uten at noen ser det. Be den som forvalter kundedata i CRM om å korte inn verdien. Importer så måneden på nytt, forkast kjøringen og generer på nytt. Se [Rett kundedata](../slik-gjor-du/rett-kundedata.md).
 INAKTIV_AVTALE: |
   Kontrollen kjøres ikke lenger. Datavarehuset tar bare med bruk under aktiv avtale i CRM. Funnet gjelder en kjøring fra før endringen.
 MANGLER_PRIS: |

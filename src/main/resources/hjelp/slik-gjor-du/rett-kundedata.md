@@ -6,7 +6,7 @@ rolle: FORVALTER
 apne-i-appen: /bruksdata
 apne-i-appen-tekst: Åpne Bruksdata
 relatert: [slik-gjor-du/importer-periode-pa-nytt, slik-gjor-du/forkast-og-generer-pa-nytt, oppslag/kontrollfunn, forsta-systemet/slik-grupperes-fakturaer]
-nokkelord: [kunde, kunderegister, CRM, kundenummer, fakturareferanse, Deres referanse, bestillingsnummer, MANGLER_KUNDENUMMER, MOTSTRIDENDE_KUNDEDATA, MANGLER_FAKTURAREFERANSE]
+nokkelord: [kunde, kunderegister, CRM, kundenummer, fakturareferanse, Deres referanse, bestillingsnummer, 25 tegn, MANGLER_KUNDENUMMER, MOTSTRIDENDE_KUNDEDATA, FOR_LANG_REFERANSE, MANGLER_FAKTURAREFERANSE]
 ---
 Forsystem har ikke et eget kunderegister. Kundedata registreres i CRM og kommer til forsystem sammen med bruksdataene fra datavarehuset. Hver import tar med seg, per organisasjon:
 
@@ -26,6 +26,7 @@ Forhåndsvisningen av en import har avsnittet **Kundedata** når noe mangler ell
 
 - **mangler kundenummer**: organisasjonen får det blokkerende funnet `MANGLER_KUNDENUMMER` når kjøringen genereres
 - **motstridende kundedata i fila**: radene for samme organisasjon har ulikt kundenummer, fakturareferanse eller bestillingsnummer. Det gir det blokkerende funnet `MOTSTRIDENDE_KUNDEDATA`. Forsystem velger aldri én av verdiene.
+- **fakturareferanse eller bestillingsnummer over 25 tegn**: det er plassen i LG04-filen. Det gir det blokkerende funnet `FOR_LANG_REFERANSE`. Forsystem korter ikke verdien.
 
 Ingen av dem hindrer importen. Mangler bare fakturareferansen, får fakturaen advarselen `MANGLER_FAKTURAREFERANSE`.
 

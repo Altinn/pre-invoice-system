@@ -61,6 +61,16 @@ class KundedataTest {
     }
 
     @Test
+    void referanseOver25TegnErForLang() {
+        assertThat(Kundedata.forLang("1234567890123456789012345")).isFalse();
+        assertThat(Kundedata.forLang(" 1234567890123456789012345 ")).isFalse();   // trimmed like elsewhere
+        assertThat(Kundedata.forLang("12345678901234567890123456")).isTrue();
+        assertThat(Kundedata.forLang(null)).isFalse();
+        assertThat(new Kundedata("111111111", null, "1", null, "x".repeat(26), List.of()).harForLangReferanse())
+                .isTrue();
+    }
+
+    @Test
     void organisasjonerIForsteRekkefolge() {
         List<Kundedata> k = new Kundedata.Samler()
                 .legg("222222222", null, "2", null, null)

@@ -21,6 +21,10 @@ public enum Kontrollkode {
     MOTSTRIDENDE_KUNDEDATA(Alvorlighet.BLOKKERENDE,
             "Radene fra datavarehuset har ulikt kundenummer, fakturareferanse eller bestillingsnummer for samme "
                     + "organisasjon. Bruken er ikke fakturert."),
+    /** A reference longer than its LG04 field would be shortened in the file; the registry used to refuse it. */
+    FOR_LANG_REFERANSE(Alvorlighet.BLOKKERENDE,
+            "Fakturareferansen eller bestillingsnummeret fra datavarehuset er lengre enn 25 tegn, som er plassen i "
+                    + "LG04-filen. Bruken er ikke fakturert."),
     /** Retired by specs/018: the DWH flag already leaves out usage without an active agreement (OQ-4, OQ-25). */
     @Deprecated
     INAKTIV_AVTALE(Alvorlighet.BLOKKERENDE,

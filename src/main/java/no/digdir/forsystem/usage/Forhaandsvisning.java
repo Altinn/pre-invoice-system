@@ -63,6 +63,11 @@ public record Forhaandsvisning(
         return kunder.stream().filter(Kundedata::harMotstridende).toList();
     }
 
+    /** Organisations whose fakturareferanse or bestillingsnummer is longer than LG04 has room for. */
+    public List<Kundedata> forLangeReferanser() {
+        return kunder.stream().filter(Kundedata::harForLangReferanse).toList();
+    }
+
     /** Organisations with usage but no kundenummer: they get MANGLER_KUNDENUMMER at generation. */
     public List<Kundedata> utenKundenummer() {
         java.util.Set<String> med = new java.util.HashSet<>();

@@ -93,6 +93,32 @@ class GenereringControlsIT extends BillingFixture {
     }
 
     @Test
+    void aReferenceLongerThanTheLg04FieldBlocksInsteadOfBeingShortened() {
+        settKontoAlle();
+        standardVersjon();
+        Long k = kunde("100000001", "Alfa", "AKTIV", null).id();
+        regel(k, "KN1", null, null, null);
+        referanse(k, null, "Altinn v/Otto Scharff, avd. 12", null);   // 30 characters
+        Long ok = kunde("100000002", "Beta", "AKTIV", null).id();
+        regel(ok, "KN2", null, null, null);
+        referanse(ok, null, "1234567890123456789012345", "PO-1");     // exactly 25: fits
+        Long imp = nyImport(JAN);
+        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
+        bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
+
+        var kj = generer(JAN);
+
+        assertThat(tjeneste.funn(kj.id())).filteredOn(f -> "FOR_LANG_REFERANSE".equals(f.kode()))
+                .singleElement().satisfies(f -> {
+                    assertThat(f.alvorlighet()).isEqualTo("BLOKKERENDE");
+                    assertThat(f.melding()).isEqualTo("Importen har for lang fakturareferanse «Altinn v/Otto Scharff, "
+                            + "avd. 12» (30 tegn) for Alfa (100000001). LG04-filen har plass til 25 tegn.");
+                });
+        assertThat(tjeneste.fakturaer(kj.id())).extracting(Faktura::organisasjonsnummer).containsExactly("100000002");
+        assertThatThrownBy(() -> tjeneste.godkjenn(kj.id())).isInstanceOf(Regelbrudd.class);
+    }
+
+    @Test
     void aNewImportChangesTheValuesOnRegenerationButNotOnAnApprovedRun() {
         settKontoAlle();
         standardVersjon();

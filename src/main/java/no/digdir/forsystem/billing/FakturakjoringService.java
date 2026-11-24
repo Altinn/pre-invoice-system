@@ -31,6 +31,7 @@ import no.digdir.forsystem.registry.ProduktRepository;
 import no.digdir.forsystem.usage.Bruksdata;
 import no.digdir.forsystem.usage.BruksdataImport;
 import no.digdir.forsystem.usage.BruksdataKunde;
+import no.digdir.forsystem.usage.Kundedata;
 import no.digdir.forsystem.usage.BruksdataImportRepository;
 import no.digdir.forsystem.usage.BruksdataEndring;
 import no.digdir.forsystem.usage.BruksdataEndringRepository;
@@ -235,6 +236,7 @@ public class FakturakjoringService {
         // Skipped usage rows per finding key, so each can be linked to the finding that kept it off the
         // invoice (specs/002 D2): orgnr → MOTSTRIDENDE_KUNDEDATA or MANGLER_KUNDENUMMER, kode → MANGLER_PRIS.
         var motstridende = new LinkedHashMap<String, List<Long>>();
+        var forLangReferanse = new LinkedHashMap<String, List<Long>>();
         var manglerKundenummer = new LinkedHashMap<String, List<Long>>();
         var manglerPris = new LinkedHashMap<String, List<Long>>();
         var manglerKontering = new java.util.LinkedHashSet<String>();
@@ -253,6 +255,11 @@ public class FakturakjoringService {
             // Rows that disagree on the customer values: forsystem does not choose one (specs/018 FR-008).
             if (k != null && k.harMotstridende()) {
                 motstridende.computeIfAbsent(b.organisasjonsnummer(), x -> new ArrayList<>()).add(b.id());
+                continue;
+            }
+            // A reference that does not fit its LG04 field would be shortened in the file: block, never cut.
+            if (k != null && (Kundedata.forLang(k.fakturareferanse()) || Kundedata.forLang(k.bestillingsnummer()))) {
+                forLangReferanse.computeIfAbsent(b.organisasjonsnummer(), x -> new ArrayList<>()).add(b.id());
                 continue;
             }
             if (p.konto() == null) {
@@ -303,6 +310,22 @@ public class FakturakjoringService {
             funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MOTSTRIDENDE_KUNDEDATA,
                     "Importen har motstridende kundedata for " + kundetekst(orgnr, k) + ": "
                             + String.join("; ", k.motstridende())));
+        });
+        forLangReferanse.forEach((orgnr, ider) -> {
+            utelattePerFunn.put(funnListe.size(), ider);
+            BruksdataKunde k = kundeByOrgnr.get(orgnr);
+            List<String> deler = new ArrayList<>();
+            if (Kundedata.forLang(k.fakturareferanse())) {
+                deler.add("fakturareferanse «" + k.fakturareferanse().strip() + "» (" + k.fakturareferanse().strip().length()
+                        + " tegn)");
+            }
+            if (Kundedata.forLang(k.bestillingsnummer())) {
+                deler.add("bestillingsnummer «" + k.bestillingsnummer().strip() + "» ("
+                        + k.bestillingsnummer().strip().length() + " tegn)");
+            }
+            funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.FOR_LANG_REFERANSE,
+                    "Importen har for lang " + String.join(" og ", deler) + " for " + kundetekst(orgnr, k)
+                            + ". LG04-filen har plass til " + Kundedata.MAKS_REFERANSELENGDE + " tegn."));
         });
         manglerKundenummer.forEach((orgnr, ider) -> {
             utelattePerFunn.put(funnListe.size(), ider);

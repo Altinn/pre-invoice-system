@@ -17,6 +17,7 @@ Kundenummeret er kundens id i Unit4. Det er ikke det samme som organisasjonsnumm
 
 - Leverer datavarehuset ikke noe kundenummer for organisasjonen, får kjøringen det blokkerende funnet `MANGLER_KUNDENUMMER`, og bruken kommer ikke med.
 - Har radene for samme organisasjon ulikt kundenummer, fakturareferanse eller bestillingsnummer, får kjøringen det blokkerende funnet `MOTSTRIDENDE_KUNDEDATA`. Forsystem velger ikke én av verdiene.
+- Er fakturareferansen eller bestillingsnummeret lengre enn 25 tegn, får kjøringen det blokkerende funnet `FOR_LANG_REFERANSE`. Forsystem korter ikke verdien.
 - Mangler bare fakturareferansen, får fakturaen advarselen `MANGLER_FAKTURAREFERANSE`.
 
 Kjøringen kan ikke godkjennes med blokkerende funn. Se [Kontrollfunn](../oppslag/kontrollfunn.md).
