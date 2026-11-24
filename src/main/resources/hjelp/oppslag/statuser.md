@@ -1,11 +1,11 @@
 ---
 tittel: Statuser
-sammendrag: Oversikt over statusene for kjøringer, prisversjoner, bruksdata-importer og kunders avtalestatus, og hva de betyr.
+sammendrag: Oversikt over statusene for kjøringer, prisversjoner og bruksdata-importer, og hva de betyr.
 oppdatert: 2026-11-17
 apne-i-appen: /kjoringer
 apne-i-appen-tekst: Åpne Kjøringer
 relatert: [manedsrutinen/3-generer, manedsrutinen/5-godkjenn, manedsrutinen/6-eksporter, slik-gjor-du/lag-prisversjon, oppslag/kontrollfunn]
-nokkelord: [status, generert, godkjent, eksportert, forkastet, utkast, aktiv, arkivert, mottatt, validert, avvist, avtalestatus]
+nokkelord: [status, generert, godkjent, eksportert, forkastet, utkast, aktiv, arkivert, mottatt, validert, avvist]
 ---
 ## Kjøring
 
@@ -45,13 +45,3 @@ Statusen står i tabellen Importer på [Bruksdata](/bruksdata).
 | AVVIST | Erstattet av en nyere import av samme periode. Radene beholdes for sporbarhet. |
 
 Se [Hent bruksdata](../manedsrutinen/2-hent-bruksdata.md).
-
-## Avtalestatus for kunde
-
-| Status | Betyr |
-|---|---|
-| AKTIV | Kunden kan faktureres. |
-| INAKTIV | Kunden har bruk, men får et blokkerende funn (`INAKTIV_AVTALE`). |
-| UNDER_AVKLARING | Brukes bare i forsystem. Behandles som ikke aktiv, så bruk gir også funnet `INAKTIV_AVTALE`. |
-
-Hva «aktiv» betyr nøyaktig i kundesystemet, er ikke avklart (OQ-13).

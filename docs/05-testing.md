@@ -27,14 +27,15 @@
 
 ## Fixture dataset (build once, reuse everywhere)
 
-Must exercise every rule from docs/01:
+Must exercise every rule from docs/01 that still applies (specs/018 removed the customer registry;
+customer values come per orgnr with the import, `bruksdata_kunde`):
 - normal customer, one product;
-- customer with deviating fakturamottaker;
-- customer with product-specific fakturareferanse + bestillingsnummer;
-- customer with two kundenummer (different servicekoder) → expect two fakturaer;
-- two customers sharing a kundenummer with different tilleggstekst;
-- customer with INAKTIV avtalestatus → BLOKKERENDE;
-- usage for an orgnr with no kunde row → BLOKKERENDE;
+- one invoice per orgnr, fakturamottaker = the orgnr, values from the run's import;
+- empty bestillingsnummer → fakturareferanse; missing fakturareferanse → ADVARSEL;
+- two organisations sharing a kundenummer → two fakturaer;
+- usage for an orgnr the import delivered without kundenummer → BLOKKERENDE (`MANGLER_KUNDENUMMER`);
+- rows for one orgnr with conflicting customer values → BLOKKERENDE (`MOTSTRIDENDE_KUNDEDATA`);
+- runs generated before specs/018 (several kundenummer per orgnr, retired codes) still open and export;
 - product missing price / missing kontering → BLOKKERENDE;
 - SMS + Azure cost rows → pass-through lines;
 - amounts that expose rounding (e.g. volume × price = x.005).

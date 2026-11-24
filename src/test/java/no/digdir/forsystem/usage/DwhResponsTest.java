@@ -26,6 +26,20 @@ class DwhResponsTest {
             assertThat(r.dato()).isEqualTo(LocalDate.of(2027, 1, 1));
             assertThat(r.kundenummer()).isEqualTo("1234");
             assertThat(r.fakturareferanse()).isEqualTo("TESTREF1");
+            assertThat(r.navn()).isEqualTo("testetat");          // specs/018: goes on the invoice
+            assertThat(r.bestillingsnummer()).isNull();          // null in the view today
+        });
+    }
+
+    @Test
+    void customerFieldsAreOptional() {
+        var rader = DwhRespons.les(("{\"value\":[{\"organisation_number\":\"123456789\",\"product_name\":\"Formidling\","
+                + "\"quantity\":1,\"amount_nok\":null,\"transaction_date\":\"2027-01-01\"}]}")
+                .getBytes(StandardCharsets.UTF_8));
+        assertThat(rader).singleElement().satisfies(r -> {
+            assertThat(r.navn()).isNull();
+            assertThat(r.kundenummer()).isNull();
+            assertThat(r.bestillingsnummer()).isNull();
         });
     }
 

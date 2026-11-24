@@ -5,7 +5,7 @@ oppdatert: 2026-11-17
 rolle: FORVALTER
 apne-i-appen: /bruksdata
 apne-i-appen-tekst: Åpne Bruksdata
-relatert: [slik-gjor-du/last-opp-csv, slik-gjor-du/importer-periode-pa-nytt, nar-noe-gar-galt/fila-kjennes-ikke-igjen, nar-noe-gar-galt/import-blokkeres, slik-gjor-du/opprett-kunder-fra-fila]
+relatert: [slik-gjor-du/last-opp-csv, slik-gjor-du/importer-periode-pa-nytt, nar-noe-gar-galt/fila-kjennes-ikke-igjen, nar-noe-gar-galt/import-blokkeres, slik-gjor-du/rett-kundedata]
 nokkelord: [csv, kolonner, opplasting, avviste rader, semikolon, excel, datavarehus, eksport]
 ---
 Under [Bruksdata](/bruksdata) tar ett opplastingsfelt imot to slags filer. Forsystem kjenner dem igjen på overskriftsraden. Her står det som gjelder for hvert format.
@@ -35,6 +35,10 @@ Opplastingen gjør ingenting før du har sett forhåndsvisningen og trykt [Bekre
 | `type` | alltid | `BRUKSVOLUM`, `AZURE_KOSTNAD` eller `SMS_KOSTNAD`. |
 | `antall` | for `BRUKSVOLUM` | Volum, tall som ikke er negativt. Tom for kostnadsrader. |
 | `belop` | for kostnadstypene | Beløp i kroner, ikke negativt. Tom for `BRUKSVOLUM`. |
+| `kundenavn` | valgfri | Navnet som skal stå på fakturaen. |
+| `kundenummer` | valgfri | Kundenummeret i Unit4. Mangler det, gir det `MANGLER_KUNDENUMMER` når kjøringen genereres. |
+| `fakturareferanse` | valgfri | «Deres referanse» på fakturaen. |
+| `bestillingsnummer` | valgfri | Står det tomt, brukes fakturareferansen. |
 
 Eksempel med oppdiktede organisasjonsnumre og tall:
 
@@ -43,6 +47,8 @@ periode,organisasjonsnummer,produktkode,type,antall,belop
 2027-01-01,111111111,melding,BRUKSVOLUM,1500,
 2027-01-01,111111111,varsling,SMS_KOSTNAD,,100.50
 ```
+
+Kundekolonnene kopieres fra CRM eller datavarehuset. Forsystem har ikke noe eget kunderegister. Har samme organisasjon ulike verdier på flere rader, gir det `MOTSTRIDENDE_KUNDEDATA` når kjøringen genereres. Se [Rett kundedata](../slik-gjor-du/rett-kundedata.md).
 
 > [!IMPORTANT]
 > Typene `AZURE_KOSTNAD` og `SMS_KOSTNAD` og betydningen av `belop` er foreløpige. Hvem som eier SMS-kostnader og hvordan de leveres, er ikke avklart (OQ-3), og Azure-kostnader følger det som avtales med datavarehuset (OQ-4). `BRUKSVOLUM` er stabil.
@@ -72,9 +78,9 @@ Hver linje deles på komma uten å ta hensyn til anførselstegn. Verdier med kom
 Brukes når API-et ikke kan nås. Fila går gjennom samme kontroll som en henting fra datavarehuset.
 
 - Påkrevde kolonner er `organisation_number`, `product_name`, `quantity` og `amount_nok`, pluss én datokolonne. Datokolonnen kan hete `maaned`, `transaction_month` eller `transaction_date`.
-- Andre kolonner, for eksempel navn, kundenummer og fakturareferanse, kan være med. Rekkefølgen er likegyldig.
+- `organisation_name`, `kundenummer`, `fakturareferanse` og `bestillingsnummer` er kundedataene fra CRM. De blir med på fakturaen. Andre kolonner kan også være med. Rekkefølgen er likegyldig.
 - Produktnavnene må være koblet til et produkt under [Produkter → Kildenavn](/produkter/kildenavn). Et ukjent navn avviser importen.
-- Organisasjoner i fila som ikke er kunder ennå, kan opprettes fra forhåndsvisningen. Se [Opprett kunder fra fila](../slik-gjor-du/opprett-kunder-fra-fila.md).
+- Mangler kundenummer eller er kundedataene motstridende, sier forhåndsvisningen det under **Kundedata**. Se [Rett kundedata](../slik-gjor-du/rett-kundedata.md).
 - Kolonnenavnene er ikke en avtalt grensesnittkontrakt med datavarehuset ennå (OQ-4), så de kan endre seg.
 
 ## Vanlige feil med fila

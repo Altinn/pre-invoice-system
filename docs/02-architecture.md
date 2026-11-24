@@ -4,17 +4,17 @@
 
 ```mermaid
 flowchart LR
-    DW[("finopsdevsa<br/>data warehouse")] -->|"usage data<br/>CSV now, DAB API later"| FS["Forsystem"]
-    CRM[("CRM D365")] -.->|"customer data<br/>after OQ-5 decision"| FS
-    BR["BRREG<br/>enhetsregisteret"] -.->|"orgnr/name validation"| FS
+    CRM[("CRM D365")] -->|"customer data"| DW
+    DW[("finopsdevsa<br/>data warehouse")] -->|"usage + customer data<br/>file or DAB API"| FS["Forsystem"]
     FS -->|"LG04 by email<br/>to regnskap (VIS)"| U4["Unit4"]
     U4 -->|"EHF invoice"| TE["Tjenesteeier"]
     FS -.->|"PDF detail views<br/>(manual distribution)"| TE
     OIDC["OIDC provider<br/>(Entra ID in prod)"] -.->|"login"| FS
 ```
 
-Solid arrows are MVP reality; dashed arrows are integrations behind ports (BRREG is live
-in prod, CRM/DWH pending) or manual steps.
+Solid arrows are MVP reality; dashed arrows are manual steps or integrations behind ports.
+Customer data (name, kundenummer, fakturareferanse, bestillingsnummer) is mastered in CRM and
+reaches forsystem only through the DWH export; forsystem keeps no customer registry (specs/018).
 
 ## Module dependencies
 
@@ -55,7 +55,7 @@ SPA now (doubles the moving parts for a CRUD UI; revisit post-MVP if the UI grow
 
 ```
 no.digdir.forsystem
-├── registry/        products, price versions/prices, customers, references, kundenummer rules
+├── registry/        products, price versions/prices, DWH product names (customers: none, specs/018)
 ├── usage/           bruksdata import: CSV + datavarehus (usage.adapter), validation, storage
 ├── billing/         fakturakjøring: generation engine, controls, statuses, approval
 ├── export/          LG04 writer (ported), PDF renderer, CSV/XLSX; writes via FileArchive
@@ -73,7 +73,6 @@ by default, explicit public API per module.
 | Port (interface, in core) | MVP adapter | Future adapter |
 |---|---|---|
 | `UsageDataSource` | `CsvUploadUsageSource` | `DwhUsageSource` (when contract exists, OQ-4) |
-| `CustomerSource` | local registry tables | `Dynamics365CustomerSource` (after 2026-08-10, OQ-5) |
 | `FileArchive` | `LocalFileArchive` | `AzureBlobArchive` (prod), S3 possible |
 | `Notifier` | no-op | email/Teams on run events |
 

@@ -47,7 +47,7 @@ class WebKjoringRoleIT extends BillingFixture {
     @WithMockUser(roles = "FORVALTER")
     void forvalterCannotApprove() throws Exception {
         renFixture();
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         mvc.perform(post("/kjoringer/{id}/godkjenn", kj.id()).with(csrf()))
                 .andExpect(status().isForbidden());
     }
@@ -56,7 +56,7 @@ class WebKjoringRoleIT extends BillingFixture {
     @WithMockUser(roles = "GODKJENNER")
     void godkjennerCanApprove() throws Exception {
         renFixture();
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         aksepterAlleAdvarsler(kj.id());
         mvc.perform(post("/kjoringer/{id}/godkjenn", kj.id()).with(csrf()))
                 .andExpect(status().is3xxRedirection());

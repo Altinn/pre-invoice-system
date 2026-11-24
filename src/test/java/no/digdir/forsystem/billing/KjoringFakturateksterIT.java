@@ -58,7 +58,7 @@ class KjoringFakturateksterIT extends BillingFixture {
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);
         bruk(imp, JAN, "100000001", "formidling", Bruksdatatype.BRUKSVOLUM, "10", null);
         bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "5", null);
-        return tjeneste.generer(JAN);
+        return generer(JAN);
     }
 
     private List<Hendelseslogg> endringer(Long kjoringId) {

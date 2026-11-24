@@ -15,35 +15,14 @@
     <h1 class="ds-heading" data-size="lg">Forhåndsvisning</h1>
     <th:block th:replace="~{layout :: hjelp('slik-gjor-du/last-opp-csv')}"></th:block>
 
-    <!-- Uploaded datavarehus export: organisations that are not customers yet can be created from the file. -->
-    <div class="seksjon" th:if="${kundeoppretting != null}">
-        <div class="ds-alert" data-color="success" th:unless="${kundeoppretting.opprettet().isEmpty()}">
-            <p th:text="|Opprettet ${kundeoppretting.opprettet().size()} kunder fra fila (navn, kundenummer og fakturareferanse).|">Opprettet kunder.</p></div>
-        <div class="ds-alert" data-color="danger" th:unless="${kundeoppretting.feilet().isEmpty()}">
-            <p>Disse kunne ikke opprettes:</p>
-            <ul class="ds-list"><li th:each="f : ${kundeoppretting.feilet()}" th:text="${f}">feil</li></ul>
-        </div>
-    </div>
-    <div class="seksjon" th:if="${manglendeKunder != null and !manglendeKunder.isEmpty()}">
-        <div class="ds-alert" data-color="warning">
-            <p th:text="|${manglendeKunder.size()} organisasjoner i fila finnes ikke i kunderegisteret. Uten kunde gir bruken deres et blokkerende funn (MANGLER_KUNDE) når kjøringen genereres.|">Manglende kunder.</p></div>
-        <form th:action="@{/bruksdata/last-opp/opprett-kunder}" method="post" class="rad" hx-disabled-elt="find button">
-            <th:block th:replace="~{layout :: csrf}"></th:block>
-            <button class="ds-button" data-variant="secondary" type="submit"
-                    th:text="|Opprett ${manglendeKunder.size()} kunder fra fila|">Opprett kunder fra fila</button>
-            <span class="ds-paragraph" data-size="sm">Navn, kundenummer og fakturareferanse slik datavarehuset har dem
-                (fra CRM). Avtalestatus settes til AKTIV.</span>
-        </form>
-    </div>
-
     <!-- The staging report; also rendered on a staged (MOTTATT) import's detail page. -->
     <section class="seksjon" th:fragment="rapport(fv)">
     <p class="ds-paragraph liten">
         <th:block th:if="${fv.kilde().name() == 'CSV'}">Forsystemets CSV-format,
             fil <strong th:text="${fv.filnavn()}">bruk.csv</strong> ·</th:block>
-        <th:block th:if="${fv.kilde().name() == 'DWH' and manglendeKunder != null}">Eksport fra datavarehuset,
+        <th:block th:if="${fv.kilde().name() == 'DWH' and fraFil != null}">Eksport fra datavarehuset,
             fil <strong th:text="${fv.filnavn()}">eksport.csv</strong> ·</th:block>
-        <th:block th:if="${fv.kilde().name() == 'DWH' and manglendeKunder == null}">Datavarehus, hentet
+        <th:block th:if="${fv.kilde().name() == 'DWH' and fraFil == null}">Datavarehus, hentet
             <strong th:text="${#temporals.format(fv.raadata().hentetAt(), 'yyyy-MM-dd HH:mm')}">2027-02-07 06:00</strong> ·</th:block>
         periode <strong th:text="${fv.periode()}">2027-01</strong> ·
         <span th:text="${@tall.antall(fv.antallGyldige())}">0</span> gyldige,
@@ -64,6 +43,38 @@
             <ul class="ds-list">
                 <li th:each="a : ${fv.advarsler()}" th:text="${a}">Avvik.</li>
             </ul>
+        </div>
+    </div>
+
+    <!-- Customer data (specs/018) comes with the usage, from CRM through the DWH. Facts about the file, never
+         a comparison with forsystem: organisations without kundenummer or with conflicting values are blocked
+         when the run is generated, not here. -->
+    <div class="seksjon" th:if="${!fv.utenKundenummer().isEmpty() or !fv.motstridendeKunder().isEmpty() or !fv.forLangeReferanser().isEmpty()}" id="kundedata">
+        <h2 class="ds-heading" data-size="xs">Kundedata</h2>
+        <div class="ds-alert bred" data-color="warning">
+            <p>Kundedata kommer fra CRM via datavarehuset. Det som mangler eller er motstridende, rettes i CRM og
+                kommer med neste import. Det hindrer ikke import, men gir blokkerende funn når kjøringen genereres.</p>
+            <details class="ds-details" th:unless="${fv.utenKundenummer().isEmpty()}">
+                <summary th:text="|${fv.utenKundenummer().size()} ${fv.utenKundenummer().size() == 1 ? 'organisasjon' : 'organisasjoner'} mangler kundenummer (MANGLER_KUNDENUMMER)|">Mangler kundenummer</summary>
+                <div><ul class="ds-list">
+                    <li th:each="k : ${fv.utenKundenummer()}"
+                        th:text="${k.navn() == null} ? ${k.organisasjonsnummer()} : |${k.navn()} (${k.organisasjonsnummer()})|">orgnr</li>
+                </ul></div>
+            </details>
+            <details class="ds-details" th:unless="${fv.motstridendeKunder().isEmpty()}">
+                <summary th:text="|${fv.motstridendeKunder().size()} ${fv.motstridendeKunder().size() == 1 ? 'organisasjon' : 'organisasjoner'} har motstridende kundedata i fila (MOTSTRIDENDE_KUNDEDATA)|">Motstridende kundedata</summary>
+                <div><ul class="ds-list">
+                    <li th:each="k : ${fv.motstridendeKunder()}"
+                        th:text="|${k.navn() == null ? k.organisasjonsnummer() : k.navn() + ' (' + k.organisasjonsnummer() + ')'}: ${#strings.listJoin(k.motstridende(), '; ')}|">orgnr: kundenummer: 1 | 2</li>
+                </ul></div>
+            </details>
+            <details class="ds-details" th:unless="${fv.forLangeReferanser().isEmpty()}">
+                <summary th:text="|${fv.forLangeReferanser().size()} ${fv.forLangeReferanser().size() == 1 ? 'organisasjon' : 'organisasjoner'} har fakturareferanse eller bestillingsnummer over 25 tegn (FOR_LANG_REFERANSE)|">For lang referanse</summary>
+                <div><ul class="ds-list">
+                    <li th:each="k : ${fv.forLangeReferanser()}"
+                        th:text="|${k.navn() == null ? k.organisasjonsnummer() : k.navn() + ' (' + k.organisasjonsnummer() + ')'}: ${k.fakturareferanse() != null and k.fakturareferanse().strip().length() > 25 ? k.fakturareferanse() : k.bestillingsnummer()}|">orgnr: referanse</li>
+                </ul></div>
+            </details>
         </div>
     </div>
 

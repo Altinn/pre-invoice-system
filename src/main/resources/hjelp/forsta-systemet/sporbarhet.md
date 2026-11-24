@@ -18,7 +18,7 @@ Hver fakturalinje peker på to ting.
 
 Åpne en faktura fra fanen **Fakturaer** på kjøringen, så ser du linjene med begge. En kostnadslinje har ingen pris, så der står det «—». Se [Finn en faktura](../slik-gjor-du/finn-en-faktura.md).
 
-Fakturaen husker også navnet på kunden slik det var da kjøringen ble generert. Kjøringer som er eldre enn dette viser kundens nåværende navn, markert med «(nåværende navn)».
+Fakturaen husker også organisasjonsnummeret og navnet på kunden slik de var da kjøringen ble generert. Hver import tar vare på kundedataene datavarehuset leverte, så du kan se hvor kundenummer og referanse kom fra.
 
 ### Hvorfor dette hjelper
 

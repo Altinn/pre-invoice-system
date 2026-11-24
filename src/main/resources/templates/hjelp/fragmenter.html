@@ -106,6 +106,7 @@
             <code th:id="${k.name()}" th:text="${k.name()}">MANGLER_KUNDE</code>
             <span class="ds-tag" data-size="sm" th:data-color="${k.alvorlighet().name() == 'BLOKKERENDE'} ? 'danger' : 'warning'"
                   th:text="${k.alvorlighet().name() == 'BLOKKERENDE'} ? 'Blokkerende' : 'Advarsel'">Blokkerende</span>
+            <span th:if="${k.utgatt()}" class="ds-tag" data-size="sm" data-color="neutral">Utgått</span>
         </dt>
         <dd>
             <p class="ds-paragraph" th:text="${k.definisjon()}">Definisjon.</p>

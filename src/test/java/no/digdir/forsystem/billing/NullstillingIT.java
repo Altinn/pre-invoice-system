@@ -79,7 +79,7 @@ class NullstillingIT extends BillingFixture {
 
     private Fakturakjoring eksportert(Periode periode) throws IOException {
         importer(periode);
-        var kj = tjeneste.generer(periode);
+        var kj = generer(periode);
         godkjennEtterAksept(kj.id());
         eksport.eksporter(kj.id());
         return kj;
@@ -136,7 +136,8 @@ class NullstillingIT extends BillingFixture {
     void wipesFindingsOfARunWithSkippedUsage() throws IOException {
         registre();
         importer(JAN);
-        jdbc.update("delete from kundenummer_regel"); // usage without a kundenummer is skipped and linked
+        // Usage without a kundenummer is skipped and linked (specs/018: the import delivered none).
+        jdbc.update("update bruksdata_kunde set kundenummer = null");
         var kj = tjeneste.generer(JAN);
         assertThat(antall("kontrollfunn", "kjoring_id = ?", kj.id())).isPositive();
 
@@ -152,10 +153,10 @@ class NullstillingIT extends BillingFixture {
         Long prisversjon = aktivVersjon(JAN.førsteDag(), null).id();
         pris(prisversjon, "melding", "2.0000");
         Long kunde = kunde("100000001", "Kunde", "AKTIV", null).id();
-        regel(kunde, "KN1", null, "S1", null);
+        regel(kunde, "KN1", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
-        var v1 = tjeneste.generer(JAN);
+        var v1 = generer(JAN);
         kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
         Long melding = produktId("melding");
         var fv = new Forhaandsvisning(JAN, "ny-dwh.csv", Kilde.DWH, List.of(
@@ -165,7 +166,7 @@ class NullstillingIT extends BillingFixture {
                 new Raadata("candidate".getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null), null);
         var sammenligning = kandidater.opprettHvisEksportert(fv).orElseThrow();
         var valgt = sammenligning.endringer().getFirst();
-        var v2 = tjeneste.genererKorrigering(sammenligning.sammenligning().id(), List.of(valgt.id()), "Rettelse");
+        var v2 = genererKorrigering(sammenligning.sammenligning().id(), List.of(valgt.id()), "Rettelse");
 
         nullstilling.nullstill(JAN);
 

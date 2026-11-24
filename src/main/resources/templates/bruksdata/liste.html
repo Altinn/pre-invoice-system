@@ -42,13 +42,14 @@
         <div>
             <p class="ds-paragraph" data-size="sm"><strong>Forsystemets format:</strong> kolonnene
                 <code>periode</code>, <code>organisasjonsnummer</code>, <code>produktkode</code>, <code>type</code>,
-                <code>antall</code> og <code>belop</code> (se <code>docs/csv-format.md</code>).</p>
+                <code>antall</code> og <code>belop</code>, og valgfritt <code>kundenavn</code>, <code>kundenummer</code>,
+                <code>fakturareferanse</code> og <code>bestillingsnummer</code> (se <code>docs/csv-format.md</code>).</p>
             <p class="ds-paragraph" data-size="sm"><strong>Eksport fra datavarehuset:</strong> brukes når API-et ikke
                 kan brukes. Kolonnene <code>organisation_number</code>, <code>product_name</code>, <code>quantity</code>,
                 <code>amount_nok</code> og en datokolonne (<code>maaned</code>, <code>transaction_month</code> eller
                 <code>transaction_date</code>). Den går gjennom samme kontroll som henting fra datavarehuset, og
                 produktnavnene kobles under <a class="ds-link" th:href="@{/produkter/kildenavn}">Kildenavn</a>.
-                Organisasjoner som ikke er kunder ennå, kan opprettes fra fila i forhåndsvisningen.</p>
+                Navn, kundenummer, fakturareferanse og bestillingsnummer tas fra fila (de kommer fra CRM).</p>
         </div>
     </details>
     <!--

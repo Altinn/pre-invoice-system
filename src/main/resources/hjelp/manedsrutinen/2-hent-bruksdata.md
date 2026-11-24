@@ -5,7 +5,7 @@ oppdatert: 2026-11-17
 rolle: FORVALTER
 apne-i-appen: /bruksdata
 apne-i-appen-tekst: Åpne Bruksdata
-relatert: [manedsrutinen/1-sjekk-registrene, manedsrutinen/3-generer, slik-gjor-du/last-opp-csv, slik-gjor-du/opprett-kunder-fra-fila, slik-gjor-du/importer-periode-pa-nytt, oppslag/csv-format]
+relatert: [manedsrutinen/1-sjekk-registrene, manedsrutinen/3-generer, slik-gjor-du/last-opp-csv, slik-gjor-du/rett-kundedata, slik-gjor-du/importer-periode-pa-nytt, oppslag/csv-format]
 nokkelord: [import, datavarehus, csv, bekreft import, forhåndsvisning, mottatt]
 ---
 Bruksdata er antall transaksjoner og kostnader per organisasjon og produkt for måneden. Du henter dem normalt fra datavarehuset. Å laste opp en fil er reserveløsningen.
@@ -42,7 +42,7 @@ Bruk dette hvis datavarehuset ikke kan brukes.
 
 1. Les **Advarsler**. De hindrer ikke import, men bør sjekkes, for eksempel at et produkt har endret seg mye fra forrige måned.
 2. Sammenlign **Summer per produkt** med det du forventer.
-3. Mangler noen organisasjoner i kunderegisteret, sier forhåndsvisningen det. Trykk [Opprett kunder fra fila](knapp:) hvis det er riktig. Se [Opprett kunder fra fila](../slik-gjor-du/opprett-kunder-fra-fila.md).
+3. Les **Kundedata** hvis avsnittet finnes. Det viser organisasjoner som mangler kundenummer eller har motstridende kundedata. De gir blokkerende funn når kjøringen genereres og rettes i CRM. Se [Rett kundedata](../slik-gjor-du/rett-kundedata.md).
 4. Trykk [Bekreft import](knapp:).
 
 > [!WARNING]

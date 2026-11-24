@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
 
 import no.digdir.forsystem.IntegrationTest;
 import org.junit.jupiter.api.Test;
@@ -19,9 +18,6 @@ class RegistryRepositoryIT extends IntegrationTest {
     @Autowired ProduktRepository produkter;
     @Autowired PrisversjonRepository prisversjoner;
     @Autowired PrisRepository priser;
-    @Autowired KundeRepository kunder;
-    @Autowired KundeReferanseRepository referanser;
-    @Autowired KundenummerRegelRepository regler;
 
     @Test
     void seededProductsPresentAndKontringNull() {
@@ -50,45 +46,7 @@ class RegistryRepositoryIT extends IntegrationTest {
                 .hasCauseInstanceOf(DataIntegrityViolationException.class);
     }
 
-    @Test
-    void kundeOrgnrUniqueAndFormatChecked() {
-        kunder.save(nyKunde("999888777"));
-        assertThatThrownBy(() -> kunder.save(nyKunde("999888777")))
-                .isInstanceOf(DbActionExecutionException.class)
-                .hasCauseInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
-    void kundeOrgnrFormatConstraintRejectsNonNineDigits() {
-        assertThatThrownBy(() -> kunder.save(nyKunde("12345")))
-                .isInstanceOf(DbActionExecutionException.class)
-                .hasCauseInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
-    void kundeReferanseNullsNotDistinctUnique() {
-        Long kundeId = kunder.save(nyKunde("111222333")).id();
-        referanser.save(new KundeReferanse(null, kundeId, null, "ref-1", null));
-        // A second customer-default row (produktId null) must collide under nulls-not-distinct.
-        assertThatThrownBy(() -> referanser.save(new KundeReferanse(null, kundeId, null, "ref-2", null)))
-                .isInstanceOf(DbActionExecutionException.class)
-                .hasCauseInstanceOf(DataIntegrityViolationException.class);
-    }
-
-    @Test
-    void kundenummerRegelNullsNotDistinctUnique() {
-        Long kundeId = kunder.save(nyKunde("222333444")).id();
-        regler.save(new KundenummerRegel(null, kundeId, "KN-1", null, null, null));
-        assertThatThrownBy(() -> regler.save(new KundenummerRegel(null, kundeId, "KN-2", null, null, null)))
-                .isInstanceOf(DbActionExecutionException.class)
-                .hasCauseInstanceOf(DataIntegrityViolationException.class);
-    }
-
     private static Produkt nyttProdukt(String kode) {
         return new Produkt(null, kode, "Dummy", null, null, null, null, null, "transaksjon", true);
-    }
-
-    private static Kunde nyKunde(String orgnr) {
-        return new Kunde(null, orgnr, "Testkunde", null, "AKTIV", "MANUELL", "test", OffsetDateTime.now());
     }
 }

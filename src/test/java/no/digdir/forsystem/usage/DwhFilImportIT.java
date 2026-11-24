@@ -11,9 +11,6 @@ import java.io.InputStream;
 
 import no.digdir.forsystem.IntegrationTest;
 import no.digdir.forsystem.archive.FileArchive;
-import no.digdir.forsystem.registry.KundeReferanseRepository;
-import no.digdir.forsystem.registry.KundeRepository;
-import no.digdir.forsystem.registry.KundenummerRegelRepository;
 import no.digdir.forsystem.registry.ProduktKildenavnService;
 import no.digdir.forsystem.registry.ProduktRepository;
 import org.hamcrest.Matchers;
@@ -27,7 +24,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * Uploading the datavarehus's own CSV export while the API is unreachable (OQ-19): same pipeline as a
- * fetch, product names mapped under Kildenavn, and missing customers created from the file. The same
+ * fetch, product names mapped under Kildenavn, and the customer values taken from the file (specs/018). The same
  * upload takes forsystem's own CSV format; the header decides which.
  */
 @AutoConfigureMockMvc
@@ -37,9 +34,7 @@ class DwhFilImportIT extends IntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ProduktKildenavnService kildenavn;
     @Autowired ProduktRepository produkter;
-    @Autowired KundeRepository kunder;
-    @Autowired KundenummerRegelRepository regler;
-    @Autowired KundeReferanseRepository referanser;
+    @Autowired UsageImportService usage;
     @Autowired BruksdataImportRepository importer;
     @Autowired BruksdataRepository bruksdata;
     @Autowired FileArchive arkiv;
@@ -58,31 +53,21 @@ class DwhFilImportIT extends IntegrationTest {
     }
 
     @Test
-    void uploadCreateCustomersAndConfirm() throws Exception {
+    void uploadAndConfirmKeepsTheCustomerValuesOfTheFile() throws Exception {
         kobleProdukter();
         MockHttpSession session = new MockHttpSession();
 
-        // Upload: the preview shows the monthly sums and that three organisations are not customers yet.
+        // Upload: the preview shows the monthly sums, and nothing about a customer registry (specs/018).
         mvc.perform(multipart("/bruksdata/last-opp").file(eksport()).param("periode", "2026-09")
                         .session(session).with(csrf()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(Matchers.containsString("3 organisasjoner i fila finnes ikke i kunderegisteret")))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("kunderegister"))))
+                .andExpect(content().string(Matchers.not(Matchers.containsString("Opprett"))))
                 .andExpect(content().string(Matchers.containsString("public.mv_altinn_usage_monthly")));
 
-        // Create them from the file: name, kundenummer rule and reference as the datavarehus carries them.
+        // The old create-customers action is gone.
         mvc.perform(post("/bruksdata/last-opp/opprett-kunder").session(session).with(csrf()))
-                .andExpect(status().isOk())
-                .andExpect(content().string(Matchers.containsString("Opprettet 3 kunder fra fila")));
-        var en = kunder.findByOrganisasjonsnummer("100000001").orElseThrow();
-        assertThat(en.virksomhetsnavn()).isEqualTo("testetat en");
-        assertThat(en.avtalestatus()).isEqualTo("AKTIV");
-        assertThat(regler.findByKundeId(en.id())).singleElement()
-                .satisfies(r -> assertThat(r.kundenummer()).isEqualTo("9001"));
-        var to = kunder.findByOrganisasjonsnummer("100000002").orElseThrow();
-        assertThat(referanser.findByKundeId(to.id())).singleElement()
-                .satisfies(r -> assertThat(r.fakturareferanse()).isEqualTo("Navn, med komma"));
-        var tre = kunder.findByOrganisasjonsnummer("100000003").orElseThrow();
-        assertThat(referanser.findByKundeId(tre.id())).isEmpty();   // no reference in the file
+                .andExpect(status().isNotFound());
 
         // Confirm: stored as a DWH import with the uploaded file archived as its raw payload.
         mvc.perform(post("/bruksdata/bekreft").session(session).with(csrf()))
@@ -93,6 +78,15 @@ class DwhFilImportIT extends IntegrationTest {
         assertThat(imp.raadataUrl()).endsWith(".csv");
         assertThat(new String(arkiv.hent(imp.raadataUrl()))).startsWith("\"maaned\"");
         assertThat(bruksdata.countByImportId(imp.id())).isEqualTo(4);
+
+        // The customer values as the datavarehus carries them (from CRM), one row per organisation.
+        var kunder = usage.kundedata(imp.id());
+        assertThat(kunder).extracting(BruksdataKunde::organisasjonsnummer)
+                .containsExactly("100000001", "100000002", "100000003");
+        assertThat(kunder.get(0).virksomhetsnavn()).isEqualTo("testetat en");
+        assertThat(kunder.get(0).kundenummer()).isEqualTo("9001");
+        assertThat(kunder.get(1).fakturareferanse()).isEqualTo("Navn, med komma");
+        assertThat(kunder.get(2).fakturareferanse()).isNull();   // no reference in the file
     }
 
     @Test

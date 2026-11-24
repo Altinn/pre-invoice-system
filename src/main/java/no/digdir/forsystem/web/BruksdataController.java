@@ -127,7 +127,7 @@ class BruksdataController {
         Periode p = parsePeriode(periode);
         if (Bruksdatafil.gjenkjenn(innhold) == Bruksdatafil.Format.DATAVAREHUS) {
             session.setAttribute(DWH_FIL, new DwhFil(p, fil.getOriginalFilename(), innhold));
-            return visDwhFil(session, model, null);
+            return visDwhFil(session, model);
         }
         session.removeAttribute(DWH_FIL);
         try {
@@ -138,19 +138,9 @@ class BruksdataController {
         }
     }
 
-    /** Register the uploaded export's organisations that are not customers yet, then show the preview again. */
-    @PostMapping("/last-opp/opprett-kunder")
-    String opprettKunderFraDwhFil(HttpSession session, Model model) {
-        if (!(session.getAttribute(DWH_FIL) instanceof DwhFil f)) {
-            throw new Regelbrudd("Ingen opplastet datavarehus-fil. Last den opp på nytt.");
-        }
-        return visDwhFil(session, model, dwh.opprettManglendeKunder(f.innhold(), f.periode()));
-    }
-
-    private String visDwhFil(HttpSession session, Model model, DwhImportService.Kundeoppretting resultat) {
+    private String visDwhFil(HttpSession session, Model model) {
         DwhFil f = (DwhFil) session.getAttribute(DWH_FIL);
-        model.addAttribute("manglendeKunder", dwh.manglendeKunder(f.innhold(), f.periode()));
-        model.addAttribute("kundeoppretting", resultat);
+        model.addAttribute("fraFil", true);
         Forhaandsvisning fv = dwh.forhaandsvisFil(f.periode(), f.filnavn(), f.innhold());
         var kandidat = kandidater.opprettHvisEksportert(fv);
         if (kandidat.isPresent()) {
@@ -160,7 +150,7 @@ class BruksdataController {
         return visForhaandsvisning(fv, session, model);
     }
 
-    /** An uploaded datavarehus export kept between preview, customer creation and confirm. */
+    /** An uploaded datavarehus export kept between preview and confirm. */
     record DwhFil(Periode periode, String filnavn, byte[] innhold) implements java.io.Serializable {
     }
 

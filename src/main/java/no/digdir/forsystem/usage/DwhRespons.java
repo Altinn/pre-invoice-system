@@ -91,7 +91,10 @@ public final class DwhRespons {
                     tall(n, "amount_nok", i),
                     dato(påkrevdTekst(n, "transaction_date", i), i),
                     tekst(n, "kundenummer"),
-                    tekst(n, "fakturareferanse")));
+                    tekst(n, "fakturareferanse"),
+                    null, null, null, null, null,
+                    tekst(n, "organisation_name"),
+                    tekst(n, "bestillingsnummer")));
         }
         return rader;
     }

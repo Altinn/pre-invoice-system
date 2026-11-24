@@ -128,7 +128,7 @@ class DwhCsvFlaggTest {
         var fil = DwhCsv.lesFil(FlaggFiksturer.bytes(), OKTOBER);
 
         assertThat(fil.kunder()).allSatisfy(k -> assertThat(k.organisasjonsnummer()).matches("[0-9]{9}"));
-        assertThat(fil.kunder()).extracting(DwhCsv.KundeIFil::organisasjonsnummer)
+        assertThat(fil.kunder()).extracting(Kundedata::organisasjonsnummer)
                 .isSubsetOf(fil.brukte().stream().map(DwhRad::organisasjonsnummer).toList());
     }
 

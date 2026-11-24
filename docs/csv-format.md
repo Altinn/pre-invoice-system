@@ -21,6 +21,26 @@ fallback for when the DWH is unavailable or a period needs a manual correction.
 | `type` | yes | `BRUKSVOLUM`, `AZURE_KOSTNAD`, or `SMS_KOSTNAD`. |
 | `antall` | for `BRUKSVOLUM` | Usage volume (decimal ≥ 0). Leave empty for cost rows. |
 | `belop` | for cost types | Pass-through amount in NOK (decimal ≥ 0). Leave empty for `BRUKSVOLUM`. |
+| `kundenavn` | no | The organisation's name, as it should appear on the invoice. |
+| `kundenummer` | no | Unit4 kundenummer, as in CRM. |
+| `fakturareferanse` | no | «Deres referanse», as in CRM. |
+| `bestillingsnummer` | no | The customer's PO/order number, as in CRM. Empty → the fakturareferanse is used (specs/012). |
+
+### Customer columns (specs/018)
+
+Forsystem has no customer registry: customer data is mastered in CRM and normally arrives with the
+DWH export. The four optional columns let a file in this format carry the same values, copied from the
+DWH/CRM export. They are stored with the import per orgnr (`bruksdata_kunde`) and put on the invoice
+at generation; nothing is kept beyond the import and nothing can be edited in forsystem.
+
+- A file **without** the columns imports as before, but every organisation then gets the blocking
+  finding `MANGLER_KUNDENUMMER` at generation, so the run cannot be approved.
+- Within one file, an organisation's rows must agree. Blank values don't count: rows with and without
+  a fakturareferanse give the one non-blank value. Two different non-blank values for the same orgnr
+  are recorded as conflicting, shown under «Kundedata» in the preview (the import is not refused), and
+  give the blocking finding `MOTSTRIDENDE_KUNDEDATA` at generation.
+- Whether a hand-made fallback file with customer columns is acceptable is **still to be confirmed
+  with Økonomi** (specs/018 research D3). If not, this format is for tests and demo only.
 
 ### Example
 
@@ -29,6 +49,14 @@ periode,organisasjonsnummer,produktkode,type,antall,belop
 2027-01-01,123456789,melding,BRUKSVOLUM,1500,
 2027-01-01,123456789,varsling,SMS_KOSTNAD,,842.50
 2027-01-01,987654321,appinfra,AZURE_KOSTNAD,,12030.00
+```
+
+With customer columns (values are fakes):
+
+```csv
+periode,organisasjonsnummer,produktkode,type,antall,belop,kundenavn,kundenummer,fakturareferanse,bestillingsnummer
+2027-01-01,123456789,melding,BRUKSVOLUM,1500,,Eksempel kommune,KN-1001,DEMO-REF,
+2027-01-01,123456789,varsling,SMS_KOSTNAD,,842.50,Eksempel kommune,KN-1001,DEMO-REF,
 ```
 
 ## Validation (all-or-nothing)
@@ -59,8 +87,15 @@ While the DWH API is unreachable (OQ-19), a CSV export of the view `mv_altinn_us
 uploaded as it is. It is **not** this format: it keeps the view's columns (`organisation_number`,
 `organisation_name`, `product_name`, `quantity`, `amount_nok`, `kundenummer`, `fakturareferanse`,
 `bestillingsnummer` and a date column), double-quoted text and the literal `NULL`. Product names are
-mapped under *Produkter → Kildenavn*, exactly as for an API fetch, and missing customers can be created
-from the file.
+mapped under *Produkter → Kildenavn*, exactly as for an API fetch.
+
+The customer columns `organisation_name`, `kundenummer`, `fakturareferanse` and `bestillingsnummer`
+(from CRM) are **used on the invoice** (specs/018), no longer a cross-check against a registry. They are
+stored per orgnr with the import (`bruksdata_kunde`), taken from the used rows; the name is kept as
+delivered (lower case in the flagged export). The preview's «Kundedata» section lists organisations
+without kundenummer and with conflicting values between rows; neither blocks the import, but both block
+the run at generation (`MANGLER_KUNDENUMMER`, `MOTSTRIDENDE_KUNDEDATA`). The API fetch reads the same
+four fields.
 
 The date column has been seen under three names, and any one is accepted: `maaned` (September 2026
 export), `transaction_month` (August 2026 export, where `antall_rader` also became `days_with_data` and

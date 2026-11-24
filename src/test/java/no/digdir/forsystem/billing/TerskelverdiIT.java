@@ -60,7 +60,7 @@ class TerskelverdiIT extends BillingFixture {
 
     /**
      * melding costs 1,00 kr per unit. Kunde A 23,50 kr, Kunde B exactly 40,00 kr, Kunde C 40,01 kr, and
-     * Kunde D 20,00 + 20,01 kr over two kundenumre (formidling has its own rule).
+     * Kunde D 20,00 + 20,01 kr over two products.
      */
     private Fakturakjoring kjoringMedFireKunder() {
         settKontoAlle();
@@ -70,9 +70,7 @@ class TerskelverdiIT extends BillingFixture {
         regel(kunde("100000001", "Kunde A", "AKTIV", null).id(), "KA", null, null, null);
         regel(kunde("100000002", "Kunde B", "AKTIV", null).id(), "KB", null, null, null);
         regel(kunde("100000003", "Kunde C", "AKTIV", null).id(), "KC", null, null, null);
-        Long d = kunde("100000004", "Kunde D", "AKTIV", null).id();
-        regel(d, "KD1", null, null, null);
-        regel(d, "KD2", "formidling", null, null);
+        regel(kunde("100000004", "Kunde D", "AKTIV", null).id(), "KD", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "23.5", null);
         bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "30", null);
@@ -80,7 +78,7 @@ class TerskelverdiIT extends BillingFixture {
         bruk(imp, JAN, "100000003", "melding", Bruksdatatype.BRUKSVOLUM, "40.01", null);
         bruk(imp, JAN, "100000004", "melding", Bruksdatatype.BRUKSVOLUM, "20", null);
         bruk(imp, JAN, "100000004", "formidling", Bruksdatatype.BRUKSVOLUM, "20.01", null);
-        return tjeneste.generer(JAN);
+        return generer(JAN);
     }
 
     // ---- US1: who is invoiced ---------------------------------------------------------------
@@ -89,7 +87,7 @@ class TerskelverdiIT extends BillingFixture {
     void onlyCustomersStrictlyOverTheThresholdAreInvoiced() {
         var kj = kjoringMedFireKunder();
         assertThat(tjeneste.fakturaer(kj.id())).extracting(Faktura::kundenummer)
-                .containsExactly("KC", "KD1", "KD2");   // D's total 40,01 decides, not each invoice
+                .containsExactly("KC", "KD");   // D's total 40,01 decides, not each product
         assertThat(tjeneste.underTerskel(kj.id()))
                 .extracting(FakturaUnderTerskel::kundenummer, u -> u.sumBelop().toPlainString(),
                         u -> u.kundesum().toPlainString())
@@ -130,7 +128,7 @@ class TerskelverdiIT extends BillingFixture {
         List<String> linjer = Arrays.stream(new String(arkiv.hent(lg04.blobUrl()), WIN_1252).split("\n"))
                 .filter(l -> !l.isEmpty()).toList();
         assertThat(linjer).filteredOn(l -> l.charAt(2493) == '0')
-                .extracting(l -> l.substring(233, 258).trim()).containsExactly("KC", "KD1", "KD2");
+                .extracting(l -> l.substring(233, 258).trim()).containsExactly("KC", "KD");
     }
 
     @Test
@@ -140,7 +138,7 @@ class TerskelverdiIT extends BillingFixture {
         pris(v, "melding", "1.0000");
         regel(kunde("100000001", "Kunde A", "AKTIV", null).id(), "KA", null, null, null);
         bruk(nyImport(JAN), JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         assertThat(tjeneste.fakturaer(kj.id())).hasSize(1);
         assertThat(tjeneste.underTerskel(kj.id())).isEmpty();
         assertThat(tjeneste.funn(kj.id())).noneMatch(f -> "UNDER_TERSKEL".equals(f.kode()));
@@ -154,7 +152,7 @@ class TerskelverdiIT extends BillingFixture {
         regel(kunde("100000001", "Kunde A", "AKTIV", null).id(), "KA", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
-        Fakturakjoring v1 = tjeneste.generer(JAN);
+        Fakturakjoring v1 = generer(JAN);
         kjoringer.save(v1.medStatus(Kjoringstatus.EKSPORTERT.name(), "test", OffsetDateTime.now()));
 
         Long melding = produktId("melding");
@@ -164,7 +162,7 @@ class TerskelverdiIT extends BillingFixture {
                 new Raadata("terskel-korrigering".getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null),
                 null);
         var sammenligning = kandidater.opprettHvisEksportert(fv).orElseThrow();
-        Fakturakjoring v2 = tjeneste.genererKorrigering(sammenligning.sammenligning().id(),
+        Fakturakjoring v2 = genererKorrigering(sammenligning.sammenligning().id(),
                 List.of(sammenligning.endringer().getFirst().id()), "DWH rettet volumet");
 
         // The difference is 10 × 2,00 = 20,00 kr, under 40 — still invoiced in a correction run.
@@ -198,7 +196,7 @@ class TerskelverdiIT extends BillingFixture {
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
         bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         mvc.perform(get("/kjoringer/{id}/fakturaer", kj.id()))
                 .andExpect(content().string(containsString("1 faktura er holdt utenfor")));
     }
@@ -231,7 +229,7 @@ class TerskelverdiIT extends BillingFixture {
         String fakturaliste = mvc.perform(get("/kjoringer/{id}/fakturaliste.csv", kj.id()))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
-        assertThat(fakturaliste.lines()).hasSize(4);   // header + KC, KD1, KD2
+        assertThat(fakturaliste.lines()).hasSize(3);   // header + KC, KD
 
         byte[] xlsx = mvc.perform(get("/kjoringer/{id}/under-terskel.xlsx", kj.id()))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();

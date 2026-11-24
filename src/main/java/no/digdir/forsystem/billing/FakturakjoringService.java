@@ -21,12 +21,6 @@ import no.digdir.forsystem.common.Handling;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
 import no.digdir.forsystem.common.UuidV7;
-import no.digdir.forsystem.registry.Kunde;
-import no.digdir.forsystem.registry.KundeReferanse;
-import no.digdir.forsystem.registry.KundeReferanseRepository;
-import no.digdir.forsystem.registry.KundeRepository;
-import no.digdir.forsystem.registry.KundenummerRegel;
-import no.digdir.forsystem.registry.KundenummerRegelRepository;
 import no.digdir.forsystem.registry.Pris;
 import no.digdir.forsystem.registry.PrisRepository;
 import no.digdir.forsystem.registry.Prisversjon;
@@ -36,6 +30,8 @@ import no.digdir.forsystem.registry.Produkt;
 import no.digdir.forsystem.registry.ProduktRepository;
 import no.digdir.forsystem.usage.Bruksdata;
 import no.digdir.forsystem.usage.BruksdataImport;
+import no.digdir.forsystem.usage.BruksdataKunde;
+import no.digdir.forsystem.usage.Kundedata;
 import no.digdir.forsystem.usage.BruksdataImportRepository;
 import no.digdir.forsystem.usage.BruksdataEndring;
 import no.digdir.forsystem.usage.BruksdataEndringRepository;
@@ -72,9 +68,6 @@ public class FakturakjoringService {
     private final ProduktRepository produkter;
     private final PrisRepository priser;
     private final PrisversjonRepository prisversjoner;
-    private final KundeRepository kunder;
-    private final KundeReferanseRepository referanser;
-    private final KundenummerRegelRepository regler;
     private final UsageImportService usage;
     private final BruksdataImportRepository usageImports;
     private final BruksdataSammenligningRepository sammenligninger;
@@ -89,9 +82,7 @@ public class FakturakjoringService {
                           EksportfilRepository eksportfiler, KontrollfunnBruksdataRepository funnBruksdata,
                           FakturaUnderTerskelRepository underTerskel,
                           ProduktRepository produkter, PrisRepository priser,
-                          PrisversjonRepository prisversjoner, KundeRepository kunder,
-                          KundeReferanseRepository referanser, KundenummerRegelRepository regler,
-                          UsageImportService usage, BruksdataImportRepository usageImports,
+                          PrisversjonRepository prisversjoner, UsageImportService usage, BruksdataImportRepository usageImports,
                           BruksdataSammenligningRepository sammenligninger,
                           BruksdataEndringRepository endringer,
                           KorrigeringskjoringEndringRepository valgteEndringer,
@@ -107,9 +98,6 @@ public class FakturakjoringService {
         this.produkter = produkter;
         this.priser = priser;
         this.prisversjoner = prisversjoner;
-        this.kunder = kunder;
-        this.referanser = referanser;
-        this.regler = regler;
         this.usage = usage;
         this.usageImports = usageImports;
         this.sammenligninger = sammenligninger;
@@ -119,9 +107,6 @@ public class FakturakjoringService {
         this.audit = audit;
         this.brukerContext = brukerContext;
     }
-
-    /** Suffix for a customer name read from the registry because the invoice predates the frozen name. */
-    public static final String NAAVAERENDE_NAVN = " (nåværende navn)";
 
     // ---- Generation -------------------------------------------------------------------------
 
@@ -151,7 +136,7 @@ public class FakturakjoringService {
                 OffsetDateTime.now(), null, null, null, Kjoringstype.ORDINAER.name(), kjoringVersjon,
                 forrigeKjoringId, null, null, tekster.topptekst(), tekster.bunntekst(), tekster.varReferanse()));
 
-        var ctx = new Byggekontekst(periode, versjon, kjoring.id(), false);
+        var ctx = new Byggekontekst(periode, versjon, kjoring.id(), importId, false);
         bygg(ctx, bruk);
         audit.logg(Handling.GENERERTE, "FAKTURAKJORING", kjoring.id(),
                 Map.of("periode", periode.toString(), "antallFakturaer", ctx.antallFakturaer));
@@ -214,7 +199,8 @@ public class FakturakjoringService {
         List<Bruksdata> differanser = valgte.stream().map(e -> new Bruksdata(
                 e.id(), kandidat.id(), sammenligning.periode(), e.organisasjonsnummer(), e.produktId(),
                 e.type(), e.deltaAntall(), e.deltaBelop())).toList();
-        var ctx = new Byggekontekst(new Periode(sammenligning.periode()), prisversjon, kjoring.id(), true);
+        var ctx = new Byggekontekst(new Periode(sammenligning.periode()), prisversjon, kjoring.id(), kandidat.id(),
+                true);
         bygg(ctx, differanser);
         List<Faktura> korrigeringsfakturaer = fakturaer.findByKjoringIdOrderByOrdreNr(kjoring.id());
         if (!korrigeringsfakturaer.isEmpty() && korrigeringsfakturaer.stream()
@@ -240,24 +226,20 @@ public class FakturakjoringService {
         Map<Long, Pris> prisByProdukt = new LinkedHashMap<>();
         priser.findByPrisversjonId(ctx.versjon.id()).forEach(pr -> prisByProdukt.put(pr.produktId(), pr));
 
-        // Preload customers, rules and references once (maps), so per-row work is in-memory rather
-        // than a query per usage row — keeps generation fast at scale (docs/04 Phase 5 load sanity).
-        Map<String, Kunde> kundeByOrgnr = new LinkedHashMap<>();
-        kunder.findAll().forEach(k -> kundeByOrgnr.put(k.organisasjonsnummer(), k));
-        Map<Long, List<KundenummerRegel>> reglerByKunde = new LinkedHashMap<>();
-        regler.findAll().forEach(r -> reglerByKunde.computeIfAbsent(r.kundeId(), x -> new ArrayList<>()).add(r));
-        Map<Long, List<KundeReferanse>> referanserByKunde = new LinkedHashMap<>();
-        referanser.findAll().forEach(r -> referanserByKunde.computeIfAbsent(r.kundeId(), x -> new ArrayList<>()).add(r));
+        // Customer data comes with the usage (specs/018): the values the run's import delivered per orgnr, from
+        // CRM through the DWH. Loaded once, so per-row work is in-memory (docs/04 Phase 5 load sanity).
+        Map<String, BruksdataKunde> kundeByOrgnr = new LinkedHashMap<>();
+        usage.kundedata(ctx.importId).forEach(k -> kundeByOrgnr.put(k.organisasjonsnummer(), k));
 
         List<Kontrollfunn> funnListe = new ArrayList<>();
         Map<Gruppe, Gruppedata> grupper = new LinkedHashMap<>();
         // Skipped usage rows per finding key, so each can be linked to the finding that kept it off the
-        // invoice (specs/002 D2): orgnr → MANGLER_KUNDE, orgnr/kode → MANGLER_KUNDENUMMER, kode → MANGLER_PRIS.
-        var orgnrUtenKunde = new LinkedHashMap<String, List<Long>>();
+        // invoice (specs/002 D2): orgnr → MOTSTRIDENDE_KUNDEDATA or MANGLER_KUNDENUMMER, kode → MANGLER_PRIS.
+        var motstridende = new LinkedHashMap<String, List<Long>>();
+        var forLangReferanse = new LinkedHashMap<String, List<Long>>();
         var manglerKundenummer = new LinkedHashMap<String, List<Long>>();
         var manglerPris = new LinkedHashMap<String, List<Long>>();
         var manglerKontering = new java.util.LinkedHashSet<String>();
-        var kunderMedBruk = new LinkedHashMap<Long, Kunde>();
 
         // Deterministic processing order → deterministic "first" choices and grouping.
         List<Bruksdata> sortert = new ArrayList<>(bruk);
@@ -269,20 +251,22 @@ public class FakturakjoringService {
 
         for (Bruksdata b : sortert) {
             Produkt p = produktById.get(b.produktId());
-            Kunde k = kundeByOrgnr.get(b.organisasjonsnummer());
-            if (k == null) {
-                orgnrUtenKunde.computeIfAbsent(b.organisasjonsnummer(), x -> new ArrayList<>()).add(b.id());
+            BruksdataKunde k = kundeByOrgnr.get(b.organisasjonsnummer());
+            // Rows that disagree on the customer values: forsystem does not choose one (specs/018 FR-008).
+            if (k != null && k.harMotstridende()) {
+                motstridende.computeIfAbsent(b.organisasjonsnummer(), x -> new ArrayList<>()).add(b.id());
                 continue;
             }
-            kunderMedBruk.putIfAbsent(k.id(), k);
+            // A reference that does not fit its LG04 field would be shortened in the file: block, never cut.
+            if (k != null && (Kundedata.forLang(k.fakturareferanse()) || Kundedata.forLang(k.bestillingsnummer()))) {
+                forLangReferanse.computeIfAbsent(b.organisasjonsnummer(), x -> new ArrayList<>()).add(b.id());
+                continue;
+            }
             if (p.konto() == null) {
                 manglerKontering.add(p.kode());
             }
-            KundenummerRegel regel = velgRegel(
-                    reglerByKunde.getOrDefault(k.id(), List.of()), p.id());
-            if (regel == null) {
-                manglerKundenummer.computeIfAbsent(k.organisasjonsnummer() + "/" + p.kode(), x -> new ArrayList<>())
-                        .add(b.id());
+            if (k == null || k.kundenummer() == null || k.kundenummer().isBlank()) {
+                manglerKundenummer.computeIfAbsent(b.organisasjonsnummer(), x -> new ArrayList<>()).add(b.id());
                 continue;
             }
 
@@ -308,28 +292,45 @@ public class FakturakjoringService {
                 beskrivelse = beskrivKostnad(b.type(), p, ctx.periode);
             }
 
-            Referansepar ref = Referansepar.av(velgReferanse(
-                    referanserByKunde.getOrDefault(k.id(), List.of()), p.id()));
+            Referansepar ref = Referansepar.av(k.fakturareferanse(), k.bestillingsnummer());
             var linje = new LinjeUtkast(p.id(), p.kode(), b.type(), beskrivelse, antall, enhetspris, belop,
-                    prisId, ctx.korrigering ? null : b.id(), ctx.korrigering ? b.id() : null, regel.servicekode(),
+                    prisId, ctx.korrigering ? null : b.id(), ctx.korrigering ? b.id() : null, null,
                     ref.fakturareferanse(), ref.bestillingsnummer());
 
-            Gruppe g = new Gruppe(k.id(), regel.kundenummer());
-            grupper.computeIfAbsent(g, x -> new Gruppedata(k, regel.tilleggstekst())).linjer.add(linje);
+            Gruppe g = new Gruppe(k.organisasjonsnummer(), k.kundenummer());
+            grupper.computeIfAbsent(g, x -> new Gruppedata(k)).linjer.add(linje);
         }
 
         // BLOKKERENDE findings.
         // Each finding that skipped rows remembers them by its index in funnListe until it is saved.
         Map<Integer, List<Long>> utelattePerFunn = new LinkedHashMap<>();
-        orgnrUtenKunde.forEach((orgnr, ider) -> {
+        motstridende.forEach((orgnr, ider) -> {
             utelattePerFunn.put(funnListe.size(), ider);
-            funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KUNDE,
-                    "Bruk for organisasjonsnummer " + orgnr + " har ingen registrert kunde"));
+            BruksdataKunde k = kundeByOrgnr.get(orgnr);
+            funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MOTSTRIDENDE_KUNDEDATA,
+                    "Importen har motstridende kundedata for " + kundetekst(orgnr, k) + ": "
+                            + String.join("; ", k.motstridende())));
         });
-        manglerKundenummer.forEach((kp, ider) -> {
+        forLangReferanse.forEach((orgnr, ider) -> {
+            utelattePerFunn.put(funnListe.size(), ider);
+            BruksdataKunde k = kundeByOrgnr.get(orgnr);
+            List<String> deler = new ArrayList<>();
+            if (Kundedata.forLang(k.fakturareferanse())) {
+                deler.add("fakturareferanse «" + k.fakturareferanse().strip() + "» (" + k.fakturareferanse().strip().length()
+                        + " tegn)");
+            }
+            if (Kundedata.forLang(k.bestillingsnummer())) {
+                deler.add("bestillingsnummer «" + k.bestillingsnummer().strip() + "» ("
+                        + k.bestillingsnummer().strip().length() + " tegn)");
+            }
+            funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.FOR_LANG_REFERANSE,
+                    "Importen har for lang " + String.join(" og ", deler) + " for " + kundetekst(orgnr, k)
+                            + ". LG04-filen har plass til " + Kundedata.MAKS_REFERANSELENGDE + " tegn."));
+        });
+        manglerKundenummer.forEach((orgnr, ider) -> {
             utelattePerFunn.put(funnListe.size(), ider);
             funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KUNDENUMMER,
-                    "Mangler kundenummerregel for " + kp));
+                    "Importen har ikke kundenummer for " + kundetekst(orgnr, kundeByOrgnr.get(orgnr))));
         });
         manglerPris.forEach((kode, ider) -> {
             utelattePerFunn.put(funnListe.size(), ider);
@@ -338,45 +339,26 @@ public class FakturakjoringService {
         });
         manglerKontering.forEach(kode -> funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.MANGLER_KONTERING,
                 "Produkt " + kode + " mangler kontering (OQ-2)")));
-        kunderMedBruk.values().forEach(k -> {
-            if (!"AKTIV".equals(k.avtalestatus())) {
-                funnListe.add(blokk(ctx.kjoringId, null, Kontrollkode.INAKTIV_AVTALE,
-                        "Kunde " + k.virksomhetsnavn() + " har avtalestatus " + k.avtalestatus()));
-            }
-        });
-
-        // Completeness (specs/003 D5, BF1 T10): an active customer without a single usage row may be an
-        // expected tjenesteeier missing from the basis. A warning, not a blocker — a month without
-        // billable usage can be legitimate, and Økonomi decides.
-        if (!ctx.korrigering) {
-            Set<String> orgnrMedBruk = bruk.stream().map(Bruksdata::organisasjonsnummer).collect(Collectors.toSet());
-            kundeByOrgnr.values().stream()
-                    .filter(k -> "AKTIV".equals(k.avtalestatus()) && !orgnrMedBruk.contains(k.organisasjonsnummer()))
-                    .sorted(Comparator.comparing(Kunde::organisasjonsnummer))
-                    .forEach(k -> funnListe.add(advarsel(ctx.kjoringId, null, Kontrollkode.AKTIV_KUNDE_UTEN_BRUK,
-                            "Kunde " + k.virksomhetsnavn() + " (" + k.organisasjonsnummer()
-                                    + ") har aktiv avtale, men ingen bruk i perioden")));
-        }
-
         // Threshold (specs/011, OQ-22): a customer whose total over all its would-be invoices is not over the
         // price version's threshold gets no invoice. Its groups leave `grupper` before any invoice is made, so
         // nothing downstream (LG04, PDF, sums) sees them; they are kept as faktura_under_terskel rows and
         // explained by one UNDER_TERSKEL finding linked to their usage. Correction runs carry signed
         // differences against an exported run and are exempt.
         BigDecimal terskel = ctx.versjon.terskelverdi();
-        Map<Long, BigDecimal> kundesum = new LinkedHashMap<>();
+        Map<String, BigDecimal> kundesum = new LinkedHashMap<>();
         Map<Gruppe, Gruppedata> underTerskelGrupper = new LinkedHashMap<>();
         Integer underTerskelFunn = null;
         if (!ctx.korrigering && terskel != null) {
-            grupper.forEach((g, data) -> kundesum.merge(g.kundeId(), sum(data.linjer), BigDecimal::add));
+            grupper.forEach((g, data) -> kundesum.merge(g.organisasjonsnummer(), sum(data.linjer), BigDecimal::add));
             grupper.keySet().stream()
-                    .filter(g -> kundesum.get(g.kundeId()).compareTo(terskel) <= 0)
-                    .sorted(Comparator.comparing((Gruppe g) -> grupper.get(g).kunde.organisasjonsnummer())
+                    .filter(g -> kundesum.get(g.organisasjonsnummer()).compareTo(terskel) <= 0)
+                    .sorted(Comparator.comparing(Gruppe::organisasjonsnummer)
                             .thenComparing(Gruppe::kundenummer))
                     .toList()
                     .forEach(g -> underTerskelGrupper.put(g, grupper.remove(g)));
             if (!underTerskelGrupper.isEmpty()) {
-                List<Long> kunder = underTerskelGrupper.keySet().stream().map(Gruppe::kundeId).distinct().toList();
+                List<String> kunder = underTerskelGrupper.keySet().stream().map(Gruppe::organisasjonsnummer).distinct()
+                        .toList();
                 BigDecimal total = kunder.stream().map(kundesum::get).reduce(BigDecimal.ZERO, BigDecimal::add);
                 underTerskelFunn = funnListe.size();
                 utelattePerFunn.put(underTerskelFunn, underTerskelGrupper.values().stream()
@@ -392,11 +374,11 @@ public class FakturakjoringService {
         // Create invoices in deterministic order and assign ordre_nr.
         List<Gruppe> sorterteGrupper = new ArrayList<>(grupper.keySet());
         sorterteGrupper.sort(Comparator
-                .comparing((Gruppe g) -> grupper.get(g).kunde.organisasjonsnummer())
+                .comparing(Gruppe::organisasjonsnummer)
                 .thenComparing(g -> g.kundenummer));
 
-        Map<Long, BigDecimal> sumPerKunde = new LinkedHashMap<>();
-        Map<Long, Long> forsteFakturaPerKunde = new LinkedHashMap<>();
+        Map<String, BigDecimal> sumPerKunde = new LinkedHashMap<>();
+        Map<String, Long> forsteFakturaPerKunde = new LinkedHashMap<>();
         int ordre = 1;
         for (Gruppe g : sorterteGrupper) {
             Gruppedata data = grupper.get(g);
@@ -404,16 +386,14 @@ public class FakturakjoringService {
             BigDecimal sum = sum(data.linjer);
             if (sum.abs().compareTo(MAKS_FAKTURABELOP) > 0) {
                 // faktura.sum_belop is numeric(12,2); fail with a reason instead of a DB overflow (500).
-                throw new Regelbrudd("Fakturaen til " + data.kunde.virksomhetsnavn() + " ("
-                        + data.kunde.organisasjonsnummer() + ", kundenummer " + g.kundenummer + ") blir "
+                throw new Regelbrudd("Fakturaen til " + data.navn() + " ("
+                        + g.organisasjonsnummer() + ", kundenummer " + g.kundenummer + ") blir "
                         + sum.toPlainString() + " kr, over maksgrensen på " + MAKS_FAKTURABELOP.toPlainString()
                         + " kr. Sjekk enhetsprisene i prisversjonen og enheten på bruksdata (OQ-21).");
             }
-            String mottaker = data.kunde.fakturamottakerOrgnr() != null
-                    ? data.kunde.fakturamottakerOrgnr() : data.kunde.organisasjonsnummer();
-
-            Faktura faktura = fakturaer.save(new Faktura(null, ctx.kjoringId, data.kunde.id(), UuidV7.naa(),
-                    ordre++, g.kundenummer, data.kunde.virksomhetsnavn(), data.tilleggstekst, mottaker, sum));
+            // The organisation itself receives the invoice: the DWH carries no deviating recipient (specs/018, OQ-28).
+            Faktura faktura = fakturaer.save(new Faktura(null, ctx.kjoringId, g.organisasjonsnummer(), UuidV7.naa(),
+                    ordre++, g.kundenummer, data.navn(), null, g.organisasjonsnummer(), sum));
             ctx.antallFakturaer++;
             for (LinjeUtkast l : data.linjer) {
                 linjer.save(new Fakturalinje(null, faktura.id(), l.produktId, l.beskrivelse, l.antall,
@@ -441,11 +421,11 @@ public class FakturakjoringService {
                     .map(l -> produktById.get(l.produktId).navn()).distinct().toList();
             if (!utenReferanse.isEmpty()) {
                 funnListe.add(advarsel(ctx.kjoringId, faktura.id(), Kontrollkode.MANGLER_FAKTURAREFERANSE,
-                        data.kunde.virksomhetsnavn() + " (" + data.kunde.organisasjonsnummer() + "), kundenummer "
+                        data.navn() + " (" + g.organisasjonsnummer() + "), kundenummer "
                                 + g.kundenummer + ": ingen fakturareferanse for " + String.join(", ", utenReferanse)));
             }
-            sumPerKunde.merge(data.kunde.id(), sum, BigDecimal::add);
-            forsteFakturaPerKunde.putIfAbsent(data.kunde.id(), faktura.id());
+            sumPerKunde.merge(g.organisasjonsnummer(), sum, BigDecimal::add);
+            forsteFakturaPerKunde.putIfAbsent(g.organisasjonsnummer(), faktura.id());
         }
 
         if (!ctx.korrigering) {
@@ -462,8 +442,8 @@ public class FakturakjoringService {
             Long funnId = lagret.get(underTerskelFunn).id();
             List<FakturaUnderTerskel> rader = new ArrayList<>();
             underTerskelGrupper.forEach((g, d) -> rader.add(new FakturaUnderTerskel(null, ctx.kjoringId,
-                    d.kunde.id(), d.kunde.organisasjonsnummer(), d.kunde.virksomhetsnavn(), g.kundenummer(),
-                    d.tilleggstekst, sum(d.linjer), d.linjer.size(), kundesum.get(g.kundeId()), terskel, funnId)));
+                    g.organisasjonsnummer(), d.navn(), g.kundenummer(), null, sum(d.linjer), d.linjer.size(),
+                    kundesum.get(g.organisasjonsnummer()), terskel, funnId)));
             underTerskel.saveAll(rader);
         }
     }
@@ -477,20 +457,20 @@ public class FakturakjoringService {
         return belop.setScale(2, RoundingMode.HALF_UP).toPlainString().replace('.', ',');
     }
 
-    private void leggTilForrigePeriodeAdvarsler(Byggekontekst ctx, Map<Long, BigDecimal> sumPerKunde,
-                                                Map<Long, Long> forsteFakturaPerKunde, List<Kontrollfunn> ut) {
+    private void leggTilForrigePeriodeAdvarsler(Byggekontekst ctx, Map<String, BigDecimal> sumPerKunde,
+                                                Map<String, Long> forsteFakturaPerKunde, List<Kontrollfunn> ut) {
         Optional<Fakturakjoring> forrige = kjoringer.findFirstByPeriodeAndStatusNot(
                 ctx.periode.forrige().førsteDag(), Kjoringstatus.FORKASTET.name());
         if (forrige.isEmpty()) {
             return;
         }
-        Map<Long, BigDecimal> forrigeSum = new LinkedHashMap<>();
+        Map<String, BigDecimal> forrigeSum = new LinkedHashMap<>();
         for (Faktura f : fakturaer.findByKjoringIdOrderByOrdreNr(forrige.get().id())) {
-            forrigeSum.merge(f.kundeId(), f.sumBelop(), BigDecimal::add);
+            forrigeSum.merge(f.organisasjonsnummer(), f.sumBelop(), BigDecimal::add);
         }
-        sumPerKunde.forEach((kundeId, sum) -> {
-            Long fakturaId = forsteFakturaPerKunde.get(kundeId);
-            BigDecimal forr = forrigeSum.get(kundeId);
+        sumPerKunde.forEach((orgnr, sum) -> {
+            Long fakturaId = forsteFakturaPerKunde.get(orgnr);
+            BigDecimal forr = forrigeSum.get(orgnr);
             if (forr == null) {
                 ut.add(advarsel(ctx.kjoringId, fakturaId, Kontrollkode.NY_KUNDE,
                         "Ny kunde denne perioden (ikke fakturert forrige periode)"));
@@ -696,8 +676,6 @@ public class FakturakjoringService {
         Map<Long, String> produktnavn = new LinkedHashMap<>();
         produkter.findAllByOrderByKode().forEach(p -> produktnavn.put(p.id(), p.navn()));
         List<Faktura> fs = fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
-        Map<Long, String> navn = kundenavn(fs);
-        Map<Long, String> orgnrByKunde = new LinkedHashMap<>();
         List<FakturaUtenReferanse> ut = new ArrayList<>();
         for (Faktura f : fs) {
             List<Fakturalinje> alle = linjer.findByFakturaIdOrderById(f.id());
@@ -705,12 +683,10 @@ public class FakturakjoringService {
             if (uten.isEmpty()) {
                 continue;
             }
-            String orgnr = orgnrByKunde.computeIfAbsent(f.kundeId(),
-                    id -> kunder.findById(id).map(Kunde::organisasjonsnummer).orElse(""));
             List<String> produktliste = uten.stream()
                     .map(l -> produktnavn.getOrDefault(l.produktId(), String.valueOf(l.produktId())))
                     .distinct().toList();
-            ut.add(new FakturaUtenReferanse(f.id(), f.ordreNr(), navn.get(f.id()), orgnr, f.kundenummer(),
+            ut.add(new FakturaUtenReferanse(f.id(), f.ordreNr(), f.kundenavn(), f.organisasjonsnummer(), f.kundenummer(),
                     produktliste, uten.size(), uten.size() == alle.size(), f.sumBelop()));
         }
         return ut;
@@ -739,21 +715,12 @@ public class FakturakjoringService {
     }
 
     /**
-     * The customer name to show per invoice (D9): the name frozen at generation, or — for invoices
-     * generated before it was frozen — the current registry name marked as such.
+     * The customer name to show per invoice (D9): the name frozen at generation. Invoices made before the name
+     * was frozen got it from the registry when it was removed (V17, specs/018).
      */
-    @Transactional(readOnly = true)
     public Map<Long, String> kundenavn(List<Faktura> fs) {
         Map<Long, String> navn = new LinkedHashMap<>();
-        Map<Long, Kunde> kundeById = new LinkedHashMap<>();
-        for (Faktura f : fs) {
-            if (f.kundenavn() != null) {
-                navn.put(f.id(), f.kundenavn());
-            } else {
-                Kunde k = kundeById.computeIfAbsent(f.kundeId(), id -> kunder.findById(id).orElse(null));
-                navn.put(f.id(), k == null ? "" : k.virksomhetsnavn() + NAAVAERENDE_NAVN);
-            }
-        }
+        fs.forEach(f -> navn.put(f.id(), f.kundenavn()));
         return navn;
     }
 
@@ -775,16 +742,12 @@ public class FakturakjoringService {
                     .forEach(e -> typeByEndring.put(e.id(), e.type()));
         }
         List<Faktura> fs = fakturaer.findByKjoringIdOrderByOrdreNr(kjoringId);
-        Map<Long, String> navn = kundenavn(fs);
-        Map<Long, String> orgnrByKunde = new LinkedHashMap<>();
         List<Grunnlagslinje> ut = new ArrayList<>();
         for (Faktura f : fs) {
-            String orgnr = orgnrByKunde.computeIfAbsent(f.kundeId(),
-                    id -> kunder.findById(id).map(Kunde::organisasjonsnummer).orElse(""));
             for (Fakturalinje l : linjer.findByFakturaIdOrderById(f.id())) {
                 String type = l.bruksdataEndringId() == null
                         ? typeByBruksdata.get(l.bruksdataId()) : typeByEndring.get(l.bruksdataEndringId());
-                ut.add(new Grunnlagslinje(f, l, navn.get(f.id()), orgnr, type));
+                ut.add(new Grunnlagslinje(f, l, f.kundenavn(), f.organisasjonsnummer(), type));
             }
         }
         return ut;
@@ -851,21 +814,9 @@ public class FakturakjoringService {
         return dekkende.get(0);
     }
 
-    private static KundenummerRegel velgRegel(List<KundenummerRegel> regler, Long produktId) {
-        return regler.stream().filter(r -> produktId.equals(r.produktId()))
-                .min(Comparator.comparing(KundenummerRegel::id))
-                .or(() -> regler.stream().filter(r -> r.produktId() == null)
-                        .min(Comparator.comparing(KundenummerRegel::id)))
-                .orElse(null);
-    }
-
-    // A product-specific row replaces the customer default as a whole, also when its fakturareferanse is empty;
-    // the line then has no fakturareferanse and gets MANGLER_FAKTURAREFERANSE. TODO(OQ-24): Økonomi to confirm
-    // that an empty field on a product row should not inherit the customer default.
-    private static KundeReferanse velgReferanse(List<KundeReferanse> referanser, Long produktId) {
-        return referanser.stream().filter(r -> produktId.equals(r.produktId())).findFirst()
-                .or(() -> referanser.stream().filter(r -> r.produktId() == null).findFirst())
-                .orElse(null);
+    /** «Navn (orgnr)», or just the orgnr when the DWH delivered no name. */
+    private static String kundetekst(String orgnr, BruksdataKunde k) {
+        return k == null || k.virksomhetsnavn() == null ? orgnr : k.virksomhetsnavn() + " (" + orgnr + ")";
     }
 
     private static String referansetekst(String fakturareferanse, String bestillingsnummer) {
@@ -908,46 +859,50 @@ public class FakturakjoringService {
         final Periode periode;
         final Prisversjon versjon;
         final Long kjoringId;
+        /** The usage import whose customer values the run uses (specs/018). */
+        final Long importId;
         final boolean korrigering;
         int antallFakturaer;
 
-        Byggekontekst(Periode periode, Prisversjon versjon, Long kjoringId, boolean korrigering) {
+        Byggekontekst(Periode periode, Prisversjon versjon, Long kjoringId, Long importId, boolean korrigering) {
             this.periode = periode;
             this.versjon = versjon;
             this.kjoringId = kjoringId;
+            this.importId = importId;
             this.korrigering = korrigering;
         }
     }
 
-    private record Gruppe(Long kundeId, String kundenummer) {
+    /** One invoice: an organisation and the one kundenummer the DWH delivered for it. */
+    private record Gruppe(String organisasjonsnummer, String kundenummer) {
     }
 
     private static final class Gruppedata {
-        final Kunde kunde;
-        final String tilleggstekst;
+        final BruksdataKunde kunde;
         final List<LinjeUtkast> linjer = new ArrayList<>();
 
-        Gruppedata(Kunde kunde, String tilleggstekst) {
+        Gruppedata(BruksdataKunde kunde) {
             this.kunde = kunde;
-            this.tilleggstekst = tilleggstekst;
+        }
+
+        /** The name as the DWH delivered it; the orgnr when it delivered none (never an invented name). */
+        String navn() {
+            return kunde.virksomhetsnavn() != null ? kunde.virksomhetsnavn() : kunde.organisasjonsnummer();
         }
     }
 
     /**
      * The reference pair a line is snapshotted with. When bestillingsnummer is empty it takes the fakturareferanse
-     * (Økonomi, kickoff; specs/012 FR-005): done here, at generation, so the registry keeps what CRM/the DWH
+     * (Økonomi, kickoff; specs/012 FR-005): done here, at generation, so the import keeps what CRM/the DWH
      * delivered and a later fix to the fakturareferanse is picked up by regenerating. The rule maps the pair
      * (r, ∅) to (r, r), so two lines whose pairs differed before can only become equal — it never adds an
      * LG04 split (DELT_REFERANSE), and removes the split between (r, ∅) and (r, r).
      */
     record Referansepar(String fakturareferanse, String bestillingsnummer) {
 
-        static Referansepar av(KundeReferanse ref) {
-            if (ref == null) {
-                return new Referansepar(null, null);
-            }
-            String fakturareferanse = tomTilNull(ref.fakturareferanse());
-            String bestillingsnummer = tomTilNull(ref.bestillingsnummer());
+        static Referansepar av(String fakturareferanseInn, String bestillingsnummerInn) {
+            String fakturareferanse = tomTilNull(fakturareferanseInn);
+            String bestillingsnummer = tomTilNull(bestillingsnummerInn);
             return new Referansepar(fakturareferanse, bestillingsnummer != null ? bestillingsnummer : fakturareferanse);
         }
 

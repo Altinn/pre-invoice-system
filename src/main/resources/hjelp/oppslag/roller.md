@@ -27,7 +27,6 @@ Rollen din styrer hva du får endre. Alle som er logget inn, kan lese alt. Det e
 | Endre produkter, kontering og kildenavn | nei | ja | nei |
 | Lage, prissette, aktivere og arkivere prisversjoner | nei | ja | nei |
 | Endre terskelverdi (i et utkast) | nei | ja | nei |
-| Endre kunder, fakturareferanser og kundenummerregler | nei | ja | nei |
 | Hente fra datavarehus, laste opp fil og bekrefte import | nei | ja | nei |
 | Generere en kjøring med [Generer](knapp:) | nei | ja | nei |
 | Endre tekstene på fakturaen (mens kjøringen er GENERERT) | nei | ja | nei |

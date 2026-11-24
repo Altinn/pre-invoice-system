@@ -26,7 +26,7 @@ Fakturering skjer én gang i måneden, basert på bruken i **forrige** måned. D
 ## Hva forsystem ikke gjør
 
 - **Sender ingen fakturaer.** Forsystem lager grunnlaget. Selve fakturaen lages i Unit4. Du laster ned LG04-filen og sender den videre selv, med en e-post til regnskap. Du kan kopiere e-posttekstene fra kjøringen, men forsystem sender ikke e-posten.
-- **Er ikke kunderegisteret.** Kundeopplysninger som organisasjonsnummer, fakturamottaker og referanse hører hjemme i CRM, ikke i forsystem (OQ-5). Det finnes derfor ingen kundeliste i menyen.
+- **Er ikke kunderegisteret.** Kundeopplysninger som navn, kundenummer og referanse hører hjemme i CRM og kommer til forsystem sammen med bruken fra datavarehuset. De kan ikke endres i forsystem, se [Rett kundedata](../slik-gjor-du/rett-kundedata.md).
 - **Bestemmer ikke kontering eller priser.** Det gjør Økonomi. Så lenge kontering ikke er bekreftet (OQ-2), stopper kontrollene deg heller enn å gjette.
 
 Vil du øve først? Se [Prøv selv](prov-selv.md). Vil du se hva som finnes i menyen? Se [Rundtur](rundtur.md).

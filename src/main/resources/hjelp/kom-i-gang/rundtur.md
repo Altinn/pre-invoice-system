@@ -40,4 +40,4 @@ Toppmenyen er lik på alle sider. Rekkefølgen følger arbeidsflyten: først reg
 **Hjelp** øverst til høyre åpner Læringssenteret, som du leser nå. Her finner du månedsrutinen steg for steg, veiledninger for enkeltoppgaver og oppslag om kontrollfunn, statuser og filformat.
 
 > [!TIP]
-> Det finnes ingen kundeliste i menyen. Kundeopplysninger vedlikeholdes i CRM (OQ-5).
+> Det finnes ingen kundeliste i menyen. Kundeopplysninger vedlikeholdes i CRM og kommer med bruksdataene, se [Rett kundedata](../slik-gjor-du/rett-kundedata.md).

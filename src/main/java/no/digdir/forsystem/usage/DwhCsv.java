@@ -51,19 +51,19 @@ public final class DwhCsv {
     private static final String URN_PREFIKS = "urn:altinn:resource:";
     private static final String UKJENT_ORG = "ukjent orgnr";
 
-    /** A customer as the export describes it, for creating missing customers. */
-    public record KundeIFil(String organisasjonsnummer, String navn, String kundenummer, String fakturareferanse,
-                            String bestillingsnummer) {
-    }
-
     /**
      * What a file yields for one period. {@code brukte} are the rows that go on to aggregation: every row of
      * an older export, or the flag-1 rows dated in the period of a flagged export. {@code avviste} are rows
      * the reader rejected (flagged files only; an older file's problems still abort the read).
-     * {@code rapport} is null for an older export; {@code kunder} come from the used rows only.
+     * {@code rapport} is null for an older export.
      */
     public record Fil(boolean flagget, List<DwhRad> brukte, List<AvvistRad> avviste, DwhFilrapport rapport,
-                      List<KundeIFil> kunder, List<String> advarsler) {
+                      List<String> advarsler) {
+
+        /** The customer values of the used rows (specs/018). */
+        public List<Kundedata> kunder() {
+            return DwhRad.kundedata(brukte);
+        }
     }
 
     private DwhCsv() {
@@ -74,10 +74,6 @@ public final class DwhCsv {
         return lesFil(innhold, null).brukte();
     }
 
-    /** One entry per organisation, in file order: name, kundenummer and references from its first row. */
-    public static List<KundeIFil> kunder(byte[] innhold) {
-        return lesFil(innhold, null).kunder();
-    }
 
     /**
      * Reads the export in one pass. An older export is read strictly, as before. A flagged export is
@@ -121,7 +117,6 @@ public final class DwhCsv {
         private boolean flagget;
         private final List<DwhRad> brukte = new ArrayList<>();
         private final List<AvvistRad> avviste = new ArrayList<>();
-        private final Map<String, KundeIFil> kunder = new LinkedHashMap<>();
         private int totalt;
         private int antallBrukt;
         private int utenfor;
@@ -190,9 +185,11 @@ public final class DwhCsv {
                     tall(r.get("amount_nok"), "amount_nok", linje),
                     dato(r, linje),
                     r.get("kundenummer"),
-                    r.get("fakturareferanse"));
+                    r.get("fakturareferanse"),
+                    null, null, null, null, null,
+                    r.get("organisation_name"),
+                    r.get("bestillingsnummer"));
             brukte.add(rad);
-            kunder.putIfAbsent(rad.organisasjonsnummer(), kunde(rad.organisasjonsnummer(), r));
         }
 
         /** A flagged export: classify first, validate only what is used. */
@@ -209,7 +206,8 @@ public final class DwhCsv {
             BigDecimal antall = mild(r.get("quantity"));
             DwhRad rad = new DwhRad(orgnr, produkt, antall, mild(r.get("amount_nok")), dato,
                     r.get("kundenummer"), r.get("fakturareferanse"), altinn, dpvFlagg,
-                    r.get("source_table"), ressurs(r.get("resource_id")), r.get("regel"));
+                    r.get("source_table"), ressurs(r.get("resource_id")), r.get("regel"),
+                    r.get("organisation_name"), r.get("bestillingsnummer"));
             DwhRadklasse klasse = DwhRadklasse.klassifiser(rad, periode);
             switch (klasse) {
                 case UTENFOR_PERIODE -> {
@@ -253,12 +251,6 @@ public final class DwhCsv {
             antallBrukt++;
             leggTilVolum(DwhRadklasse.BRUKT, rad.produktnavn(), rad.antall());
             brukte.add(rad);
-            kunder.putIfAbsent(rad.organisasjonsnummer(), kunde(rad.organisasjonsnummer(), r));
-        }
-
-        private static KundeIFil kunde(String orgnr, Map<String, String> r) {
-            return new KundeIFil(orgnr, r.get("organisation_name"), r.get("kundenummer"),
-                    r.get("fakturareferanse"), r.get("bestillingsnummer"));
         }
 
         private Boolean flagg(Map<String, String> r, String kolonne, boolean paakrevd, int linje) {
@@ -296,7 +288,7 @@ public final class DwhCsv {
                     ? List.of("Fila har " + FLAGG_DPV + " men ikke " + FLAGG_ALTINN
                             + ": den leses som en eksport uten flagg, og alle rader brukes.")
                     : List.of();
-            return new Fil(flagget, brukte, avviste, rapport, List.copyOf(kunder.values()), advarsler);
+            return new Fil(flagget, brukte, avviste, rapport, advarsler);
         }
     }
 

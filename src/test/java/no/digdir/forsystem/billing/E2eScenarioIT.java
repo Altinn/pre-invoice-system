@@ -52,7 +52,7 @@ class E2eScenarioIT extends BillingFixture {
         assertThat(imp.status()).isEqualTo("VALIDERT");
 
         // Generate.
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         assertThat(tjeneste.harBlokkerende(kj.id())).isFalse();
         assertThat(tjeneste.fakturaer(kj.id())).hasSize(1);
 

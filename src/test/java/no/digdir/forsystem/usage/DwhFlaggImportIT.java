@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import no.digdir.forsystem.IntegrationTest;
-import no.digdir.forsystem.registry.KundeRepository;
 import no.digdir.forsystem.registry.ProduktKildenavnService;
 import no.digdir.forsystem.registry.ProduktRepository;
 import org.hamcrest.Matchers;
@@ -36,7 +35,7 @@ class DwhFlaggImportIT extends IntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ProduktKildenavnService kildenavn;
     @Autowired ProduktRepository produkter;
-    @Autowired KundeRepository kunder;
+    @Autowired BruksdataKundeRepository kundeRader;
     @Autowired BruksdataImportRepository importer;
     @Autowired BruksdataRepository bruksdata;
     @Autowired BruksdataKildeRepository kilder;
@@ -134,29 +133,25 @@ class DwhFlaggImportIT extends IntegrationTest {
     }
 
     @Test
-    void customersAreOfferedFromUsedRowsOnly() throws Exception {
+    void customerValuesComeFromUsedRowsOnly() throws Exception {
         kobleProdukter();
         MockHttpSession session = new MockHttpSession();
 
         mvc.perform(multipart("/bruksdata/last-opp").file(fil(FlaggFiksturer.bytes())).param("periode", "2026-10")
                         .session(session).with(csrf()))
-                .andExpect(status().isOk());
-        mvc.perform(post("/bruksdata/last-opp/opprett-kunder").session(session).with(csrf()))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string(Matchers.not(Matchers.containsString("kunderegister"))));
+        mvc.perform(post("/bruksdata/bekreft").session(session).with(csrf()))
+                .andExpect(status().is3xxRedirection());
+        var imp = importer.findAll().stream().filter(i -> "VALIDERT".equals(i.status())).findFirst().orElseThrow();
 
-        // No customer is ever created for the placeholder orgnr/names of unused rows.
-        for (String plassholder : new String[] {"unknown", "NULL", "owner", "digitaliseringsdirektoratet"}) {
-            assertThat(kunder.findByOrganisasjonsnummer(plassholder)).isEmpty();
-        }
-        for (var r : FlaggFiksturer.rader()) {
-            boolean brukt = FlaggFiksturer.flagget(r) && r.get("transaction_date").startsWith("2026-10");
-            if (!brukt && r.get("organisation_number").matches("[0-9]{9}")
-                    && FlaggFiksturer.rader().stream().noneMatch(o -> FlaggFiksturer.flagget(o)
-                            && o.get("transaction_date").startsWith("2026-10")
-                            && o.get("organisation_number").equals(r.get("organisation_number")))) {
-                assertThat(kunder.findByOrganisasjonsnummer(r.get("organisation_number"))).isEmpty();
-            }
-        }
+        // One customer row per organisation with used usage; none for the placeholder orgnr of unused rows.
+        var orgnrMedBruk = bruksdata.findByImportId(imp.id()).stream().map(Bruksdata::organisasjonsnummer)
+                .collect(java.util.stream.Collectors.toSet());
+        var kunder = kundeRader.findByImportIdOrderByOrganisasjonsnummer(imp.id());
+        assertThat(kunder).extracting(BruksdataKunde::organisasjonsnummer)
+                .containsExactlyInAnyOrderElementsOf(orgnrMedBruk);
+        assertThat(kunder).allSatisfy(k -> assertThat(k.organisasjonsnummer()).matches("[0-9]{9}"));
     }
 
     @Test

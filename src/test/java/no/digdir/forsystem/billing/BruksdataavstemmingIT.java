@@ -47,7 +47,7 @@ class BruksdataavstemmingIT extends BillingFixture {
         Long imp = nyImport(JAN);
         bruk(imp, JAN, KUNDE, "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
         bruk(imp, JAN, KUNDE, "varsling", Bruksdatatype.SMS_KOSTNAD, null, "12.50");
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
 
         var a = service.forKjoring(kj.id());
 
@@ -75,9 +75,9 @@ class BruksdataavstemmingIT extends BillingFixture {
         Long imp = nyImport(JAN);
         bruk(imp, JAN, KUNDE, "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
         bruk(imp, JAN, KUNDE, "formidling", Bruksdatatype.BRUKSVOLUM, "4", null);      // no price
-        bruk(imp, JAN, UKJENT, "melding", Bruksdatatype.BRUKSVOLUM, "7", null);        // no customer
+        bruk(imp, JAN, UKJENT, "melding", Bruksdatatype.BRUKSVOLUM, "7", null);        // no customer values
         bruk(imp, JAN, UTEN_REGEL, "melding", Bruksdatatype.BRUKSVOLUM, "3", null);    // no kundenummer rule
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
 
         var a = service.forKjoring(kj.id());
 
@@ -87,7 +87,7 @@ class BruksdataavstemmingIT extends BillingFixture {
                 .extracting(u -> u.organisasjonsnummer() + "/" + u.produktKode() + "=" + u.kode())
                 .containsExactlyInAnyOrder(
                         KUNDE + "/formidling=MANGLER_PRIS",
-                        UKJENT + "/melding=MANGLER_KUNDE",
+                        UKJENT + "/melding=MANGLER_KUNDENUMMER",
                         UTEN_REGEL + "/melding=MANGLER_KUNDENUMMER");
         var melding = rad(a, "melding", "BRUKSVOLUM");
         assertThat(melding.importertRader()).isEqualTo(3);
@@ -98,32 +98,16 @@ class BruksdataavstemmingIT extends BillingFixture {
     }
 
     @Test
-    void inactiveAgreementRowsAreInvoicedButBlockApproval() {
-        registre();
-        Long k = kunde(INAKTIV, "Inaktiv", "INAKTIV", null).id();
-        regel(k, "KN9", null, null, null);
-        Long imp = nyImport(JAN);
-        bruk(imp, JAN, INAKTIV, "melding", Bruksdatatype.BRUKSVOLUM, "5", null);
-        var kj = tjeneste.generer(JAN);
-
-        var a = service.forKjoring(kj.id());
-
-        assertThat(a.ikkeFakturert()).isEmpty();
-        assertThat(rad(a, "melding", "BRUKSVOLUM").fakturertLinjer()).isEqualTo(1);
-        assertThat(tjeneste.harBlokkerende(kj.id())).isTrue();
-    }
-
-    @Test
     void discardedRunStillReconcilesAgainstItsOwnImport() {
         registre();
         Long forste = nyImport(JAN);
         bruk(forste, JAN, KUNDE, "melding", Bruksdatatype.BRUKSVOLUM, "10", null);
-        var gammel = tjeneste.generer(JAN);
+        var gammel = generer(JAN);
         tjeneste.forkast(gammel.id());
         importer.save(importer.findById(forste).orElseThrow().medStatus("AVVIST"));
         Long andre = nyImport(JAN);
         bruk(andre, JAN, KUNDE, "melding", Bruksdatatype.BRUKSVOLUM, "12", null);
-        var ny = tjeneste.generer(JAN);
+        var ny = generer(JAN);
 
         assertThat(service.forKjoring(gammel.id()).kilde().id()).isEqualTo(forste);
         assertThat(rad(service.forKjoring(gammel.id()), "melding", "BRUKSVOLUM").importertSum()).isEqualByComparingTo("10");
@@ -137,14 +121,14 @@ class BruksdataavstemmingIT extends BillingFixture {
         Long imp = nyImport(JAN);
         bruk(imp, JAN, UKJENT, "melding", Bruksdatatype.BRUKSVOLUM, "7", null);
         bruk(imp, JAN, KUNDE, "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
 
         // The reconciliation lives on the run's Kontroller tab since specs/006.
         mvc.perform(get("/kjoringer/{id}/kontroller", kj.id()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(Matchers.containsString("Avstemming bruksdata")))
                 .andExpect(content().string(Matchers.containsString("datavarehuset filtrerer bort")))
-                .andExpect(content().string(Matchers.containsString("MANGLER_KUNDE")))
+                .andExpect(content().string(Matchers.containsString("MANGLER_KUNDENUMMER")))
                 .andExpect(content().string(Matchers.containsString(UKJENT)));
     }
 

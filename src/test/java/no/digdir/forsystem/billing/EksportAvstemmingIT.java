@@ -57,7 +57,7 @@ class EksportAvstemmingIT extends BillingFixture {
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);
         bruk(imp, JAN, "100000001", "formidling", Bruksdatatype.BRUKSVOLUM, "10", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         godkjennEtterAksept(kj.id());
         return kj;
     }
@@ -86,7 +86,7 @@ class EksportAvstemmingIT extends BillingFixture {
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
         bruk(imp, JAN, "100000002", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
-        var s = tjeneste.sammendrag(tjeneste.generer(JAN).id());
+        var s = tjeneste.sammendrag(generer(JAN).id());
 
         assertThat(s.sumBelop()).isEqualByComparingTo("20.02");
         assertThat(s.sumInklMva()).isEqualByComparingTo("25.02");   // 12.51 + 12.51; 20.02 × 1.25 would be 25.03
@@ -213,7 +213,7 @@ class EksportAvstemmingIT extends BillingFixture {
         Periode feb = Periode.av(2027, 2);
         Long imp = nyImport(feb);
         bruk(imp, feb, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
-        var annen = tjeneste.generer(feb);
+        var annen = generer(feb);
         mvc.perform(get("/kjoringer/{id}/eksportfil/{fid}", annen.id(), lg04.id()))
                 .andExpect(status().isBadRequest());
         assertThat(nedlastinger()).hasSize(2);

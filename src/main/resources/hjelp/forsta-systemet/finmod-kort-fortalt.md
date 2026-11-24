@@ -33,7 +33,7 @@ Prinsippet er at datavarehuset avgjør *hva* som kan faktureres, og forsystem av
 
 | Data | Hvor den hører hjemme |
 |---|---|
-| Kunde- og avtaleinformasjon | CRM (Dynamics 365) er ment som kilde. Grensesnittet mot forsystem er ikke kartlagt (OQ-5). Til da er kunderegisteret i forsystem arbeidskilden. |
+| Kunde- og avtaleinformasjon | CRM (Dynamics 365). Kundedataene kommer til forsystem sammen med bruken fra datavarehuset. Forsystem har ikke noe eget kunderegister. Se [Rett kundedata](../slik-gjor-du/rett-kundedata.md). |
 | Bruk og kostnader | Datavarehuset. Det fullstendige grunnlaget er klart den 6. i hver måned, fordi Azure-kostnader først er endelige fem dager ut i måneden. Til datavarehuset er klart til å brukes, brukes CSV-opplasting. |
 | SMS-kostnader | Ikke avklart helt (OQ-3). |
 | Priser, prisversjoner og produkter | **forsystem.** Det finnes ikke noe annet produktregister, så det vedlikeholdes her. |
@@ -43,13 +43,10 @@ Derfor kan en kjøring tidligst gjøres den 6. i måneden etter.
 
 ## Regler som preger systemet
 
-Disse forholdene har gjort at forsystem ikke kan forutsette «én faktura per kunde».
-
-1. **Avvikende fakturamottaker.** En annen virksomhet enn den som brukte tjenesten, kan motta fakturaen. Reglene er ikke ferdig avklart (OQ-7).
-2. **Referanser per produkt.** Fakturareferansen kan være ulik per produkt for samme kunde.
-3. **Kundenummer er ikke det samme som organisasjonsnummer.** Ett organisasjonsnummer kan ha flere kundenumre, og flere virksomheter kan dele ett kundenummer.
-4. **Flere fakturalinjer per kunde.** Styrt av servicekode, tilleggstekst og produkt.
-5. **Kontroller før fakturering.** Avtalestatus må være aktiv, og organisasjonsnummer og navn skal kontrolleres mot BRREG.
+1. **Kundedata kommer fra CRM.** Navn, kundenummer, fakturareferanse og bestillingsnummer følger med bruken fra datavarehuset. Hver organisasjon får én faktura.
+2. **Kundenummer er ikke det samme som organisasjonsnummer.** Flere virksomheter kan dele ett kundenummer og får likevel hver sin faktura.
+3. **Datavarehuset avgjør hva som kan faktureres.** Det tar bare med bruk under aktiv avtale i CRM. Forsystem kontrollerer at kundenummer finnes og at kundedataene ikke er motstridende.
+4. **Det som ikke er med.** Avvikende fakturamottaker, referanser per produkt og flere kundenumre per organisasjon leveres ikke av datavarehuset (OQ-7, OQ-28).
 
 Se [Slik grupperes fakturaer](slik-grupperes-fakturaer.md).
 

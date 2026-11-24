@@ -34,7 +34,7 @@ class TekstOgTallformatIT extends BillingFixture {
         regel(k, "KN1", null, null, null);
         referanse(k, null, "REF-ALFA", "BEST-9");
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1000", null);
-        return tjeneste.generer(JAN);
+        return generer(JAN);
     }
 
     private String hent(String url, Object... args) throws Exception {
@@ -74,10 +74,11 @@ class TekstOgTallformatIT extends BillingFixture {
         Long imp = nyImport(JAN);
         Long k = kunde("100000001", "Alfa kommune", "AKTIV", null).id();
         regel(k, "KN1", null, null, null);
-        referanse(k, "formidling", "REF-F", null);  // product-specific; melding has none
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);
         bruk(imp, JAN, "100000001", "formidling", Bruksdatatype.BRUKSVOLUM, "1", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
+        // Only runs from before specs/018 can have two references on one invoice; simulate one.
+        jdbc.update("update fakturalinje set fakturareferanse = 'REF-F' where produkt_id = ?", produktId("formidling"));
         Faktura f = fakturaer.findByKjoringIdOrderByOrdreNr(kj.id()).getFirst();
 
         String side = hent("/kjoringer/{id}/faktura/{fid}", kj.id(), f.id());
@@ -91,9 +92,22 @@ class TekstOgTallformatIT extends BillingFixture {
 
         String side = hent("/kjoringer/{id}/kontroller", kj.id());
         assertThat(side).contains("Hva betyr alvorlighet?", "Hva betyr kodene?", "Funn akseptert");
-        for (Kontrollkode k : Kontrollkode.values()) {
+        for (Kontrollkode k : Kontrollkode.aktive()) {
             assertThat(side).contains(k.name(), k.definisjon());
         }
+        // Retired codes (specs/018) are explained only on runs that still carry them.
+        assertThat(side).doesNotContain("Kontrollen kjøres ikke lenger", "<code>INAKTIV_AVTALE</code>");
+    }
+
+    @Test
+    void aRetiredCodeOnAnOlderRunStillRendersWithItsDefinition() throws Exception {
+        var kj = storKjoring();
+        jdbc.update("insert into kontrollfunn (kjoring_id, alvorlighet, kode, melding) "
+                + "values (?, 'BLOKKERENDE', 'INAKTIV_AVTALE', 'Kunde X har avtalestatus INAKTIV')", kj.id());
+
+        String side = hent("/kjoringer/{id}/kontroller", kj.id());
+        assertThat(side).contains("INAKTIV_AVTALE", Kontrollkode.INAKTIV_AVTALE.definisjon(),
+                "Kunde X har avtalestatus INAKTIV");
     }
 
     @Test
@@ -101,8 +115,8 @@ class TekstOgTallformatIT extends BillingFixture {
         settKontoAlle();
         aktivVersjon(LocalDate.of(2027, 1, 1), null);
         Long imp = nyImport(JAN);
-        bruk(imp, JAN, "900000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);  // MANGLER_KUNDE
-        var kj = tjeneste.generer(JAN);
+        bruk(imp, JAN, "900000001", "melding", Bruksdatatype.BRUKSVOLUM, "1", null);  // MANGLER_KUNDENUMMER
+        var kj = generer(JAN);
 
         String side = hent("/kjoringer/{id}/kontroller", kj.id());
         assertThat(side).contains("<th>Beskrivelse</th>").doesNotContain("Eksempel");

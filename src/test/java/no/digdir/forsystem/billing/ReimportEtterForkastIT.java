@@ -38,13 +38,13 @@ class ReimportEtterForkastIT extends BillingFixture {
 
         BruksdataImport forste = usage.importer(usage.forhaandsvis(JAN, "a.csv",
                 inn(HEADER + "2027-01-01,958935420,melding,BRUKSVOLUM,1000,\n")));
-        Fakturakjoring forkastet = tjeneste.generer(JAN);
+        Fakturakjoring forkastet = generer(JAN);
         tjeneste.forkast(forkastet.id());
 
         // The correction: fixed usage in the source, imported again for the same period.
         BruksdataImport andre = usage.importer(usage.forhaandsvis(JAN, "b.csv",
                 inn(HEADER + "2027-01-01,958935420,melding,BRUKSVOLUM,1200,\n")));
-        Fakturakjoring ny = tjeneste.generer(JAN);
+        Fakturakjoring ny = generer(JAN);
 
         assertThat(ny.status()).isEqualTo("GENERERT");
         assertThat(importer.findById(forste.id()).orElseThrow().status()).isEqualTo("AVVIST");

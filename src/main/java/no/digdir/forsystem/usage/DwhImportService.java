@@ -3,13 +3,10 @@ package no.digdir.forsystem.usage;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 
 import no.digdir.forsystem.archive.FileArchive;
 import no.digdir.forsystem.common.AuditService;
@@ -17,14 +14,6 @@ import no.digdir.forsystem.common.BrukerContext;
 import no.digdir.forsystem.common.Handling;
 import no.digdir.forsystem.common.Periode;
 import no.digdir.forsystem.common.Regelbrudd;
-import no.digdir.forsystem.registry.Avtalestatus;
-import no.digdir.forsystem.registry.Kunde;
-import no.digdir.forsystem.registry.KundeReferanse;
-import no.digdir.forsystem.registry.KundeReferanseRepository;
-import no.digdir.forsystem.registry.KundeRepository;
-import no.digdir.forsystem.registry.KundeService;
-import no.digdir.forsystem.registry.KundenummerRegel;
-import no.digdir.forsystem.registry.KundenummerRegelRepository;
 import no.digdir.forsystem.registry.Produkt;
 import no.digdir.forsystem.registry.ProduktKildenavn;
 import no.digdir.forsystem.registry.ProduktKildenavnRepository;
@@ -36,8 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Usage from the datavarehus (specs/001-dwh-usage-import): fetch a period through
- * {@link DwhUsageClient}, aggregate daily rows to monthly via the product-name mapping, cross-check
- * the DWH's customer references against the registry, and hand everything to the shared
+ * {@link DwhUsageClient}, aggregate daily rows to monthly via the product-name mapping, collect the
+ * customer values CRM delivers through the DWH (specs/018), and hand everything to the shared
  * {@link UsageImportService} pipeline. Two entry points:
  *
  * <ul>
@@ -55,32 +44,23 @@ public class DwhImportService {
     private final BruksdataImportRepository importer;
     private final ProduktKildenavnRepository kildenavn;
     private final ProduktRepository produkter;
-    private final KundeRepository kunder;
-    private final KundeReferanseRepository referanser;
-    private final KundenummerRegelRepository kundenummerRegler;
     private final FileArchive arkiv;
     private final AuditService audit;
     private final BrukerContext brukerContext;
-    private final KundeService kundeService;
 
     DwhImportService(ObjectProvider<DwhUsageClient> klient, DwhEgenskaper egenskaper, UsageImportService usage,
                      BruksdataImportRepository importer, ProduktKildenavnRepository kildenavn,
-                     ProduktRepository produkter, KundeRepository kunder, KundeReferanseRepository referanser,
-                     KundenummerRegelRepository kundenummerRegler, FileArchive arkiv, AuditService audit,
-                     BrukerContext brukerContext, KundeService kundeService) {
+                     ProduktRepository produkter, FileArchive arkiv, AuditService audit,
+                     BrukerContext brukerContext) {
         this.klient = klient;
         this.egenskaper = egenskaper;
         this.usage = usage;
         this.importer = importer;
         this.kildenavn = kildenavn;
         this.produkter = produkter;
-        this.kunder = kunder;
-        this.referanser = referanser;
-        this.kundenummerRegler = kundenummerRegler;
         this.arkiv = arkiv;
         this.audit = audit;
         this.brukerContext = brukerContext;
-        this.kundeService = kundeService;
     }
 
     /** Whether the DWH source is configured; the UI hides the fetch action otherwise. */
@@ -131,7 +111,7 @@ public class DwhImportService {
 
     /**
      * Build the preview from an uploaded CSV export of the datavarehus view — the fallback while the API
-     * is unreachable (OQ-19). Same aggregation, mapping and cross-check as a fetch; the file itself is
+     * is unreachable (OQ-19). Same aggregation and mapping as a fetch; the file itself is
      * archived as the raw payload on confirm. Not persisted here.
      */
     @Transactional(readOnly = true)
@@ -152,49 +132,6 @@ public class DwhImportService {
         Forhaandsvisning fv = bygg(periode, filnavn, fil.brukte(), fil.avviste(), fil.advarsler(), raadata,
                 stagetImportId);
         return fil.flagget() ? fv.medFil(fil.rapport(), fv.kildegrupper()) : fv;
-    }
-
-    /**
-     * Organisations in an uploaded export that have no customer in the registry yet. For a flagged export only
-     * organisations with used rows count: the rest carry placeholder orgnr and names (specs/017).
-     */
-    @Transactional(readOnly = true)
-    public List<DwhCsv.KundeIFil> manglendeKunder(byte[] innhold, Periode periode) {
-        return DwhCsv.lesFil(innhold, periode).kunder().stream()
-                .filter(k -> kunder.findByOrganisasjonsnummer(k.organisasjonsnummer()).isEmpty())
-                .toList();
-    }
-
-    /**
-     * Register the export's organisations that are missing from the customer registry: name, a default
-     * kundenummer rule and the invoice reference, as the datavarehus carries them (from CRM). Avtalestatus
-     * is AKTIV because the datavarehus only delivers usage under active agreements (OQ-4). Each customer
-     * is created on its own, through the registry's normal validation and audit, so one refused orgnr
-     * does not stop the others. A stopgap until customers come from CRM (OQ-5).
-     */
-    public Kundeoppretting opprettManglendeKunder(byte[] innhold, Periode periode) {
-        List<String> opprettet = new ArrayList<>();
-        List<String> feilet = new ArrayList<>();
-        for (DwhCsv.KundeIFil k : manglendeKunder(innhold, periode)) {
-            try {
-                String navn = k.navn() == null ? k.organisasjonsnummer() : k.navn();
-                Kunde ny = kundeService.opprett(k.organisasjonsnummer(), navn, null, Avtalestatus.AKTIV);
-                if (k.kundenummer() != null) {
-                    kundeService.leggTilRegel(ny.id(), k.kundenummer(), null, null, null);
-                }
-                if (k.fakturareferanse() != null || k.bestillingsnummer() != null) {
-                    kundeService.leggTilReferanse(ny.id(), null, k.fakturareferanse(), k.bestillingsnummer());
-                }
-                opprettet.add(k.organisasjonsnummer());
-            } catch (Regelbrudd e) {
-                feilet.add(k.organisasjonsnummer() + ": " + e.getMessage());
-            }
-        }
-        return new Kundeoppretting(opprettet, feilet);
-    }
-
-    /** The outcome of {@link #opprettManglendeKunder}: created orgnrs, and refused ones with the reason. */
-    public record Kundeoppretting(List<String> opprettet, List<String> feilet) {
     }
 
     /** Rebuild the preview of a staged import from its archived payload (mapping/registry may have changed). */
@@ -240,11 +177,10 @@ public class DwhImportService {
         DwhAggregering.Resultat agg = DwhAggregering.aggreger(periode, rader, kobling());
         List<AvvistRad> avviste = new ArrayList<>(lesAvviste);
         avviste.addAll(agg.avviste());
-        List<String> advarsler = new ArrayList<>(lesAdvarsler);
-        advarsler.addAll(kryssjekkKunderegister(rader));
         return usage.vurder(periode, filnavn, Kilde.DWH, agg.rader(), avviste,
-                advarsler, raadata, stagetImportId)
-                .medFil(null, agg.kildegrupper());
+                lesAdvarsler, raadata, stagetImportId)
+                .medFil(null, agg.kildegrupper())
+                .medKunder(DwhRad.kundedata(rader));
     }
 
     private Map<String, DwhAggregering.Maal> kobling() {
@@ -257,54 +193,6 @@ public class DwhImportService {
             kobling.put(k.kildenavn(), new DwhAggregering.Maal(idTilKode.get(k.produktId()), Bruksdatatype.valueOf(k.type())));
         }
         return kobling;
-    }
-
-    /**
-     * The DWH carries its own copy of kundenummer/fakturareferanse. The registry is the master
-     * (OQ-5, OQ-10); a difference is surfaced as a warning so the coupling can be checked (OQ-12),
-     * never copied over. Orgnrs missing from the registry are left to the MANGLER_KUNDE control.
-     */
-    private List<String> kryssjekkKunderegister(List<DwhRad> rader) {
-        Map<String, Set<String>> dwhKundenr = new LinkedHashMap<>();
-        Map<String, Set<String>> dwhRef = new LinkedHashMap<>();
-        for (DwhRad r : rader) {
-            if (r.kundenummer() != null) {
-                dwhKundenr.computeIfAbsent(r.organisasjonsnummer(), o -> new LinkedHashSet<>()).add(r.kundenummer());
-            }
-            if (r.fakturareferanse() != null) {
-                dwhRef.computeIfAbsent(r.organisasjonsnummer(), o -> new LinkedHashSet<>()).add(r.fakturareferanse());
-            }
-        }
-        Set<String> orgnr = new LinkedHashSet<>(dwhKundenr.keySet());
-        orgnr.addAll(dwhRef.keySet());
-
-        List<String> advarsler = new ArrayList<>();
-        for (String o : orgnr) {
-            var kunde = kunder.findByOrganisasjonsnummer(o);
-            if (kunde.isEmpty()) {
-                continue;
-            }
-            Long kundeId = kunde.get().id();
-            Set<String> registerKundenr = new LinkedHashSet<>();
-            kundenummerRegler.findByKundeId(kundeId).stream().map(KundenummerRegel::kundenummer).forEach(registerKundenr::add);
-            Set<String> registerRef = new LinkedHashSet<>();
-            referanser.findByKundeId(kundeId).stream().map(KundeReferanse::fakturareferanse)
-                    .filter(Objects::nonNull).forEach(registerRef::add);
-
-            for (String k : dwhKundenr.getOrDefault(o, Set.of())) {
-                if (!registerKundenr.contains(k)) {
-                    advarsler.add("Orgnr " + o + ": datavarehuset har kundenummer " + k
-                            + ", kunderegisteret har " + (registerKundenr.isEmpty() ? "ingen" : String.join(", ", registerKundenr)));
-                }
-            }
-            for (String f : dwhRef.getOrDefault(o, Set.of())) {
-                if (!registerRef.contains(f)) {
-                    advarsler.add("Orgnr " + o + ": datavarehuset har fakturareferanse «" + f
-                            + "», kunderegisteret har " + (registerRef.isEmpty() ? "ingen" : "«" + String.join("», «", registerRef) + "»"));
-                }
-            }
-        }
-        return advarsler;
     }
 
     private String filnavn(Periode periode) {

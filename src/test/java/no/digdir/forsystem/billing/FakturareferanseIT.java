@@ -17,7 +17,6 @@ import java.util.List;
 
 import no.digdir.forsystem.archive.FileArchive;
 import no.digdir.forsystem.export.EksportService;
-import no.digdir.forsystem.registry.KundeReferanse;
 import no.digdir.forsystem.registry.Prisversjon;
 import no.digdir.forsystem.usage.Bruksdatatype;
 import org.junit.jupiter.api.Test;
@@ -88,18 +87,18 @@ class FakturareferanseIT extends BillingFixture {
     // ---- US2: bestillingsnummer = fakturareferanse when empty ---------------------------------------------
 
     @Test
-    void anEmptyBestillingsnummerTakesTheFakturareferanseOnTheInvoiceNotInTheRegistry() {
+    void anEmptyBestillingsnummerTakesTheFakturareferanseOnTheInvoiceNotInTheImport() {
         priser();
         Long k = kundeMedToProdukter("100000001", "Kunde A", "KA", nyImport(JAN));
         referanse(k, null, "REF-A", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
 
         assertThat(linjer(kj)).hasSize(2).allSatisfy(l -> {
             assertThat(l.fakturareferanse()).isEqualTo("REF-A");
             assertThat(l.bestillingsnummer()).isEqualTo("REF-A");
         });
-        assertThat(referanser.findByKundeId(k)).singleElement()
-                .satisfies(r -> assertThat(r.bestillingsnummer()).isNull());   // registry untouched
+        assertThat(jdbc.queryForObject("select bestillingsnummer from bruksdata_kunde", String.class))
+                .isNull();   // the import keeps what the DWH delivered
         assertThat(funn(kj, KODE)).isEmpty();
 
         assertThat(lg04Hoder(kj)).singleElement().satisfies(h -> {
@@ -112,8 +111,8 @@ class FakturareferanseIT extends BillingFixture {
     void aBlankBestillingsnummerAlsoTakesTheFakturareferanse() {
         priser();
         Long k = kundeMedToProdukter("100000001", "Kunde A", "KA", nyImport(JAN));
-        referanser.save(new KundeReferanse(null, k, null, "REF-A", "   "));
-        var kj = tjeneste.generer(JAN);
+        referanse(k, null, "REF-A", "   ");
+        var kj = generer(JAN);
         assertThat(linjer(kj)).extracting(Fakturalinje::bestillingsnummer).containsOnly("REF-A");
     }
 
@@ -122,38 +121,9 @@ class FakturareferanseIT extends BillingFixture {
         priser();
         Long k = kundeMedToProdukter("100000001", "Kunde A", "KA", nyImport(JAN));
         referanse(k, null, "REF-A", "PO-1");
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         assertThat(linjer(kj)).extracting(Fakturalinje::bestillingsnummer).containsOnly("PO-1");
         assertThat(lg04Hoder(kj)).singleElement().satisfies(h -> assertThat(bestillingsnummer(h)).isEqualTo("PO-1"));
-    }
-
-    @Test
-    void theFallbackNeverSplitsAnInvoiceAndJoinsWhatOnlyDifferedByTheEmptyField() {
-        // melding has REF-A/REF-A written out, the default REF-A/empty: one reference after the fallback.
-        priser();
-        Long k = kundeMedToProdukter("100000001", "Kunde A", "KA", nyImport(JAN));
-        referanse(k, null, "REF-A", null);
-        referanse(k, "melding", "REF-A", "REF-A");
-        var kj = tjeneste.generer(JAN);
-
-        assertThat(funn(kj, "DELT_REFERANSE")).isEmpty();
-        assertThat(lg04Hoder(kj)).singleElement().satisfies(h -> assertThat(bestillingsnummer(h)).isEqualTo("REF-A"));
-    }
-
-    @Test
-    void differentFakturareferanserStillSplitWithTheirOwnBestillingsnummer() {
-        priser();
-        Long k = kundeMedToProdukter("100000001", "Kunde A", "KA", nyImport(JAN));
-        referanse(k, null, "REF-A", null);
-        referanse(k, "melding", "REF-M", null);
-        var kj = tjeneste.generer(JAN);
-
-        assertThat(funn(kj, "DELT_REFERANSE")).singleElement()
-                .satisfies(f -> assertThat(f.melding()).contains("2 ulike referanser", "REF-A / REF-A", "REF-M / REF-M"));
-        assertThat(lg04Hoder(kj)).extracting(FakturareferanseIT::fakturareferanse, FakturareferanseIT::bestillingsnummer)
-                .containsExactlyInAnyOrder(
-                        org.assertj.core.groups.Tuple.tuple("REF-A", "REF-A"),
-                        org.assertj.core.groups.Tuple.tuple("REF-M", "REF-M"));
     }
 
     // ---- US1: missing fakturareferanse ------------------------------------------------------------------
@@ -165,7 +135,7 @@ class FakturareferanseIT extends BillingFixture {
         kundeMedToProdukter("100000001", "Kunde Uten", "KU", imp);
         Long med = kundeMedToProdukter("100000002", "Kunde Med", "KM", imp);
         referanse(med, null, "REF-M", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
 
         assertThat(funn(kj, KODE)).singleElement().satisfies(f -> {
             assertThat(f.alvorlighet()).isEqualTo("ADVARSEL");
@@ -185,38 +155,20 @@ class FakturareferanseIT extends BillingFixture {
     }
 
     @Test
-    void aProductRowWithOnlyBestillingsnummerCountsAsMissingForThatProduct() {
-        // TODO(OQ-24) default: the product row replaces the customer default as a whole.
+    void aBestillingsnummerWithoutFakturareferanseCountsAsMissingAndIsKept() {
         priser();
         Long k = kundeMedToProdukter("100000001", "Kunde A", "KA", nyImport(JAN));
-        referanse(k, null, "REF-A", null);
-        referanse(k, "melding", null, "PO-9");
-        var kj = tjeneste.generer(JAN);
+        referanse(k, null, null, "PO-9");
+        var kj = generer(JAN);
 
         assertThat(funn(kj, KODE)).singleElement()
-                .satisfies(f -> assertThat(f.melding()).contains("Melding").doesNotContain("Formidling"));
-        assertThat(tjeneste.utenFakturareferanse(kj.id())).singleElement().satisfies(u -> {
-            assertThat(u.produkter()).containsExactly("Melding");
-            assertThat(u.alleLinjer()).isFalse();
+                .satisfies(f -> assertThat(f.melding()).contains("Melding", "Formidling"));
+        assertThat(tjeneste.utenFakturareferanse(kj.id())).singleElement()
+                .satisfies(u -> assertThat(u.alleLinjer()).isTrue());
+        assertThat(linjer(kj)).allSatisfy(l -> {
+            assertThat(l.fakturareferanse()).isNull();
+            assertThat(l.bestillingsnummer()).isEqualTo("PO-9");   // no reverse fallback
         });
-        assertThat(linjer(kj)).filteredOn(l -> l.fakturareferanse() == null).singleElement()
-                .satisfies(l -> assertThat(l.bestillingsnummer()).isEqualTo("PO-9"));   // no reverse fallback
-    }
-
-    @Test
-    void eachKundenummerIsItsOwnInvoiceAndFinding() {
-        priser();
-        Long k = kunde("100000001", "Kunde A", "AKTIV", null).id();
-        regel(k, "KA1", null, null, null);
-        regel(k, "KA2", "formidling", null, null);
-        Long imp = nyImport(JAN);
-        bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "30", null);
-        bruk(imp, JAN, "100000001", "formidling", Bruksdatatype.BRUKSVOLUM, "10", null);
-        var kj = tjeneste.generer(JAN);
-
-        assertThat(funn(kj, KODE)).hasSize(2);
-        assertThat(tjeneste.utenFakturareferanse(kj.id())).extracting(FakturaUtenReferanse::kundenummer)
-                .containsExactly("KA1", "KA2");
     }
 
     @Test
@@ -231,7 +183,7 @@ class FakturareferanseIT extends BillingFixture {
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "5", null);
         bruk(imp, JAN, "100000003", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
 
         assertThat(tjeneste.utenFakturareferanse(kj.id())).extracting(FakturaUtenReferanse::kundenavn)
                 .containsExactly("Stor");
@@ -242,7 +194,7 @@ class FakturareferanseIT extends BillingFixture {
     void theKontrollerTabListsTheInvoicesAndTheListDownloads() throws Exception {
         priser();
         kundeMedToProdukter("100000001", "Kunde Uten", "KU", nyImport(JAN));
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
 
         mvc.perform(get("/kjoringer/{id}/kontroller", kj.id()))
                 .andExpect(status().isOk())
@@ -268,7 +220,7 @@ class FakturareferanseIT extends BillingFixture {
         priser();
         Long k = kundeMedToProdukter("100000001", "Kunde A", "KA", nyImport(JAN));
         referanse(k, null, "REF-A", null);
-        var kj = tjeneste.generer(JAN);
+        var kj = generer(JAN);
         assertThat(tjeneste.utenFakturareferanse(kj.id())).isEmpty();
         mvc.perform(get("/kjoringer/{id}/kontroller", kj.id()))
                 .andExpect(content().string(containsString("Alle fakturaene har fakturareferanse")))

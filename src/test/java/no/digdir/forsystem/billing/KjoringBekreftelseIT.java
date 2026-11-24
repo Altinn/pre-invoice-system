@@ -31,7 +31,7 @@ class KjoringBekreftelseIT extends BillingFixture {
         regel(k, "KN1", null, null, null);
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "3", null);
-        return tjeneste.generer(JAN);
+        return generer(JAN);
     }
 
     @Test

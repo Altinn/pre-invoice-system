@@ -59,7 +59,7 @@ class KontrollfunnAkseptIT extends BillingFixture {
             regel(k, "KN" + orgnr.substring(8), null, null, null);
             bruk(imp, JAN, orgnr, "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
         }
-        return tjeneste.generer(JAN);
+        return generer(JAN);
     }
 
     private List<Kontrollfunn> advarsler(Long kjoringId) {
@@ -140,13 +140,13 @@ class KontrollfunnAkseptIT extends BillingFixture {
         Long imp = nyImport(JAN);
         bruk(imp, JAN, "100000001", "melding", Bruksdatatype.BRUKSVOLUM, "100", null);
         bruk(imp, JAN, "999999999", "melding", Bruksdatatype.BRUKSVOLUM, "5", null); // no customer
-        var blokkert = tjeneste.generer(JAN);
+        var blokkert = generer(JAN);
         Kontrollfunn mangler = tjeneste.funn(blokkert.id()).stream()
-                .filter(f -> "MANGLER_KUNDE".equals(f.kode())).findFirst().orElseThrow();
+                .filter(f -> "MANGLER_KUNDENUMMER".equals(f.kode())).findFirst().orElseThrow();
 
         assertThatThrownBy(() -> tjeneste.settAksept(blokkert.id(), mangler.id(), true))
                 .isInstanceOf(Regelbrudd.class).hasMessageContaining("Blokkerende funn kan ikke aksepteres");
-        assertThatThrownBy(() -> tjeneste.settAkseptForKode(blokkert.id(), "MANGLER_KUNDE", true))
+        assertThatThrownBy(() -> tjeneste.settAkseptForKode(blokkert.id(), "MANGLER_KUNDENUMMER", true))
                 .isInstanceOf(Regelbrudd.class).hasMessageContaining("Blokkerende funn kan ikke aksepteres");
         // Even accepting every warning leaves the run blocked.
         aksepterAlleAdvarsler(blokkert.id());
@@ -191,7 +191,7 @@ class KontrollfunnAkseptIT extends BillingFixture {
         var kj = kjoringMedToAdvarsler();
         Long gammeltFunn = advarsler(kj.id()).getFirst().id();
         tjeneste.forkast(kj.id());
-        var ny = tjeneste.generer(JAN);
+        var ny = generer(JAN);
 
         assertThatThrownBy(() -> tjeneste.settAksept(ny.id(), gammeltFunn, true))
                 .isInstanceOf(Regelbrudd.class).hasMessageContaining("Fant ikke kontrollfunn");
@@ -203,7 +203,7 @@ class KontrollfunnAkseptIT extends BillingFixture {
         aksepterAlleAdvarsler(kj.id());
         tjeneste.forkast(kj.id());
 
-        var ny = tjeneste.generer(JAN);
+        var ny = generer(JAN);
 
         assertThat(advarsler(ny.id())).hasSize(2).noneMatch(Kontrollfunn::erAkseptert);
         assertThat(tjeneste.antallAapneAdvarsler(ny.id())).isEqualTo(2);
@@ -220,7 +220,7 @@ class KontrollfunnAkseptIT extends BillingFixture {
                 new Raadata("aksept-v2".getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null), null);
         var sammenligning = kandidater.opprettHvisEksportert(fv).orElseThrow();
         BruksdataEndring endring = sammenligning.endringer().getFirst();
-        var v2 = tjeneste.genererKorrigering(sammenligning.sammenligning().id(), List.of(endring.id()), "Retting");
+        var v2 = genererKorrigering(sammenligning.sammenligning().id(), List.of(endring.id()), "Retting");
         assertThat(advarsler(v2.id())).isNotEmpty();
 
         assertThatThrownBy(() -> tjeneste.godkjenn(v2.id()))

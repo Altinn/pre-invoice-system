@@ -54,6 +54,47 @@ class UsageImportServiceIT extends IntegrationTest {
         assertThat(bruksdata.countByImportId(lagret.id())).isEqualTo(2);
     }
 
+    /** specs/018: the own format's optional customer columns are kept per organisation with the import. */
+    @Test
+    void customerColumnsAreStoredWithTheImport() throws IOException {
+        String csv = "periode,organisasjonsnummer,produktkode,type,antall,belop,kundenavn,kundenummer,"
+                + "fakturareferanse,bestillingsnummer\n"
+                + "2027-01-01,123456789,melding,BRUKSVOLUM,10,,Alfa,K-1,REF-A,\n"
+                + "2027-01-01,123456789,varsling,BRUKSVOLUM,5,,Alfa,K-1,REF-A,PO-1\n"
+                + "2027-01-01,223456789,melding,BRUKSVOLUM,3,,Beta,K-2,,\n"
+                + "2027-01-01,223456789,varsling,BRUKSVOLUM,3,,Beta,K-3,,\n";
+        Forhaandsvisning fv = service.forhaandsvis(JAN, "bruk.csv", inn(csv));
+
+        assertThat(fv.kanImporteres()).isTrue();   // a conflict never blocks the import, only the run
+        assertThat(fv.motstridendeKunder()).extracting(Kundedata::organisasjonsnummer).containsExactly("223456789");
+        assertThat(fv.utenKundenummer()).isEmpty();
+
+        var kunder = service.kundedata(service.importer(fv).id());
+        assertThat(kunder).hasSize(2);
+        assertThat(kunder.get(0)).satisfies(k -> {
+            assertThat(k.organisasjonsnummer()).isEqualTo("123456789");
+            assertThat(k.virksomhetsnavn()).isEqualTo("Alfa");
+            assertThat(k.kundenummer()).isEqualTo("K-1");
+            assertThat(k.fakturareferanse()).isEqualTo("REF-A");
+            assertThat(k.bestillingsnummer()).isEqualTo("PO-1");   // blank on one row is not a conflict
+            assertThat(k.harMotstridende()).isFalse();
+        });
+        assertThat(kunder.get(1).motstridende()).containsExactly("kundenummer: K-2 | K-3");
+    }
+
+    @Test
+    void withoutCustomerColumnsEveryOrganisationLacksAKundenummer() throws IOException {
+        Forhaandsvisning fv = service.forhaandsvis(JAN, "bruk.csv", inn(HEADER
+                + "2027-01-01,123456789,melding,BRUKSVOLUM,10,\n"));
+        assertThat(fv.utenKundenummer()).extracting(Kundedata::organisasjonsnummer).containsExactly("123456789");
+
+        var kunder = service.kundedata(service.importer(fv).id());
+        assertThat(kunder).singleElement().satisfies(k -> {
+            assertThat(k.organisasjonsnummer()).isEqualTo("123456789");
+            assertThat(k.kundenummer()).isNull();
+        });
+    }
+
     /** Month-over-month warnings name products and format numbers like the rest of the page (specs/010). */
     @Test
     void monthOverMonthWarningsUseNamesAndNorwegianNumbers() throws IOException {

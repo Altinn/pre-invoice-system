@@ -5,7 +5,7 @@ oppdatert: 2026-11-17
 rolle: FORVALTER
 apne-i-appen: /produkter/kildenavn
 apne-i-appen-tekst: Åpne Kildenavn
-relatert: [slik-gjor-du/last-opp-csv, slik-gjor-du/opprett-kunder-fra-fila, manedsrutinen/2-hent-bruksdata, nar-noe-gar-galt/import-blokkeres]
+relatert: [slik-gjor-du/last-opp-csv, slik-gjor-du/rett-kundedata, manedsrutinen/2-hent-bruksdata, nar-noe-gar-galt/import-blokkeres]
 nokkelord: [produktnavn, mapping, datavarehus, kobling, ukjent produktnavn]
 ---
 Datavarehuset bruker egne produktnavn, for eksempel «Varsling e-post». Under Kildenavn kobler du hvert navn til et produkt i forsystem og en type. Et navn uten kobling avviser importen. Du trenger rollen FORVALTER for å endre koblingene.

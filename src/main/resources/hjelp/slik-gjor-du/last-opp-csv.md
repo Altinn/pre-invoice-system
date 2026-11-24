@@ -65,7 +65,7 @@ Du er tilbake på [Bruksdata](/bruksdata), og importen står i tabellen med stat
 
 ## Hvis noe går galt
 
-- Forhåndsvisningen sier at organisasjoner mangler i kunderegisteret: se [Opprett kunder fra fila](opprett-kunder-fra-fila.md).
+- Forhåndsvisningen sier at organisasjoner mangler kundenummer eller har motstridende kundedata: se [Rett kundedata](rett-kundedata.md).
 - Et ukjent produktnavn fra datavarehuset: se [Koble et kildenavn](koble-kildenavn.md).
 - Forsystem kjenner ikke igjen fila: se [Fila kjennes ikke igjen](../nar-noe-gar-galt/fila-kjennes-ikke-igjen.md).
 - Importen er blokkert: se [Import blokkeres](../nar-noe-gar-galt/import-blokkeres.md).
