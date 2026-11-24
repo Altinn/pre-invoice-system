@@ -392,6 +392,18 @@ none, and with the bestillingsnummer fallback to the fakturareferanse (specs/012
 refuses a customer with ENDRET_FAKTURAREFERANSE, ENDRET_BESTILLINGSNUMMER or ENDRET_KUNDENUMMER
 (OQ-6, OQ-29).
 
+## V20 — dismissing a customer on a comparison (specs/019 story 4)
+
+```sql
+alter table bruksdata_kundeavvik
+    add column avvist_av text, add column avvist_at timestamptz, add column avvist_aarsak text;
+-- all three set (with a non-blank reason) or all three NULL; the customer's bruksdata_endring rows get the
+-- same values in their V12 avvist_* columns, so a dismissed change is never selected into a run.
+```
+
+A dismissal is set and cleared only while the comparison is AAPEN (audited as AVVISTE / GJENOPPRETTET).
+A new comparison of the same candidate copies it when the customer's deviation is identical.
+
 ## Design decisions (preserve these)
 
 1. **Traceability is structural**: `fakturalinje → bruksdata` (which usage),

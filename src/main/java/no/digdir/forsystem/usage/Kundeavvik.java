@@ -1,5 +1,6 @@
 package no.digdir.forsystem.usage;
 
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.List;
 
@@ -10,7 +11,8 @@ import org.springframework.data.relational.core.mapping.Table;
  * One customer (orgnr) with at least one deviation on a comparison (specs/019). The {@code fakturert*} arrays
  * hold the distinct values the customer was last invoiced with ({@code ""} = none); the {@code kandidat*}
  * values are what the new DWH snapshot delivered ({@code null} = the candidate has no row for the customer).
- * Insert-only, like the comparison it belongs to.
+ * Insert-only, like the comparison it belongs to, except for the dismissal (who, when, why), which can be
+ * set and cleared while the comparison is open.
  */
 @Table("bruksdata_kundeavvik")
 public record Kundeavvik(
@@ -25,7 +27,21 @@ public record Kundeavvik(
         String kandidatKundenummer,
         String kandidatFakturareferanse,
         String kandidatBestillingsnummer,
-        String[] kategorier) {
+        String[] kategorier,
+        String avvistAv,
+        OffsetDateTime avvistAt,
+        String avvistAarsak) {
+
+    public boolean erAvvist() {
+        return avvistAt != null;
+    }
+
+    /** Dismissed (FR-015), or restored again when all three are null. */
+    public Kundeavvik medAvvisning(String av, OffsetDateTime at, String aarsak) {
+        return new Kundeavvik(id, sammenligningId, organisasjonsnummer, fakturertNavn, fakturertKundenummer,
+                fakturertFakturareferanse, fakturertBestillingsnummer, kandidatNavn, kandidatKundenummer,
+                kandidatFakturareferanse, kandidatBestillingsnummer, kategorier, av, at, aarsak);
+    }
 
     public List<Kundeavvikskategori> kategoriliste() {
         return Arrays.stream(kategorier).map(Kundeavvikskategori::valueOf).toList();

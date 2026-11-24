@@ -27,19 +27,39 @@
         status <span class="ds-tag" th:text="${sammenligning.status()}">AAPEN</span>
     </p>
 
-    <div class="ds-alert bred" data-color="success" th:if="${antallKunder == 0}">
+    <div class="ds-alert bred" data-color="info" th:if="${paagaaende != null}">
+        <p>Korrigeringen <a class="ds-link" th:href="@{/kjoringer/{id}(id=${paagaaende.id()})}"
+                            th:text="${paagaaende.versjonLabel()}">V2</a> er under arbeid. Eksporter eller forkast
+            den før du sammenligner på nytt.</p>
+    </div>
+    <div class="ds-alert bred" data-color="warning" th:if="${utdatert and paagaaende == null}">
+        <p>En nyere versjon er eksportert etter denne sammenligningen. Sammenlign på nytt for å se hva som
+            gjenstår.</p>
+    </div>
+    <form method="post" th:if="${kanSammenligneIgjen}" hx-disabled-elt="find button"
+          th:action="@{/bruksdata/sammenligninger/{id}/paa-nytt(id=${sammenligning.id()})}">
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <button class="ds-button" type="submit" data-size="sm"
+                th:attr="data-variant=${utdatert} ? 'primary' : 'secondary'">Sammenlign på nytt</button>
+        <span class="liten">Sammenligner den siste hentede bruksdataen med det som er fakturert nå. Henter ikke
+            data på nytt.</span>
+    </form>
+
+    <div class="ds-alert bred" data-color="success" th:if="${antallAvvik == 0}">
         <h2 class="ds-heading" data-size="2xs">Ingen endringer</h2>
         <p>Det nye grunnlaget er likt det som allerede er fakturert, også kundenummer, fakturareferanse og
             bestillingsnummer.</p>
     </div>
 
-    <section class="seksjon" th:if="${antallKunder > 0}" data-endring-omraade
+    <section class="seksjon" th:if="${antallAvvik > 0}" data-endring-omraade
              th:attr="data-alle-antall=${antallVelgbare},data-alle-belop=${velgbartBelop}">
         <h2 class="ds-heading" data-size="xs">Avvik per kunde</h2>
         <p class="ds-paragraph liten">
             <strong th:text="${@tall.antall(antallKunder)}">0</strong> kunder med avvik<span
                 th:if="${sammenligning.uendredeKunder() != null}">
-                · <span th:text="${@tall.antall(sammenligning.uendredeKunder())}">0</span> uendrede kunder er skjult</span>.
+                · <span th:text="${@tall.antall(sammenligning.uendredeKunder())}">0</span> uendrede kunder er skjult</span><span
+                th:if="${!avviste.isEmpty()}"> · <a class="ds-link" href="#avviste"
+                th:text="|${avviste.size()} avvist|">1 avvist</a></span>.
             <span class="ds-tag" data-size="sm" th:each="k : ${perKategori}"
                   th:text="|${k.key}: ${k.value}|">Endret: 1</span>
         </p>
@@ -101,7 +121,7 @@
             <thead>
             <tr>
                 <th>Velg</th><th>Kunde</th><th>U4 kundenummer</th><th>Endring</th>
-                <th class="hoyre">Produkter</th><th class="hoyre">Differanse (kr)</th>
+                <th class="hoyre">Produkter</th><th class="hoyre">Differanse (kr)</th><th>Avvis</th>
             </tr>
             </thead>
             <th:block th:each="r : ${kunder}">
@@ -150,13 +170,25 @@
                     <strong th:text="|${r.belop().signum() > 0 ? '+' : ''}${@tall.belop(r.belop())}|">+40,00</strong>
                     <span class="liten" th:if="${r.manglerPris()}"> (mangler pris)</span>
                 </td>
+                <td>
+                    <details class="avvis" th:if="${sammenligning.status() == 'AAPEN'}">
+                        <summary th:aria-label="|Avvis ${r.avvik().navn()}|">Avvis</summary>
+                        <label class="ds-label" data-size="sm" th:for="|avvis-aarsak-${r.avvik().id()}|">Hvorfor
+                            avvises kunden?</label>
+                        <textarea class="ds-input" rows="2" name="aarsak" required
+                                  th:id="|avvis-aarsak-${r.avvik().id()}|"
+                                  th:attr="form=|avvis-${r.avvik().id()}|"></textarea>
+                        <button class="ds-button" data-variant="secondary" data-size="sm" type="submit"
+                                th:attr="form=|avvis-${r.avvik().id()}|">Avvis kunden</button>
+                    </details>
+                </td>
             </tr>
             </tbody>
             <tbody data-kundeprodukter th:id="|kunde-${r.avvik().id()}|" hidden th:if="${!r.endringer().isEmpty()}">
             <tr class="produkthode">
                 <td></td><th scope="col">Produkt</th><th scope="col">Endring</th>
                 <th scope="col" class="hoyre">Før → nå</th><th scope="col" class="hoyre">Differanse</th>
-                <th scope="col" class="hoyre">Kr</th>
+                <th scope="col" class="hoyre">Kr</th><td></td>
             </tr>
             <tr th:each="e : ${r.endringer()}">
                 <td></td>
@@ -167,10 +199,12 @@
                 <td class="hoyre" th:text="|${e.gammelVerdi() == null ? '–' : @tall.mengde(e.gammelVerdi())} → ${e.nyVerdi() == null ? '–' : @tall.mengde(e.nyVerdi())}|">100 → 120</td>
                 <td class="hoyre" th:text="|${e.delta().signum() > 0 ? '+' : ''}${@tall.mengde(e.delta())}|">+20</td>
                 <td class="hoyre" th:text="${r.linjebelop()[e.id()] == null} ? 'mangler pris' : |${r.linjebelop()[e.id()].signum() > 0 ? '+' : ''}${@tall.belop(r.linjebelop()[e.id()])}|">+40,00</td>
+                <td></td>
             </tr>
             </tbody>
             </th:block>
-            <tbody th:if="${kunder.isEmpty()}"><tr><td colspan="6" class="tom">Ingen kunder passer filtrene.</td></tr></tbody>
+            <tbody th:if="${kunder.isEmpty()}"><tr><td colspan="7" class="tom"
+                    th:text="${antallKunder == 0} ? 'Alle kundene med avvik er avvist.' : 'Ingen kunder passer filtrene.'">Ingen kunder passer filtrene.</td></tr></tbody>
         </table>
         <nav class="rad" aria-label="Sider" th:if="${antallSider > 1}">
             <a class="ds-button" data-variant="secondary" data-size="sm" th:if="${side > 1}"
@@ -197,6 +231,40 @@
                     th:text="|Opprett korrigering V${grunnlag.versjon() + 1}|">Opprett korrigering V2</button>
         </div>
         </form>
+        <form method="post" th:each="r : ${kunder}" th:id="|avvis-${r.avvik().id()}|"
+              th:action="@{/bruksdata/sammenligninger/{id}/avvis(id=${sammenligning.id()})}">
+            <th:block th:replace="~{layout :: csrf}"></th:block>
+            <input type="hidden" name="orgnr" th:value="${r.avvik().organisasjonsnummer()}">
+        </form>
+
+        <section class="seksjon" id="avviste" th:if="${!avviste.isEmpty()}">
+            <h3 class="ds-heading" data-size="2xs">Avvist</h3>
+            <p class="ds-paragraph liten">Avviste kunder tas ikke med i en korrigering. Avvisningen gjelder til du
+                gjenoppretter kunden eller henter nye bruksdata.</p>
+            <table class="ds-table" data-size="sm">
+                <thead><tr><th>Kunde</th><th>Endring</th><th>Avvist av</th><th>Begrunnelse</th><th></th></tr></thead>
+                <tbody>
+                <tr th:each="r : ${avviste}">
+                    <td><strong th:text="${r.avvik().navn()}">Kunde</strong>
+                        <span class="liten" th:text="${r.avvik().organisasjonsnummer()}">123456789</span></td>
+                    <td><span class="ds-tag" data-size="sm" th:each="k : ${r.avvik().kategoriliste()}"
+                              th:text="${k.tekst()}">Endret</span></td>
+                    <td><span th:text="${r.avvik().avvistAv()}">bruker</span>
+                        <span class="liten" th:text="${#temporals.format(r.avvik().avvistAt(), 'yyyy-MM-dd HH:mm')}">2027-02-10</span></td>
+                    <td th:text="${r.avvik().avvistAarsak()}">Begrunnelse</td>
+                    <td>
+                        <form method="post" th:if="${sammenligning.status() == 'AAPEN'}"
+                              th:action="@{/bruksdata/sammenligninger/{id}/gjenopprett(id=${sammenligning.id()})}">
+                            <th:block th:replace="~{layout :: csrf}"></th:block>
+                            <input type="hidden" name="orgnr" th:value="${r.avvik().organisasjonsnummer()}">
+                            <button class="ds-button" data-variant="tertiary" data-size="sm" type="submit"
+                                    th:aria-label="|Gjenopprett ${r.avvik().navn()}|">Gjenopprett</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
     </section>
 </main>
 </body>

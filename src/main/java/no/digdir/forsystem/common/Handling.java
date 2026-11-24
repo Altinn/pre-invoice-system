@@ -28,6 +28,8 @@ public enum Handling {
     AKSEPTERTE_FUNN,
     /** The acceptance of one or more warnings was removed again (specs/013). */
     ANGRET_AKSEPT,
+    /** A dismissed customer on a correction comparison was made pending again (specs/019). */
+    GJENOPPRETTET,
     /** Test environments only: every run and usage import of a period was permanently deleted. */
     NULLSTILTE
 }

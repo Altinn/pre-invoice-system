@@ -106,7 +106,7 @@ public final class KundeavvikBygger {
                     kandidat == null ? null : kandidat.kundenummer(),
                     kandidat == null ? null : kandidat.fakturareferanse(),
                     kandidat == null ? null : kandidat.bestillingsnummer(),
-                    kategorier.stream().map(Enum::name).toArray(String[]::new));
+                    kategorier.stream().map(Enum::name).toArray(String[]::new), null, null, null);
         }
     }
 }

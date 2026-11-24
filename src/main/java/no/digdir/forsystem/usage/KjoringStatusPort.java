@@ -14,6 +14,9 @@ public interface KjoringStatusPort {
     /** True if a non-FORKASTET fakturakjøring already exists for the period. */
     boolean finnesIkkeForkastetKjoring(LocalDate periode);
 
+    /** True if a run for the period is GENERERT or GODKJENT (in progress). */
+    boolean finnesPaagaaendeKjoring(LocalDate periode);
+
     /**
      * Effective invoiced baseline for a period: the complete ordinary import plus every explicitly
      * selected change from exported corrections, in version order.

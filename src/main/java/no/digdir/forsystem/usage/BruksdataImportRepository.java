@@ -16,6 +16,8 @@ public interface BruksdataImportRepository extends ListCrudRepository<BruksdataI
     /** The latest import for a period with the given status — the period's current one when VALIDERT. */
     Optional<BruksdataImport> findFirstByPeriodeAndStatusOrderByIdDesc(LocalDate periode, String status);
 
+    Optional<BruksdataImport> findFirstByPeriodeAndStatusInOrderByIdDesc(LocalDate periode, List<String> statuser);
+
     Optional<BruksdataImport> findFirstByPeriodeAndRaadataSha256AndStatusIn(
             LocalDate periode, String raadataSha256, List<String> statuser);
 }
