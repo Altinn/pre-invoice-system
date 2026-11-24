@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import no.digdir.forsystem.common.AuditService;
 import no.digdir.forsystem.common.BrukerContext;
@@ -31,6 +32,7 @@ public class BruksdataKandidatService {
     private final BruksdataRepository bruksdata;
     private final BruksdataSammenligningRepository sammenligninger;
     private final BruksdataEndringRepository endringer;
+    private final KundeavvikRepository kundeavvik;
     private final UsageImportService usage;
     private final KjoringStatusPort kjoringer;
     private final BrukerContext brukerContext;
@@ -38,12 +40,14 @@ public class BruksdataKandidatService {
 
     BruksdataKandidatService(BruksdataImportRepository importer, BruksdataRepository bruksdata,
                              BruksdataSammenligningRepository sammenligninger,
-                             BruksdataEndringRepository endringer, UsageImportService usage,
-                             KjoringStatusPort kjoringer, BrukerContext brukerContext, AuditService audit) {
+                             BruksdataEndringRepository endringer, KundeavvikRepository kundeavvik,
+                             UsageImportService usage, KjoringStatusPort kjoringer, BrukerContext brukerContext,
+                             AuditService audit) {
         this.importer = importer;
         this.bruksdata = bruksdata;
         this.sammenligninger = sammenligninger;
         this.endringer = endringer;
+        this.kundeavvik = kundeavvik;
         this.usage = usage;
         this.kjoringer = kjoringer;
         this.brukerContext = brukerContext;
@@ -82,8 +86,7 @@ public class BruksdataKandidatService {
                 .findByKandidatImportIdAndGrunnlagKjoringId(
                         kandidat.id(), grunnlag.sisteEksporterteKjoringId());
         if (eksisterende.isPresent()) {
-            return new Resultat(kandidat, eksisterende.get(),
-                    endringer.findBySammenligningIdOrderById(eksisterende.get().id()));
+            return resultat(kandidat, eksisterende.get());
         }
 
         List<Bruksdata> gamle = effektivtGrunnlag(grunnlag);
@@ -92,6 +95,13 @@ public class BruksdataKandidatService {
         }
         List<Bruksdata> nye = bruksdata.findByImportId(kandidat.id());
         BruksdataDifferanse.Resultat diff = BruksdataDifferanse.sammenlign(gamle, nye);
+        // Per customer (specs/019): product changes plus customer values that differ from what was invoiced.
+        Map<String, BruksdataKunde> kandidatKunder = new LinkedHashMap<>();
+        usage.kundedata(kandidat.id()).forEach(k -> kandidatKunder.put(k.organisasjonsnummer(), k));
+        KundeavvikBygger.Resultat perKunde = KundeavvikBygger.bygg(diff.endringer(),
+                gamle.stream().map(Bruksdata::organisasjonsnummer).collect(Collectors.toSet()),
+                nye.stream().map(Bruksdata::organisasjonsnummer).collect(Collectors.toSet()),
+                kjoringer.fakturerteKunder(fv.periode().førsteDag()), kandidatKunder);
 
         List<BruksdataSammenligning> aapne = sammenligninger.findByPeriodeAndStatus(
                 fv.periode().førsteDag(), Sammenligningstatus.AAPEN.name());
@@ -100,9 +110,13 @@ public class BruksdataKandidatService {
         BruksdataSammenligning sammenligning = sammenligninger.save(new BruksdataSammenligning(
                 null, fv.periode().førsteDag(), kandidat.id(), grunnlag.sisteEksporterteKjoringId(),
                 Sammenligningstatus.AAPEN.name(), diff.uendredeRader(), brukerContext.naavaerendeBruker(),
-                OffsetDateTime.now(), null));
+                OffsetDateTime.now(), null, perKunde.uendredeKunder()));
+        Map<String, Long> kundeavvikId = new LinkedHashMap<>();
+        kundeavvik.saveAll(perKunde.avvik().stream().map(a -> a.tilKundeavvik(sammenligning.id())).toList())
+                .forEach(a -> kundeavvikId.put(a.organisasjonsnummer(), a.id()));
         List<BruksdataEndring> lagredeEndringer = endringer.saveAll(diff.endringer().stream()
-                .map(e -> BruksdataEndring.fra(sammenligning.id(), e)).toList());
+                .map(e -> BruksdataEndring.fra(sammenligning.id(),
+                        kundeavvikId.get(e.nokkel().organisasjonsnummer()), e)).toList());
         aapne.forEach(s -> sammenligninger.save(s.medStatus(
                 Sammenligningstatus.ERSTATTET.name(), sammenligning.id())));
 
@@ -112,9 +126,16 @@ public class BruksdataKandidatService {
                 "grunnlagKjoringId", grunnlag.sisteEksporterteKjoringId(),
                 "grunnlagVersjon", grunnlag.sisteVersjon(),
                 "endringer", lagredeEndringer.size(),
+                "kunderMedAvvik", kundeavvikId.size(),
                 "uendrede", diff.uendredeRader(),
                 "raadataSha256", sha256));
-        return new Resultat(kandidat, sammenligning, lagredeEndringer);
+        return resultat(kandidat, sammenligning);
+    }
+
+    private Resultat resultat(BruksdataImport kandidat, BruksdataSammenligning sammenligning) {
+        return new Resultat(kandidat, sammenligning,
+                endringer.findBySammenligningIdOrderById(sammenligning.id()),
+                kundeavvik.findBySammenligningIdOrderByOrganisasjonsnummer(sammenligning.id()));
     }
 
     private List<Bruksdata> effektivtGrunnlag(KjoringStatusPort.EffektivtGrunnlag grunnlag) {
@@ -171,7 +192,7 @@ public class BruksdataKandidatService {
                 .orElseThrow(() -> new Regelbrudd("Fant ikke sammenligning " + id));
         BruksdataImport kandidat = importer.findById(sammenligning.kandidatImportId())
                 .orElseThrow(() -> new Regelbrudd("Fant ikke kandidatimport " + sammenligning.kandidatImportId()));
-        return new Resultat(kandidat, sammenligning, endringer.findBySammenligningIdOrderById(id));
+        return resultat(kandidat, sammenligning);
     }
 
     @Transactional(readOnly = true)
@@ -190,6 +211,13 @@ public class BruksdataKandidatService {
     public record Resultat(
             BruksdataImport kandidat,
             BruksdataSammenligning sammenligning,
-            List<BruksdataEndring> endringer) {
+            List<BruksdataEndring> endringer,
+            List<Kundeavvik> kundeavvik) {
+
+        /** The product changes of each customer deviation, by {@link Kundeavvik#id()}. */
+        public Map<Long, List<BruksdataEndring>> endringerPerKunde() {
+            return endringer.stream().collect(Collectors.groupingBy(BruksdataEndring::kundeavvikId,
+                    LinkedHashMap::new, Collectors.toList()));
+        }
     }
 }

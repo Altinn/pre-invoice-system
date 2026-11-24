@@ -361,6 +361,37 @@ file: flag-1 rows in the period; other formats: all valid rows), so every orgnr 
 `kundenummer` stays in the new unique keys. `kontrollfunn.kode` may hold the retired codes
 `MANGLER_KUNDE`, `INAKTIV_AVTALE` and `AKTIV_KUNDE_UTEN_BRUK` on old runs.
 
+## V19 — corrections per customer (specs/019-korrigering-per-kunde)
+
+```sql
+-- One row per customer (orgnr) with any deviation on a comparison, also when only a customer value
+-- changed (transaction difference 0).
+create table bruksdata_kundeavvik (
+    id                          bigint generated always as identity primary key,
+    sammenligning_id            bigint not null references bruksdata_sammenligning,
+    organisasjonsnummer         text not null,
+    fakturert_navn              text[] not null default '{}',  -- distinct values on the latest exported
+    fakturert_kundenummer       text[] not null default '{}',  -- invoice for the orgnr; '' = none
+    fakturert_fakturareferanse  text[] not null default '{}',
+    fakturert_bestillingsnummer text[] not null default '{}',
+    kandidat_navn               text,                          -- what the candidate delivered;
+    kandidat_kundenummer        text,                          -- NULL = no candidate row (removed)
+    kandidat_fakturareferanse   text,
+    kandidat_bestillingsnummer  text,
+    kategorier                  text[] not null,  -- LAGT_TIL, ENDRET, FJERNET, ENDRET_FAKTURAREFERANSE,
+                                                  -- ENDRET_BESTILLINGSNUMMER, ENDRET_KUNDENUMMER, ENDRET_NAVN
+    unique (sammenligning_id, organisasjonsnummer)
+);
+alter table bruksdata_sammenligning add column uendrede_kunder integer;   -- NULL before V19
+alter table bruksdata_endring add column kundeavvik_id bigint not null references bruksdata_kundeavvik;
+-- Backfilled for existing comparisons from their product changes (no customer-value categories).
+```
+
+The comparison compares the invoiced customer values with the candidate's after trimming, with empty =
+none, and with the bestillingsnummer fallback to the fakturareferanse (specs/012). A delta correction
+refuses a customer with ENDRET_FAKTURAREFERANSE, ENDRET_BESTILLINGSNUMMER or ENDRET_KUNDENUMMER
+(OQ-6, OQ-29).
+
 ## Design decisions (preserve these)
 
 1. **Traceability is structural**: `fakturalinje → bruksdata` (which usage),

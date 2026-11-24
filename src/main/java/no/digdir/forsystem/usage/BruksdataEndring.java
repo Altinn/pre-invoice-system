@@ -25,14 +25,15 @@ public record BruksdataEndring(
         BigDecimal deltaBelop,
         String avvistAv,
         OffsetDateTime avvistAt,
-        String avvistAarsak) {
+        String avvistAarsak,
+        Long kundeavvikId) {
 
-    public static BruksdataEndring fra(Long sammenligningId, BruksdataDifferanse.Endring endring) {
+    public static BruksdataEndring fra(Long sammenligningId, Long kundeavvikId, BruksdataDifferanse.Endring endring) {
         return new BruksdataEndring(null, sammenligningId,
                 endring.nokkel().organisasjonsnummer(), endring.nokkel().produktId(), endring.nokkel().type(),
                 endring.endringstype().name(), endring.gammelBruksdataId(), endring.nyBruksdataId(),
                 endring.gammeltAntall(), endring.nyttAntall(), endring.deltaAntall(),
-                endring.gammeltBelop(), endring.nyttBelop(), endring.deltaBelop(), null, null, null);
+                endring.gammeltBelop(), endring.nyttBelop(), endring.deltaBelop(), null, null, null, kundeavvikId);
     }
 
     public BigDecimal gammelVerdi() {

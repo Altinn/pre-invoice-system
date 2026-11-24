@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-24
 
-**Status**: Draft — stories 1–4 ready for planning; stories 5–6 specified as seams, gated on OQ-6 and OQ-29
+**Status**: Stories 1–3 implemented; story 4 ready; stories 5–6 specified as seams, gated on OQ-6 and OQ-29
 
 **Input**: Ticket from Økonomi about corrections (summarised in English; the ticket is the authority):
 
@@ -160,10 +160,13 @@ exactly A's two product deltas; B's changes remain pending on the next compariso
 2. **Given** customer A ticked, **When** V2 is generated, **Then** V2 contains every pending product
    change of A and nothing from unticked customers; V2's selection records the customer and its
    product changes.
-3. **Given** a ticked customer whose only deviations are customer-level (reference, kundenummer or
-   name changes), **Then** delta generation is refused with: «Endret referanse kan ikke korrigeres
-   med differanser. Det avventer avklaring med Økonomi (OQ-6).», naming the customers; the user can
-   untick them or dismiss them (story 4).
+3. **Given** a ticked customer with a changed fakturareferanse, bestillingsnummer or kundenummer,
+   **Then** delta generation is refused with «Endret fakturareferanse, bestillingsnummer eller
+   kundenummer kan ikke korrigeres med differanser før avregningsmåten er avklart med Økonomi
+   (OQ-6). Fjern krysset for …», naming the customers; the user can untick them or dismiss them
+   (story 4). A changed **name** does not refuse: the name is not in the LG04 file. A customer whose
+   only deviation is a name change has nothing to correct and is refused with «Disse kundene har
+   ingen endring i bruk som kan korrigeres».
 4. **Given** a ticked customer with both a reference change and product changes, **Then** delta
    generation is likewise refused for that customer, because the delta invoice would carry the new
    reference while the invoice it corrects carried the old one.
@@ -315,13 +318,16 @@ field («presumably `text1`», docs/07 OQ-6), format and whether it is mandatory
 **Selection and delta generation (story 3)**
 
 - **FR-009**: Selection MUST be per customer. Ticking a customer selects all its pending changes;
-  per-product checkboxes are removed. «Velg alle» selects every pending customer of the comparison
-  (all pages), and the selected count and net difference update live.
+  per-product checkboxes are removed. A customer a delta cannot correct (FR-011, or only a name
+  change) cannot be ticked and says why. «Velg alle» selects every customer of the comparison that
+  can be ticked (all pages), and the selected count and net difference update live.
 - **FR-010**: A correction's recorded selection MUST name the selected customers and every product
-  and customer-level change included, linked to the comparison.
+  change included, linked to the comparison. (Implemented as: the selected product changes, each
+  linked to its customer deviation; a customer is never selected without its changes.)
 - **FR-011**: In delta mode, generation MUST be refused, naming the customers, if any ticked customer
-  has a customer-level change (reference, kundenummer or name). The message MUST say this awaits
-  OQ-6 and point to the learning-center article.
+  has a changed fakturareferanse, bestillingsnummer or kundenummer. The message MUST say this awaits
+  OQ-6; the page links the learning-center article. A changed name alone does not refuse (it is not
+  in the LG04 file), but a customer with nothing but a name change has nothing to correct.
 - **FR-012**: All specs/007 generation rules (reason, stale baseline, one run in progress, zero-krone
   refusal, price version of the root run, version numbering, audit) MUST still hold.
 

@@ -27,24 +27,34 @@
         status <span class="ds-tag" th:text="${sammenligning.status()}">AAPEN</span>
     </p>
 
-    <div class="ds-alert bred" data-color="success" th:if="${antallEndringer == 0}">
+    <div class="ds-alert bred" data-color="success" th:if="${antallKunder == 0}">
         <h2 class="ds-heading" data-size="2xs">Ingen endringer</h2>
-        <p>Det nye grunnlaget er likt det som allerede er fakturert.</p>
+        <p>Det nye grunnlaget er likt det som allerede er fakturert, også kundenummer, fakturareferanse og
+            bestillingsnummer.</p>
     </div>
 
-    <section class="seksjon" th:if="${antallEndringer > 0}">
-        <h2 class="ds-heading" data-size="xs">Endringer</h2>
+    <section class="seksjon" th:if="${antallKunder > 0}" data-endring-omraade
+             th:attr="data-alle-antall=${antallVelgbare},data-alle-belop=${velgbartBelop}">
+        <h2 class="ds-heading" data-size="xs">Avvik per kunde</h2>
         <p class="ds-paragraph liten">
-            <strong th:text="${@tall.antall(antallEndringer)}">0</strong> endringer ·
-            <span th:text="${@tall.antall(sammenligning.uendredeRader())}">0</span> uendrede rader er skjult.
-            <span aria-live="polite"><strong data-valgt-antall>0</strong> valgt ·
-                volumdifferanse <strong data-valgt-volum>0</strong> ·
-                kostnadsdifferanse <strong data-valgt-kostnad>0</strong>.</span>
+            <strong th:text="${@tall.antall(antallKunder)}">0</strong> kunder med avvik<span
+                th:if="${sammenligning.uendredeKunder() != null}">
+                · <span th:text="${@tall.antall(sammenligning.uendredeKunder())}">0</span> uendrede kunder er skjult</span>.
+            <span class="ds-tag" data-size="sm" th:each="k : ${perKategori}"
+                  th:text="|${k.key}: ${k.value}|">Endret: 1</span>
+        </p>
+        <p class="ds-paragraph liten" aria-live="polite">
+            <strong data-valgt-antall>0</strong> kunder valgt ·
+            differanse <strong data-valgt-belop>0,00</strong> kr.
         </p>
         <form method="get" class="rad" th:action="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()})}">
             <ds-field class="ds-field">
-                <label class="ds-label" for="orgnr">Organisasjonsnummer</label>
-                <input class="ds-input" id="orgnr" name="orgnr" th:value="${orgnr}" inputmode="numeric">
+                <label class="ds-label" for="kunde">Kunde eller orgnr</label>
+                <input class="ds-input" id="kunde" name="kunde" th:value="${kunde}">
+            </ds-field>
+            <ds-field class="ds-field">
+                <label class="ds-label" for="kundenummer">Kundenummer</label>
+                <input class="ds-input" id="kundenummer" name="kundenummer" th:value="${kundenummer}">
             </ds-field>
             <ds-field class="ds-field">
                 <label class="ds-label" for="produktId">Produkt</label>
@@ -55,12 +65,11 @@
                 </select>
             </ds-field>
             <ds-field class="ds-field">
-                <label class="ds-label" for="endringstype">Endring</label>
-                <select class="ds-input" id="endringstype" name="endringstype">
+                <label class="ds-label" for="kategori">Endring</label>
+                <select class="ds-input" id="kategori" name="kategori">
                     <option value="">Alle</option>
-                    <option value="TILAGT" th:selected="${valgtEndringstype == 'TILAGT'}">Lagt til</option>
-                    <option value="ENDRET" th:selected="${valgtEndringstype == 'ENDRET'}">Endret</option>
-                    <option value="FJERNET" th:selected="${valgtEndringstype == 'FJERNET'}">Fjernet</option>
+                    <option th:each="k : ${kategorier}" th:value="${k.name()}" th:text="${k.tekst()}"
+                            th:selected="${valgtKategori == k.name()}">Endret</option>
                 </select>
             </ds-field>
             <ds-field class="ds-field">
@@ -74,47 +83,109 @@
             <button class="ds-button" data-variant="secondary" type="submit">Filtrer</button>
             <a class="ds-link" th:href="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()})}">Nullstill</a>
         </form>
-        <p class="ds-paragraph liten" th:if="${antallFiltrert != antallEndringer}"
-           th:text="|Viser ${antallFiltrert} av ${antallEndringer} endringer.|">Filtrert.</p>
+        <p class="ds-paragraph liten" th:if="${antallFiltrert != antallKunder}"
+           th:text="|Viser ${antallFiltrert} av ${antallKunder} kunder.|">Filtrert.</p>
         <form th:action="@{/bruksdata/sammenligninger/{id}/kjoring(id=${sammenligning.id()})}"
               method="post" hx-disabled-elt="find button" data-endring-utvalg>
         <th:block th:replace="~{layout :: csrf}"></th:block>
         <input type="hidden" name="grunnlagKjoringId" th:value="${grunnlag.id()}">
-        <p th:if="${sammenligning.status() == 'AAPEN'}">
+        <input type="hidden" name="alle" value="false" data-velg-alle-felt>
+        <p th:if="${sammenligning.status() == 'AAPEN' and antallVelgbare > 0}">
             <button class="ds-button" data-variant="secondary" data-size="sm" type="button"
-                    data-velg-alle>Velg alle</button>
+                    data-velg-alle th:text="${antallSider > 1} ? |Velg alle ${antallVelgbare} kunder| : 'Velg alle'"
+                    th:attr="data-velg-alle-tekst=${antallSider > 1} ? |Velg alle ${antallVelgbare} kunder| : 'Velg alle'">Velg alle</button>
         </p>
-        <table class="ds-table" data-size="sm" data-hover>
+        <noscript><style>tbody[data-kundeprodukter] { display: table-row-group !important; }
+            button[data-utvid] { display: none; }</style></noscript>
+        <table class="ds-table kundeavvik" data-size="sm">
             <thead>
             <tr>
-                <th>Velg</th><th>Endring</th><th>Orgnr</th><th>Produkt</th><th>Type</th>
-                <th class="hoyre">Før</th><th class="hoyre">Nå</th><th class="hoyre">Differanse</th>
+                <th>Velg</th><th>Kunde</th><th>U4 kundenummer</th><th>Endring</th>
+                <th class="hoyre">Produkter</th><th class="hoyre">Differanse (kr)</th>
             </tr>
             </thead>
-            <tbody>
-            <tr th:each="e : ${endringer}">
-                <td><input type="checkbox" name="endringId" th:value="${e.id()}"
-                           data-endring-checkbox th:attr="data-endring-type=${e.type()},data-endring-delta=${e.delta()}"
-                           th:disabled="${sammenligning.status() != 'AAPEN'}"
-                           th:aria-label="|Velg ${e.organisasjonsnummer()}, ${produktnavn[e.produktId()]}, differanse ${e.delta()}|"></td>
-                <td><span class="ds-tag" th:text="${e.endringstype()}">ENDRET</span></td>
-                <td th:text="${e.organisasjonsnummer()}">123456789</td>
-                <td th:text="${produktnavn[e.produktId()]} ?: ${e.produktId()}">Produkt</td>
-                <td th:text="${e.type()}">BRUKSVOLUM</td>
-                <td class="hoyre" th:text="${@tall.mengde(e.gammelVerdi())}">100</td>
-                <td class="hoyre" th:text="${@tall.mengde(e.nyVerdi())}">120</td>
-                <td class="hoyre"><strong th:text="|${e.delta().signum() > 0 ? '+' : ''}${@tall.mengde(e.delta())}|">+20</strong></td>
+            <th:block th:each="r : ${kunder}">
+            <tbody class="kunde">
+            <tr>
+                <td><input type="checkbox" name="orgnr" th:value="${r.avvik().organisasjonsnummer()}"
+                           data-endring-checkbox
+                           th:disabled="${sammenligning.status() != 'AAPEN' or !r.kanVelges()}"
+                           th:aria-label="|Velg ${r.avvik().navn()}, ${r.avvik().organisasjonsnummer()}|"
+                           th:attr="data-kunde-belop=${r.belop()},aria-describedby=${r.kanVelges()} ? null : |kan-ikke-${r.avvik().id()}|"></td>
+                <td>
+                    <div class="kundenavn">
+                        <button type="button" class="ds-button utvid" data-variant="tertiary" data-size="sm"
+                                data-utvid aria-expanded="false"
+                                th:if="${!r.endringer().isEmpty()}"
+                                th:attr="aria-controls=|kunde-${r.avvik().id()}|"
+                                th:aria-label="|Vis produktene til ${r.avvik().navn()}|">+</button>
+                        <strong th:text="${r.avvik().navn()}">Kunde AS</strong>
+                    </div>
+                    <span class="liten" th:text="${r.avvik().organisasjonsnummer()}">123456789</span>
+                    <ul class="kundeverdier liten"
+                        th:if="${r.avvik().har(T(no.digdir.forsystem.usage.Kundeavvikskategori).ENDRET_FAKTURAREFERANSE)
+                                 or r.avvik().har(T(no.digdir.forsystem.usage.Kundeavvikskategori).ENDRET_BESTILLINGSNUMMER)
+                                 or r.avvik().har(T(no.digdir.forsystem.usage.Kundeavvikskategori).ENDRET_KUNDENUMMER)
+                                 or r.avvik().har(T(no.digdir.forsystem.usage.Kundeavvikskategori).ENDRET_NAVN)}">
+                        <li th:if="${r.avvik().har(T(no.digdir.forsystem.usage.Kundeavvikskategori).ENDRET_FAKTURAREFERANSE)}"
+                            th:text="|Fakturareferanse: ${@kundeverdier.fakturert(r.avvik().fakturertFakturareferanse())} → ${@kundeverdier.en(r.avvik().kandidatFakturareferanse())}|">Fakturareferanse</li>
+                        <li th:if="${r.avvik().har(T(no.digdir.forsystem.usage.Kundeavvikskategori).ENDRET_BESTILLINGSNUMMER)}"
+                            th:text="|Bestillingsnummer: ${@kundeverdier.fakturert(r.avvik().fakturertBestillingsnummer())} → ${@kundeverdier.bestillingsnummer(r.avvik())}|">Bestillingsnummer</li>
+                        <li th:if="${r.avvik().har(T(no.digdir.forsystem.usage.Kundeavvikskategori).ENDRET_KUNDENUMMER)}"
+                            th:text="|Kundenummer: ${@kundeverdier.fakturert(r.avvik().fakturertKundenummer())} → ${@kundeverdier.en(r.avvik().kandidatKundenummer())}|">Kundenummer</li>
+                        <li th:if="${r.avvik().har(T(no.digdir.forsystem.usage.Kundeavvikskategori).ENDRET_NAVN)}"
+                            th:text="|Navn: ${@kundeverdier.fakturert(r.avvik().fakturertNavn())} → ${@kundeverdier.en(r.avvik().kandidatNavn())}|">Navn</li>
+                    </ul>
+                    <span class="liten" th:if="${!r.kanVelges()}" th:id="|kan-ikke-${r.avvik().id()}|"
+                          th:text="${r.hindrerDifferanse()} ? 'Kan ikke tas med ennå (OQ-6).' : 'Ingen endring i bruk å korrigere.'">Kan ikke tas med ennå.</span>
+                </td>
+                <td th:text="${r.avvik().kundenummer()} ?: '–'">5663</td>
+                <td>
+                    <span class="ds-tag" data-size="sm" th:each="k : ${r.avvik().kategoriliste()}"
+                          th:attr="data-color=${k.hindrerDifferanse()} ? 'warning' : null"
+                          th:text="${k.tekst()}">Endret</span>
+                </td>
+                <td class="hoyre" th:text="${r.endringer().size()}">2</td>
+                <td class="hoyre">
+                    <strong th:text="|${r.belop().signum() > 0 ? '+' : ''}${@tall.belop(r.belop())}|">+40,00</strong>
+                    <span class="liten" th:if="${r.manglerPris()}"> (mangler pris)</span>
+                </td>
             </tr>
-            <tr th:if="${endringer.isEmpty()}"><td colspan="8" class="tom">Ingen endringer passer filtrene.</td></tr>
             </tbody>
+            <tbody data-kundeprodukter th:id="|kunde-${r.avvik().id()}|" hidden th:if="${!r.endringer().isEmpty()}">
+            <tr class="produkthode">
+                <td></td><th scope="col">Produkt</th><th scope="col">Endring</th>
+                <th scope="col" class="hoyre">Før → nå</th><th scope="col" class="hoyre">Differanse</th>
+                <th scope="col" class="hoyre">Kr</th>
+            </tr>
+            <tr th:each="e : ${r.endringer()}">
+                <td></td>
+                <td><span th:text="${produktnavn[e.produktId()]} ?: ${e.produktId()}">Produkt</span>
+                    <span class="liten" th:text="${e.type()}">BRUKSVOLUM</span></td>
+                <td><span class="ds-tag" data-size="sm"
+                          th:text="${T(no.digdir.forsystem.usage.Kundeavvikskategori).valueOf(e.endringstype() == 'TILAGT' ? 'LAGT_TIL' : e.endringstype()).tekst()}">Endret</span></td>
+                <td class="hoyre" th:text="|${e.gammelVerdi() == null ? '–' : @tall.mengde(e.gammelVerdi())} → ${e.nyVerdi() == null ? '–' : @tall.mengde(e.nyVerdi())}|">100 → 120</td>
+                <td class="hoyre" th:text="|${e.delta().signum() > 0 ? '+' : ''}${@tall.mengde(e.delta())}|">+20</td>
+                <td class="hoyre" th:text="${r.linjebelop()[e.id()] == null} ? 'mangler pris' : |${r.linjebelop()[e.id()].signum() > 0 ? '+' : ''}${@tall.belop(r.linjebelop()[e.id()])}|">+40,00</td>
+            </tr>
+            </tbody>
+            </th:block>
+            <tbody th:if="${kunder.isEmpty()}"><tr><td colspan="6" class="tom">Ingen kunder passer filtrene.</td></tr></tbody>
         </table>
         <nav class="rad" aria-label="Sider" th:if="${antallSider > 1}">
             <a class="ds-button" data-variant="secondary" data-size="sm" th:if="${side > 1}"
-               th:href="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()},orgnr=${orgnr},produktId=${valgtProduktId},endringstype=${valgtEndringstype},fortegn=${valgtFortegn},side=${side - 1})}">Forrige</a>
+               th:href="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()},kunde=${kunde},kundenummer=${kundenummer},produktId=${valgtProduktId},kategori=${valgtKategori},fortegn=${valgtFortegn},side=${side - 1})}">Forrige</a>
             <span th:text="|Side ${side} av ${antallSider}|">Side 1 av 2</span>
             <a class="ds-button" data-variant="secondary" data-size="sm" th:if="${side < antallSider}"
-               th:href="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()},orgnr=${orgnr},produktId=${valgtProduktId},endringstype=${valgtEndringstype},fortegn=${valgtFortegn},side=${side + 1})}">Neste</a>
+               th:href="@{/bruksdata/sammenligninger/{id}(id=${sammenligning.id()},kunde=${kunde},kundenummer=${kundenummer},produktId=${valgtProduktId},kategori=${valgtKategori},fortegn=${valgtFortegn},side=${side + 1})}">Neste</a>
         </nav>
+        <div class="ds-alert bred" data-color="warning"
+             th:if="${sammenligning.status() == 'AAPEN' and kunder.?[hindrerDifferanse()].size() > 0}">
+            <p>Kunder med endret fakturareferanse, bestillingsnummer eller kundenummer kan ikke tas med i en
+                korrigering ennå. En differanse kan ikke rette en referanse, og hvordan en faktura skal krediteres og
+                sendes på nytt, er ikke avklart med Økonomi (OQ-6).
+                <a class="ds-link" th:href="@{/hjelp/forsta-systemet/korrigering-og-avregning}">Les mer</a></p>
+        </div>
         <div class="seksjon bred" th:if="${sammenligning.status() == 'AAPEN'}">
             <ds-field class="ds-field">
                 <label class="ds-label" for="aarsak">Hvorfor opprettes korrigeringen?</label>
