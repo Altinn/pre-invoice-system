@@ -1,9 +1,8 @@
 package no.digdir.forsystem.usage;
 
 import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
 import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CoderResult;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -78,16 +77,14 @@ public final class Bruksdatafil {
                 .onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT);
         ByteBuffer inn = ByteBuffer.wrap(innhold);
-        CharBuffer ut = CharBuffer.allocate(innhold.length + 1);
-        CoderResult r = dekoder.decode(inn, ut, true);
-        if (!r.isError()) {
-            r = dekoder.flush(ut);
-        }
-        if (r.isError()) {
+        String tekst;
+        try {
+            tekst = dekoder.decode(inn).toString();
+        } catch (CharacterCodingException e) {
+            // The decoder leaves the buffer at the first byte it could not read.
             throw new Regelbrudd("Fila er ikke lagret som UTF-8 (linje " + linje(innhold, inn.position())
                     + "), så æ, ø og å ville blitt feil. " + EXCEL_HINT);
         }
-        String tekst = ut.flip().toString();
         Matcher m = FEILKONVERTERT.matcher(tekst);
         if (m.find()) {
             long linje = tekst.substring(0, m.start()).chars().filter(c -> c == '\n').count() + 1;
