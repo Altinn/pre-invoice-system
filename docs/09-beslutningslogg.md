@@ -148,6 +148,18 @@ Viktigste konsekvens: den avtalte kortsiktige løsningen for kundedata ligger **
 i forsystemet (B-14). OQ-5 er dermed besvart på *kilde*; grensesnittet CRM→forsystem er
 fortsatt ukartlagt.
 
+### 2026-11-24 — Sak fra Økonomi: kunderegisteret fjernes (specs/018)
+
+Økonomi: «Det skal ikke være mulig å opprette kunder direkte fra forsystemet. Videre skal det
+ikke være avvik mellom kunderegister og DWH, da kunderegister = DWH (=integrasjon mot CRM).
+Fjerne kunderegister fra forsystem.» Bakgrunnen var forhåndsvisningen av DWH-eksporten, som
+tilbød å opprette manglende kunder fra fila og varslet når DWH og kunderegisteret hadde ulik
+fakturareferanse eller ulikt kundenummer.
+
+Dermed er også den åpne delen av OQ-5 besvart: grensesnittet CRM → forsystem *er*
+datavarehuset. To avklaringer samme dag (B-24): det registeret kunne som DWH ikke leverer,
+faller bort (→ OQ-28), og kontrollene som hvilte på registeret, går ut eller endres.
+
 ## Beslutninger
 
 | # | Beslutning | Kilde / dato | Konsekvens |
@@ -160,12 +172,12 @@ fortsatt ukartlagt.
 | B-06 | MVP: manuell sending (e-post til regnskap i VIS), CSV-opplasting, PDF-nedlasting | Oss (bekreftet av FEL-kontaktens rutinebeskrivelse) | Ingen leveranseautomatikk/kvitteringsinnlesing i MVP |
 | B-07 | Stack: Java 21, Spring Boot, PostgreSQL 16 + Flyway, Spring Data JDBC, Thymeleaf + htmx, Designsystemet | Oss, docs/02 | Gjenbruk av LG04-kode; én deploybar enhet; skjema versjonert |
 | B-08 | Azure-klar, ikke Azure-låst: porter/adaptere (UsageDataSource, CustomerSource, FileArchive, BrregOppslag), OIDC, 12-faktor-konfig, alt kjører offline med docker compose | Oss, docs/02 | Ingen Azure-SDK i kjernen; miljøvalg er en driftsbeslutning |
-| B-09 | Faktura grupperes per (kunde, kundenummer); ordre_nr ligger på faktura | Oss, docs/03 (av Ivars regler) | Ivars spesialtilfeller håndteres; OQ-1-sikker eksport |
+| B-09 | Faktura grupperes per ~~(kunde, kundenummer)~~ organisasjonsnummer (endret med B-24); ordre_nr ligger på faktura | Oss, docs/03 (av Ivars regler) | ~~Ivars spesialtilfeller håndteres~~ Flere kundenumre per orgnr støttes ikke lenger (OQ-28); OQ-1-sikker eksport |
 | B-10 | Full sporbarhet som struktur: linje → bruksdata + pris; kjøring → prisversjon; snapshots ved generering | Løsningsbeskrivelsens prinsipp | Historikk skrives aldri om; revisjon mulig |
 | B-11 | ~~Eksport: én LG04-ordre per linje inntil OQ-1 er avklart (trygt standardvalg)~~ Erstattet av B-16 | Oss | — |
-| B-12 | BRREG-validering ved registrering av kunde (ikke-eksisterende orgnr blokkerer; navneavvik varsler) | FinMod-arket («valideres mot BRREG i dag») | Lukket det ene stille gapet i kravsporingen (K-16) |
+| B-12 | ~~BRREG-validering ved registrering av kunde (ikke-eksisterende orgnr blokkerer; navneavvik varsler)~~ Bortfalt med B-24: forsystemet registrerer ikke kunder | FinMod-arket («valideres mot BRREG i dag») | — |
 | B-13 | ~~Ingen mva-beregning før OQ-11 er avklart; sammendrag viser filbeløp merket «mva uavklart»~~ Erstattet av B-17 | Oss, etter FEL-kontaktens svar | — |
-| B-14 | CRM er den avtalte kortsiktige løsningen for kunde- og avtaleinformasjon; forsystemets kunderegister er cache, dry-run-kilde og reserveløsning — ikke midlertidig master | Løsningsbeskrivelsen + CRM-tråden, 2026-08-18 | OQ-5 besvart på kilde. Register-UI beholdes uendret (`kilde='MANUELL'`), men import fra CRM blir hovedveien (docs/06 §2). Gjenstår: grensesnitt og tidspunkt |
+| B-14 | ~~CRM er den avtalte kortsiktige løsningen for kunde- og avtaleinformasjon; forsystemets kunderegister er cache, dry-run-kilde og reserveløsning — ikke midlertidig master~~ Erstattet av B-24 | Løsningsbeskrivelsen + CRM-tråden, 2026-08-18 | — |
 | B-15 | Testmiljøet får «Nullstill periode»: sletter en måneds kjøringer (også eksporterte) og bruksdataimporter for godt, bak flagget `forsystem.testverktoy.enabled` (lokalt og tt02, aldri prod) | Testerne, 2026-10-26 | Måneder kan testes ende-til-ende flere ganger med samme fil. Bryter med vilje B-10 og «eksportert er endelig», derfor bare der flagget er på; hendelsesloggen beholdes og registrerer nullstillingen |
 | B-16 | LG04 følger FELs Altinn-format (`test_3`): én ordre per faktura med hodelinje (linjenummer 0) og ett linjepar per produkt (1, 2, 3 …); produktnavn som artikkeltekst, VALUE_1 = antall × 100, buntnummer = datoen filen lages. FELs eksempelfil er golden-fil | FEL-kontakten, 2026-11-04 | Erstatter B-11. Kunden får én faktura med alle produktene; enhetskode (STK/KR) venter på regnskaps test (OQ-23) |
 | B-17 | Ulike referanser på én faktura gir én LG04-ordre per referanse og en advarsel (`DELT_REFERANSE`), ikke blokkering; VALUE_1 står tomt uten antall (Unit4 bruker 1,0); sum inkl. mva = Σ per faktura (sum × 1,25, avrundet til øre) | Oss + FEL-kontakten, 2026-11-04 (specs/008) | Produktspesifikke referanser (docs/01) virker; splitting testes i dry-run i desember fordi FEL ikke har testet den. E-posten til regnskap viser mva-tallene |
@@ -175,12 +187,13 @@ fortsatt ukartlagt.
 | B-21 | Advarsler må sjekkes ut («Funn akseptert») før godkjenning. Bare advarsler kan sjekkes ut; blokkerende funn rettes og kjøringen genereres på nytt. Både FORVALTER og GODKJENNER kan krysse av; hvem og når lagres på funnet og hver endring logges på kjøringen. Enheten er funnet, men alle advarsler med samme kode kan sjekkes ut i én handling. Avkrysningene låses ved godkjenning; en ny generering starter uten. Listene på fanen Kontroller kan lastes ned som CSV/XLSX; PDF via nettleserens utskrift | Økonomi (kickoff-listen, rad 34 og 35, 2026-11) (specs/013) | Godkjenning krever nå at en navngitt person har sett på hver advarsel. FORVALTER får krysse av fordi FEL ofte undersøker funnene; godkjenningen er fortsatt GODKJENNERs egen handling. Ingen kommentar ved avkrysning før Økonomi ber om det |
 | B-22 | Hendelsesloggen vises i sin helhet med blaing (50 per side) og filtre (dato, bruker, entitet, handling), og kan lastes ned komplett eller filtrert som XLSX/CSV. Tidspunkter vises i norsk tid; detaljene (jsonb) gjøres om til lesbar tekst, med `periode` som egen kolonne og rå JSON bevart. Nedlastingen logges | Økonomi (kickoff-listen, rad 24, 2026-11) (specs/014) | Ingen migrering eller indeks: loggen er liten (noen tusen rader i året). Ingen fritekstsøk i detaljene ennå — regnearket dekker det. Alle XLSX-nedlastinger har nå filterpiler og fast overskriftsrad. |
 | B-23 | Brukerveiledningen bor i appen som et læringssenter på `/hjelp`: Markdown-filer i repoet (`src/main/resources/hjelp/`), tegnet med commonmark ved oppstart. Ingen CMS og ingen skjermbilder. Oppstart og bygg feiler ved ødelagte lenker, manglende menyoppføring eller en kontrollkode uten løsningstekst, og en endring brukerne ser skal oppdatere artikkelen i samme PR | Produkteier (kickoff-ønsket om «veiledning i appen»), 2026-11 (specs/016) | Innholdet kan foreslås rettet i GitHub uten å kjøre appen, og leses like godt der. `docs/brukerveiledning.md` er nå bare en henvisning. Økonomi leser innholdet for riktighet før frigivelse |
+| B-24 | Forsystemet har ikke eget kunderegister. CRM er eneste master for kundedata og når forsystemet gjennom datavarehuset («kunderegister = DWH = integrasjon mot CRM»). Hver import lagrer kundedataene DWH leverte per organisasjonsnummer (navn, kundenummer, fakturareferanse, bestillingsnummer); genereringen bruker dem fra kjøringens import, én faktura per orgnr med organisasjonen selv som fakturamottaker. Avklaringer: (1) produktspesifikke fakturareferanser, flere kundenumre per orgnr (servicekode/tilleggstekst) og avvikende fakturamottaker faller bort — trengs de, må CRM/DWH levere dem (OQ-28); (2) `MANGLER_KUNDE`, `INAKTIV_AVTALE` og `AKTIV_KUNDE_UTEN_BRUK` går ut (DWH-flagget filtrerer allerede bort bruk uten aktiv avtale, og DWH leverer bare organisasjoner med bruk); `MANGLER_KUNDENUMMER` (blokkerende) gjelder nå orgnr der DWH ikke leverte kundenummer; ny blokkerende `MOTSTRIDENDE_KUNDEDATA` når importens rader for ett orgnr er uenige om kundenummer, fakturareferanse eller bestillingsnummer — forsystemet velger aldri én av dem | Økonomi (sak), 2026-11-24 (specs/018) | Erstatter B-14 og B-12; endrer B-09. OQ-5 besvart. Knappen «Opprett kunder fra fila», avviksvarslene i forhåndsvisningen, kundesiden og BRREG-oppslaget er fjernet; tabellene `kunde`, `kunde_referanse` og `kundenummer_regel` droppes i V18 (historikken ligger i hendelsesloggen og fakturaenes snapshots). Feil kundedata rettes i CRM og importeres på nytt. Egen CSV får fire valgfrie kundekolonner (må bekreftes med Økonomi) |
 
 ## Antakelser til bekreftelse
 
 | Antakelse | Status |
 |---|---|
-| ~~Forsystemets register-UI er den midlertidige løsningen for kundedata~~ | **Avkreftet 2026-08-18**: den kortsiktige løsningen ligger i CRM (B-14). Registeret er cache/fallback |
+| ~~Forsystemets register-UI er den midlertidige løsningen for kundedata~~ | **Avkreftet 2026-08-18**: den kortsiktige løsningen ligger i CRM (B-14). Registeret ble cache/fallback, og er fjernet 2026-11-24 (B-24): kundedata kommer fra CRM via DWH |
 | Kundenummer er 4 tegn og bør valideres som det i forsystemet | Faktum bekreftet (FEL/Økonomi); ikke implementert — kolliderer med demodataenes tydelige fakes (`KN-1001`) |
 | Alle Altinn-tjenesteeiere har 9-sifret norsk organisasjonsnummer | Til bekreftelse (OQ-14); CRM åpner for utenlandske virksomheter |
 | LG04 støtter i praksis dagens format uendret for nye produkter | Verifiseres i test-import med regnskap i desember |

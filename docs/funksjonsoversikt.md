@@ -46,22 +46,19 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-REG-PRIS-11 | Invoice threshold | `terskelverdi` per version (kr ex. mva per customer per month), 40,00 for new versions; editable only while UTKAST, audited, locked on activation. | POST `/prisversjoner/{id}/terskelverdi` | FORVALTER | specs/011, OQ-22 |
 | F-REG-PRIS-10 | Coverage in words | Each version states which billing periods it covers (a period is covered when its first day is within the dates); the new-version form explains the rule. | `Prisdekning` | LESER | specs/003, BF1 F05 |
 
-## Registry — Kunde (customers) and the FinMod special cases
+## Customer data — from CRM through the DWH (no registry)
+
+Forsystem has no customer registry (Økonomi, 2026-11-24; docs/09 B-24, specs/018). The former
+F-REG-KUN-01…12 (customer list/create/edit, fakturareferanser, kundenummer rules, product-specific
+references, several kundenummer per orgnr, shared kundenummer with tilleggstekst, deviating
+fakturamottaker, `kilde`, BRREG validation) were **removed**; their IDs are not reused. What the DWH
+does not deliver is OQ-28.
 
 | ID | Feature | Description | Where | Role | Ref |
 |---|---|---|---|---|---|
-| F-REG-KUN-01 | List customers | virksomhet, orgnr, fakturamottaker, avtalestatus. | GET `/kunder` | LESER | docs/03 V2 |
-| F-REG-KUN-02 | Create customer | orgnr (9 digits, validated), navn, fakturamottaker, avtalestatus. | GET `/kunder/ny`, POST `/kunder` | FORVALTER | docs/04 P1 |
-| F-REG-KUN-03 | Edit customer | Update navn, fakturamottaker, avtalestatus. | POST `/kunder/{id}` | FORVALTER | docs/04 P1 |
-| F-REG-KUN-04 | Unique orgnr | Duplicate orgnr rejected (DB unique + service check). | `KundeService` / DB | — | docs/03 V2 |
-| F-REG-KUN-05 | Deviating fakturamottaker | Invoice a different legal entity than the usage-generating orgnr. | `fakturamottaker_orgnr` | FORVALTER | docs/01 rule 1, OQ-7 |
-| F-REG-KUN-06 | Fakturareferanser (list/add/delete) | References per customer. | GET `/kunder/{id}`, POST `/kunder/{id}/referanser`, POST `/referanser/{id}/slett` | FORVALTER | docs/03 V2 |
-| F-REG-KUN-07 | Product-specific reference | A product-specific fakturareferanse/bestillingsnummer overrides the customer default. | `KundeReferanse` (produkt_id) | FORVALTER | docs/01 rule 2 |
-| F-REG-KUN-08 | Kundenummerregler (list/add/delete) | Map customer → Unit4 kundenummer, optionally per produkt/servicekode. | POST `/kunder/{id}/regler`, POST `/regler/{id}/slett` | FORVALTER | docs/03 V2 |
-| F-REG-KUN-09 | Multiple kundenummer per customer | Different servicekode/produkt → several kundenummer → several fakturaer. | `KundenummerRegel` | FORVALTER | docs/01 rule 3–4 |
-| F-REG-KUN-10 | Shared kundenummer across customers | Same kundenummer for several orgs, distinguished by tilleggstekst. | `KundenummerRegel.tilleggstekst` | FORVALTER | docs/01 rule 3 |
-| F-REG-KUN-11 | Temporary registry, CRM-ready | `kilde` column marks source; snapshots mean a future CRM switch never rewrites history. | `Kunde.kilde` | — | OQ-5, docs/06 §2 |
-| F-REG-KUN-12 | BRREG validation | On create/update, validate against Brønnøysund (data.brreg.no) behind a port: an unknown orgnr **blocks** (prod); a name mismatch is a **non-blocking warning** (flash on the customer page); permissive when BRREG is unreachable or offline (demo/test). | `BrregOppslag` / `BrregHttpOppslag` (prod) / `PermissivBrregOppslag` (offline); `KundeService.opprett`/`brregNavnAdvarsel`, `KundeController` | FORVALTER | K-16, docs/01 rule 5 |
+| F-KUN-01 | No customer maintenance | No page, form, button or endpoint creates or changes customer data; the former `/kunder/{id}` pages and POST `/bruksdata/last-opp/opprett-kunder` return 404. Wrong customer values are corrected in CRM and imported again. | — | — | specs/018 FR-001 |
+| F-KUN-02 | Customer values per import | Each import stores, per orgnr with used usage, the name, kundenummer, fakturareferanse and bestillingsnummer the source delivered, plus any values that disagreed between its rows. Insert-only; a superseded import keeps its rows. | `bruksdata_kunde` · `BruksdataKunde`, `UsageImportService` | — | docs/03 V17, specs/018 D1/D2 |
+| F-KUN-03 | Customer values from every source | DWH flagged/older file (organisation name, kundenummer, fakturareferanse, bestillingsnummer), DWH API (now also `organisation_name`, `bestillingsnummer`), and forsystem's own CSV (four optional columns). | `DwhCsv`, `DwhRespons`, `CsvUploadUsageSource` | — | `docs/csv-format.md`, specs/018 D3/D4 |
 
 ## Usage import — Bruksdata
 
@@ -86,9 +83,9 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-USG-17 | DWH completeness guard | Response with `nextLink`, non-2xx, malformed JSON or missing fields fails the fetch; empty month reported as not ready. | `DwhRespons`, `DabUsageClient` | — | OQ-19 |
 | F-USG-18 | Product-name mapping | DWH `product_name` → produkt + type, maintained in the UI; unmapped names reject. | GET/POST `/produkter/kildenavn` · `ProduktKildenavnService` | FORVALTER (LESER reads) | OQ-18 |
 | F-USG-19 | Raw-payload archive | Every DWH import archives the exact response with SHA-256 and fetch time; downloadable. | GET `/bruksdata/{id}/raadata` | LESER | K-09 |
-| F-USG-20 | Preview warnings | Non-blocking: DWH kundenummer/fakturareferanse ≠ registry; product total ±50 % vs previous period or missing. | `Forhaandsvisning.advarsler` | — | OQ-12 |
-| F-USG-22 | Upload of a DWH CSV export | The datavarehus's own CSV export of `mv_altinn_usage_monthly` (quoted, `NULL`, date column `maaned`, `transaction_month` or `transaction_date`) goes through the same aggregation, Kildenavn mapping and cross-check as an API fetch; the file is archived as the raw payload. Fallback while the API is unreachable (OQ-19). | POST `/bruksdata/last-opp` · `DwhCsv`, `DwhImportService.forhaandsvisFil` | FORVALTER | OQ-19 |
-| F-USG-23 | Create missing customers from a DWH export | From the upload preview: register the file's organisations that are not customers yet, with name, a default kundenummer rule and fakturareferanse/bestillingsnummer as the DWH carries them (from CRM), avtalestatus AKTIV. Each through normal validation and audit. Stopgap until CRM (OQ-5). | POST `/bruksdata/last-opp/opprett-kunder` · `DwhImportService.opprettManglendeKunder` | FORVALTER | OQ-5 |
+| F-USG-20 | Preview warnings | Non-blocking: product total ±50 % vs previous period or missing. (The DWH-vs-registry kundenummer/fakturareferanse warnings were removed in specs/018.) | `Forhaandsvisning.advarsler` | — | OQ-12 |
+| F-USG-22 | Upload of a DWH CSV export | The datavarehus's own CSV export of `mv_altinn_usage_monthly` (quoted, `NULL`, date column `maaned`, `transaction_month` or `transaction_date`) goes through the same aggregation and Kildenavn mapping as an API fetch; the file is archived as the raw payload. Fallback while the API is unreachable (OQ-19). | POST `/bruksdata/last-opp` · `DwhCsv`, `DwhImportService.forhaandsvisFil` | FORVALTER | OQ-19 |
+| F-USG-23 | «Kundedata» in the preview | The upload/fetch preview lists organisations the source delivered without kundenummer and organisations whose rows carry conflicting customer values. A plain import fact: it never blocks the import and compares nothing with forsystem. (Replaces the «Opprett N kunder fra fila» action, removed in specs/018.) | POST `/bruksdata/last-opp`, POST `/bruksdata/hent-dwh` · `Forhaandsvisning.kunder` | FORVALTER | specs/018 FR-002 |
 | F-USG-21 | Scheduled staging | Optional: stage previous month at 06:00 on the 7th as `MOTTATT`; FORVALTER confirms after re-validation. Never auto-commits. | `DwhImportScheduler`, POST `/bruksdata/{id}/bekreft` | FORVALTER | docs/06 §4 |
 
 ## Generation engine — fakturagrunnlag
@@ -96,13 +93,13 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | ID | Feature | Description | Where | Role | Ref |
 |---|---|---|---|---|---|
 | F-GEN-01 | Generate run for a period | For a period + the active prisversjon covering it, build fakturaer + fakturalinjer. | POST `/kjoringer` · `FakturakjoringService.generer` | FORVALTER | docs/04 P3 |
-| F-GEN-02 | Resolve customer from usage orgnr | Each usage orgnr resolved to a kunde. | `FakturakjoringService` | — | docs/04 P3 |
-| F-GEN-03 | Group by (kunde, kundenummer) | Invoices group by kundenummer, not by customer. | `FakturakjoringService` | — | docs/03 §2 |
-| F-GEN-04 | Assign kundenummer by product | Product-specific kundenummerregel wins, else the customer default. | `FakturakjoringService.velgRegel` | — | OQ-10 |
+| F-GEN-02 | Customer values from the run's import | Name, kundenummer, fakturareferanse and bestillingsnummer per orgnr come from `bruksdata_kunde` of the run's import (a correction run: its kandidat import). The name is shown as delivered (the DWH sends lower case), else the orgnr. | `FakturakjoringService` | — | specs/018 FR-006 |
+| F-GEN-03 | One invoice per orgnr | Each orgnr gets one invoice; fakturamottaker = the orgnr itself; `tilleggstekst` and line `servicekode` are empty. (Before specs/018: grouped by (kunde, kundenummer) via kundenummer rules.) | `FakturakjoringService` | — | docs/03 §2, specs/018 FR-009 |
+| F-GEN-04 | ~~Assign kundenummer by product~~ | Removed in specs/018: one kundenummer per orgnr from the DWH (OQ-28). | — | — | OQ-10, OQ-28 |
 | F-GEN-05 | BRUKSVOLUM lines | belop = antall × enhetspris, rounded half-up to 2 decimals. | `FakturakjoringService` | — | docs/04 P3 |
 | F-GEN-06 | Pass-through cost lines | Azure/SMS cost lines from bruksdata.belop (no price/antall). | `FakturakjoringService` | — | docs/04 P3 |
 | F-GEN-07 | Line description | e.g. «Bruk av melding januar 2027» (period label from the run parameter). | `FakturakjoringService` | — | docs/03 |
-| F-GEN-08 | Snapshots at generation | kundenummer, tilleggstekst, fakturamottaker, fakturareferanse, bestillingsnummer, servicekode snapshotted so later edits don't rewrite history. | `Faktura`/`Fakturalinje` | — | docs/03 §1 |
+| F-GEN-08 | Snapshots at generation | kundenummer, tilleggstekst, fakturamottaker, fakturareferanse, bestillingsnummer, servicekode snapshotted so a later import or edit doesn't rewrite history. | `Faktura`/`Fakturalinje` | — | docs/03 §1 |
 | F-GEN-09 | Structural traceability | Each line links to its bruksdata_id and pris_id; run links to prisversjon. | `Fakturalinje` | — | docs/03 §1 |
 | F-GEN-10 | Deterministic ordering | Invoices ordered by (orgnr, kundenummer); lines by (produkt kode, type); ordre_nr sequential. | `FakturakjoringService` | — | docs/05 |
 | F-GEN-11 | ordre_nr on faktura | Order id per invoice; enables splitting into LG04 orders at export. | `Faktura.ordre_nr` | — | docs/03 §5, OQ-1 |
@@ -110,27 +107,28 @@ covered by automated tests (152 tests; byte-exact LG04 golden) unless the row sa
 | F-GEN-13 | Totals = exact sum of lines | faktura.sum_belop = exact sum of line belop. | `FakturakjoringService` | — | docs/04 P3 |
 | F-GEN-15 | Run summary + email block | Run page: antall fakturaer, antall LG04-ordrer, antall linjer, sum labelled «eksl./inkl. mva uavklart» (OQ-11); a copyable block for the covering email to regnskap (OQ-8). | `FakturakjoringService.sammendrag`, GET `/kjoringer/{id}` | LESER | specs/002 US1, BF1 T15 |
 | F-GEN-16 | Usage reconciliation view | Per product × type: imported vs invoiced (rows, sum); every usage row kept off the invoice with the finding that blocked it (linked at generation); active products without usage listed. | GET `/kjoringer/{id}/avstemming` · `BruksdataavstemmingService` | LESER | specs/002 US2, BF1 T06/T10 |
-| F-GEN-17 | Customer name snapshot | `faktura.kundenavn` frozen at generation; older invoices show the registry name marked «(nåværende navn)». | `FakturakjoringService.kundenavn` | — | specs/002 D9 |
+| F-GEN-17 | Customer name snapshot | `faktura.kundenavn` and `faktura.organisasjonsnummer` frozen at generation; pages and exports read them from the invoice, never a live lookup (invoices from before V11 were backfilled in V17). | `FakturakjoringService.kundenavn` | — | specs/002 D9, specs/018 FR-013 |
 | F-GEN-18 | Invoice threshold | Ordinary runs give no invoice to a customer whose total over all its would-be invoices is not over the version's threshold; they are stored as `faktura_under_terskel`, listed on the Fakturaer tab and downloadable (CSV/XLSX) together with the invoice list. Correction runs are exempt. | `FakturakjoringService.bygg`, GET `/kjoringer/{id}/{fakturaliste,under-terskel}.{csv,xlsx}` | LESER (view), FORVALTER (generate) | specs/011, OQ-22 |
-| F-GEN-19 | Bestillingsnummer fallback | An empty or blank bestillingsnummer is snapshotted as the line's fakturareferanse; the registry is unchanged. Never adds an LG04 split. | `FakturakjoringService.Referansepar` | — | specs/012 |
+| F-GEN-19 | Bestillingsnummer fallback | An empty or blank bestillingsnummer is snapshotted as the line's fakturareferanse; the stored import values are unchanged. Never adds an LG04 split. | `FakturakjoringService.Referansepar` | — | specs/012 |
 | F-GEN-14 | Run + faktura screens | Run overview (invoices + findings) and faktura drill-down to lines/bruksdata. | GET `/kjoringer/{id}`, `/kjoringer/{id}/faktura/{fid}` | LESER | docs/04 P3 |
 
 ## Controls — kontrollfunn
 
 | ID | Feature | Description | Where | Role | Ref |
 |---|---|---|---|---|---|
-| F-CTRL-01 | MANGLER_KUNDE (blocking) | Usage orgnr with no kunde. | `FakturakjoringService` | — | docs/04 P3 |
-| F-CTRL-02 | MANGLER_KUNDENUMMER (blocking) | Customer without an applicable kundenummerregel. | `FakturakjoringService` | — | docs/04 P3 |
-| F-CTRL-03 | INAKTIV_AVTALE (blocking) | Customer avtalestatus ≠ AKTIV. | `FakturakjoringService` | — | docs/04 P3 |
+| F-CTRL-01 | ~~MANGLER_KUNDE (blocking)~~ retired | No longer raised (specs/018); kept so old runs show it. | `Kontrollkode` (`utgatt`) | — | docs/04 P3, specs/018 |
+| F-CTRL-02 | MANGLER_KUNDENUMMER (blocking) | The DWH delivered no kundenummer for an orgnr with usage; one finding per orgnr, linked to the usage kept off the invoice. | `FakturakjoringService` | — | docs/04 P3, specs/018 FR-007 |
+| F-CTRL-03 | ~~INAKTIV_AVTALE (blocking)~~ retired | No longer raised (specs/018): the DWH flag filters out usage without an active agreement. Old runs still show it. | `Kontrollkode` (`utgatt`) | — | docs/04 P3, OQ-13 |
 | F-CTRL-04 | MANGLER_PRIS (blocking) | Product without a price in the active version. | `FakturakjoringService` | — | docs/04 P3 |
 | F-CTRL-05 | MANGLER_KONTERING (blocking) | Product with NULL kontering. | `FakturakjoringService` | — | OQ-2 |
 | F-CTRL-06 | STORT_AVVIK (warning) | Customer sum deviates > ±30 % vs the previous period. | `FakturakjoringService` | — | docs/04 P3 |
 | F-CTRL-07 | NULLBELOP (warning) | Invoice has a zero-amount line. | `FakturakjoringService` | — | docs/04 P3 |
 | F-CTRL-08 | NY_KUNDE (warning) | Customer not invoiced in the previous period. | `FakturakjoringService` | — | docs/04 P3 |
-| F-CTRL-10 | AKTIV_KUNDE_UTEN_BRUK (warning) | Active customer with no usage row in the period. | `FakturakjoringService` | — | specs/003, BF1 T10 |
-| F-CTRL-11 | DELT_REFERANSE (warning) | Invoice lines carry different references; the LG04 export splits the invoice into one order per reference. | `FakturakjoringService` | — |
+| F-CTRL-10 | ~~AKTIV_KUNDE_UTEN_BRUK (warning)~~ retired | No longer raised (specs/018): the DWH delivers only organisations with usage. Old runs still show it. | `Kontrollkode` (`utgatt`) | — | specs/003, BF1 T10 |
+| F-CTRL-11 | DELT_REFERANSE (warning) | Invoice lines carry different references; the LG04 export splits the invoice into one order per reference. Since specs/018 only possible on older runs (one reference per orgnr). | `FakturakjoringService` | — |
 | F-CTRL-13 | UNDER_TERSKEL (warning) | One per run when customers are left out under the threshold: count, total and threshold; linked to every left-out usage row so the usage reconciliation explains them. | `FakturakjoringService` | — | specs/011, OQ-22 |
 | F-CTRL-14 | MANGLER_FAKTURAREFERANSE (warning) + list | One per invoice with a line without fakturareferanse (customer, orgnr, kundenummer, products). The Kontroller tab lists those invoices under «Fakturaer uten fakturareferanse», downloadable as CSV/XLSX. | `FakturakjoringService.utenFakturareferanse`, GET `/kjoringer/{id}/uten-fakturareferanse.{csv,xlsx}` | LESER | specs/012, OQ-15, OQ-24 |
+| F-CTRL-17 | MOTSTRIDENDE_KUNDEDATA (blocking) | The import's rows for one orgnr disagree on kundenummer, fakturareferanse or bestillingsnummer; lists the values, puts none of the orgnr's usage on an invoice. Forsystem never picks one. | `FakturakjoringService` | — | specs/018 FR-008 |
 | F-CTRL-09 | Findings surfaced in UI | Blocking + warnings shown on the run and per-faktura. | GET `/kjoringer/{id}` | LESER | docs/04 P3 |
 | F-CTRL-12 | Control codes explained | Kontroller tab explains both severities and every code (definition and severity live on `Kontrollkode`); generation refuses a code raised with the wrong severity. | `Kontrollkode`, `kjoring/kontroller.html` | LESER | specs/010 |
 | F-CTRL-15 | Accept warnings («Funn akseptert») | A FORVALTER or GODKJENNER ticks off an ADVARSEL finding while the run is GENERERT, per finding or for every warning of one code; who and when are stored on the finding (`akseptert_av`/`akseptert_at`) and each change is logged on the run (`AKSEPTERTE_FUNN` / `ANGRET_AKSEPT`). Blocking findings cannot be accepted (service and DB check). Accepted warnings no longer count on the Kontroller badge or the run list; the Oversikt says «N advarsler, gjennomgått og sjekket ut. Hindrer ikke godkjenning». Frozen from approval on; a regenerated run starts with none accepted. | `FakturakjoringService.settAksept`/`settAkseptForKode`, POST `/kjoringer/{id}/kontrollfunn/{funnId}/aksept`, POST `/kjoringer/{id}/kontrollfunn/aksept` | FORVALTER, GODKJENNER | specs/013 |
@@ -230,7 +228,7 @@ MVP» and docs/06.
 |---|---|---|---|
 | N-01 | Azure deployment (Container Apps/AKS, managed identity, Entra ID, Key Vault) | No environment available yet; seams are ready. | docs/06, runbook |
 | N-02 | AzureBlobArchive adapter | Deliberately not shipped to avoid an untested Azure SDK dependency; `FileArchive` port is ready. | docs/02, docs/06 |
-| N-03 | CRM / Dynamics 365 as customer source | Decision pending; local registry + `CustomerSource` seam. | OQ-5, docs/06 §2 |
+| N-03 | Direct CRM / Dynamics 365 import | Not planned: CRM reaches forsystem through the DWH (F-KUN-02). Customer data the DWH does not deliver is unsupported. | OQ-5, OQ-28, docs/06 §2 |
 | N-04 | Datavarehus direct read | Contract undefined; CSV is source + fallback. | OQ-4, docs/06 §1 |
 | N-05 | Automated delivery to DFØ + receipt ingestion | Manual download/send in MVP. | OQ-8, docs/06 §3 |
 | N-06 | Scheduling (cron generation) | Manual «Generer» in MVP; generation is a service method with an explicit period. | docs/06 §4 |
@@ -249,11 +247,12 @@ Facts not yet decided; the design stays safe while they are open (never invent a
 | OQ-2 | Kontering (konto, dims, artikkel_id) per product | F-REG-PROD-05, F-CTRL-05, F-EXP-06 |
 | OQ-3 | SMS cost source & format | F-USG-03, F-USG-15 |
 | OQ-4 | Datavarehus contract | F-USG-02, N-04 |
-| OQ-5 | CRM readiness / temporary governance | F-REG-KUN-11, N-03 |
+| OQ-5 | CRM interface (answered: the DWH) | F-KUN-01..03, N-03 |
 | OQ-6 | Avregning mechanism | N-07 |
-| OQ-7 | Rules for deviating invoice recipient | F-REG-KUN-05 |
+| OQ-7 | Rules for deviating invoice recipient | F-GEN-03 (fakturamottaker = orgnr) |
 | OQ-8 | DFØ delivery channel + receipts; LG04 line separator | F-EXP-*, N-05 |
 | OQ-9 | PDF retention / hosting | F-EXP-08, N-09 |
-| OQ-10 | orgnr ↔ kundenummer mapping | F-GEN-04, F-REG-KUN-09/10 |
+| OQ-10 | orgnr ↔ kundenummer mapping | F-GEN-03, F-CTRL-02, F-CTRL-17 |
 | OQ-15 | Mandatory customer fields (fakturareferanse as warning for now) | F-CTRL-14 |
-| OQ-24 | Fakturareferanse: product-row inheritance; run list vs registry-wide list | F-CTRL-14, F-REG-KUN-07 |
+| OQ-24 | Fakturareferanse: run list vs a list of all customers ((a) moot since specs/018) | F-CTRL-14 |
+| OQ-28 | Customer data the DWH does not deliver (product references, several kundenummer, deviating recipient) | F-GEN-03, F-KUN-02 |

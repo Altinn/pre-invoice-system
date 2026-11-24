@@ -46,15 +46,16 @@ som importerer i Unit4 og sender EHF.
 Én webapplikasjon som erstatter Excel + psql + manuell beregning. Hele månedssyklusen
 kjører ende til ende, offline, med `docker compose up` (demo-datasett følger med).
 
-- **Registre**: kunder (med alle Ivars spesialtilfeller: avvikende fakturamottaker,
-  produktspesifikke referanser, flere/delte kundenumre), produkter med kontering,
-  versjonert prisliste. BRREG-oppslag ved registrering.
+- **Registre**: produkter med kontering, versjonert prisliste. Kundedata (navn,
+  kundenummer, fakturareferanse, bestillingsnummer) kommer fra CRM via datavarehuset
+  med bruksdataene; forsystemet har ikke eget kunderegister (specs/018, 2026-11-24).
 - **Bruksdata**: CSV-opplasting med validering og forhåndsvisning før lagring;
   alt-eller-ingenting-import; re-import erstatter.
 - **Generering**: fakturagrunnlag per periode — linjer per produkt, fakturaer per
-  kundenummer, full sporbarhet (linje → bruksdata + pris), snapshots ved generering.
-- **Kontroller**: fem blokkerende (manglende kunde/kundenummer/pris/kontering, inaktiv
-  avtale) og tre varsler (stort avvik, nullbeløp, ny kunde). Blokkerende funn hindrer
+  organisasjonsnummer (fra specs/018; før det per kundenummer), full sporbarhet (linje → bruksdata + pris), snapshots ved generering.
+- **Kontroller**: blokkerende (manglende kundenummer, motstridende kundedata, manglende
+  pris/kontering; «manglende kunde» og «inaktiv avtale» utgikk med kunderegisteret i specs/018)
+  og varsler (stort avvik, nullbeløp, ny kunde). Blokkerende funn hindrer
   godkjenning — feilen som i dag oppdages i Unit4-importen, slipper ikke ut herfra.
 - **Godkjenning**: eksplisitt manuelt steg, egen rolle, alt auditlogget.
 
@@ -80,8 +81,8 @@ midlertidig løsning, 7 som venter på data/bekreftelse fra eier, 0 gap**.
 
 Java 21 / Spring Boot, PostgreSQL med Flyway-versjonert skjema, server-rendret UI med
 Designsystemet. Alle eksterne avhengigheter ligger bak porter: bruksdata
-(CSV nå / datavarehus-API senere), kundekilde (lokalt register nå / D365 senere),
-filarkiv (disk nå / Blob i prod), BRREG. **Azure-klar, ikke Azure-låst**: ingen
+(CSV / datavarehus-API, som også bærer kundedataene fra CRM),
+filarkiv (disk nå / Blob i prod). **Azure-klar, ikke Azure-låst**: ingen
 Azure-SDK i kjernen, OIDC mot hvilken som helst identitetsleverandør, alt kjører
 offline lokalt. Detaljer i [docs/02](02-architecture.md).
 
@@ -104,7 +105,8 @@ timeline
 2. **Kolonnekontrakt** for `mv_altinn_usage_monthly` fra plattformteamet — avgjør
    produktkode-mapping (OQ-4).
 3. **Prisliste 2027** legges inn og aktiveres i UI-et (ingen kode).
-4. **CRM-beslutning 10. august** — og hvem som eier kundedata i mellomfasen (OQ-5).
+4. ~~**CRM-beslutning 10. august** — og hvem som eier kundedata i mellomfasen (OQ-5).~~
+   Avklart 2026-11-24: CRM via datavarehuset (B-24).
 5. **FEL-kontakten/regnskap**: flere beløpslinjer per LG04-ordre (OQ-1), mva-behandling i
    e-postsammendraget (OQ-11), avtale test-import i desember.
 6. **Miljøer** fra platform ([#3809](https://github.com/Altinn/altinn-platform/issues/3809))
@@ -116,7 +118,8 @@ Fra [docs/06](06-future.md), i prioritert rekkefølge slik vi ser det:
 
 1. **Datavarehus-adapter** — API-et finnes allerede; realistisk før desember om
    sikkerhetslaget lander. Da forsvinner det manuelle CSV-uttrekket.
-2. **CRM-integrasjon (D365)** — kundedata leses derfra; registeret blir lesekopi.
+2. ~~**CRM-integrasjon (D365)**~~ — ikke planlagt: kundedata fra CRM kommer via
+   datavarehuset (B-24). Det DWH ikke leverer, er OQ-28.
 3. **Automatisk leveranse + kvittering** — e-posten til regnskap erstattes av
    maskinell overføring med statussporing.
 4. **Planlagt kjøring** (cron etter den 6.) med varsling til godkjenner.

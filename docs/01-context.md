@@ -31,19 +31,19 @@ billed; every invoice traceable back to usage data, agreements and prices.
 The 2026-08-18 revision sharpens two boundaries that matter to us:
 
 - **The warehouse attaches usage to the right tjenesteeier**, checks it against active
-  agreements and filters out non-billable usage. Our `INAKTIV_AVTALE` control is therefore a
-  second net, and usage coupled to the *wrong* orgnr is not something forsystem can detect
+  agreements and filters out non-billable usage. Forsystem therefore does not check
+  avtalestatus itself (the former `INAKTIV_AVTALE` second net was retired in specs/018), and usage coupled to the *wrong* orgnr is not something forsystem can detect
   (OQ-12 — how such errors are found and handled is unresolved, owned by Datavarehus + Kunde).
 - **Kundenummer is checked in two places**: forsystem before the basis is sent, and Unit4 at
   LG04 import, which flags kundenummer that are *missing, unknown, wrong or deactivated*.
-  Forsystem can only see "missing" (presence of a `kundenummer_regel`); the other three need
+  Forsystem can only see "missing" (the DWH delivered no kundenummer for the orgnr); the other three need
   Unit4's customer list, which we neither have nor have asked for.
 
 ### Authoritative sources (decided)
 
 | Data | Master | Notes |
 |---|---|---|
-| Customer & agreement info (orgnr, name, fakturamottaker, fakturareferanse, bestillingsnummer, avtalestatus) | CRM (Dynamics 365) | **The agreed short-term solution lives in CRM** (2026-08-18), not in forsystem. The fields exist on the **Altinn integration/avtale** in the test environment: organisasjonsnummer, fakturaadresse/fakturamottaker, referanse, bestillingsnummer, kundenummer i Unit4, avtalestatus. Kundeteamet loads the real Altinn customer data once Økonomi confirms the field set; validation rules are being defined (OQ-13/14/15). **The interface CRM → forsystem is still unmapped and undated (OQ-5)**, so our registry remains the working source for the December dry-run and the offline fallback. |
+| Customer & agreement info (orgnr, name, fakturamottaker, fakturareferanse, bestillingsnummer, avtalestatus) | CRM (Dynamics 365) | **The agreed short-term solution lives in CRM** (2026-08-18), not in forsystem. The fields exist on the **Altinn integration/avtale** in the test environment: organisasjonsnummer, fakturaadresse/fakturamottaker, referanse, bestillingsnummer, kundenummer i Unit4, avtalestatus. Kundeteamet loads the real Altinn customer data once Økonomi confirms the field set; validation rules are being defined (OQ-13/14/15). **The interface CRM → forsystem is the datavarehus** (Økonomi, 2026-11-24, specs/018): the DWH export carries name, kundenummer, fakturareferanse and bestillingsnummer per orgnr, and forsystem stores them per import and puts them on the invoice. Forsystem keeps **no customer registry** and cannot create or edit customers; wrong values are corrected in CRM and imported again. |
 | Usage & cost data (bruksvolum, Azure costs, fakturaperiode) | Datavarehus (**finopsdevsa** — PostgreSQL, operated by The platform team on the platform side; the "Datavarehus BOD" label in the løsningsbeskrivelse diagram is a misnomer) | Included in invoicing **from 2027-01-01**. Basis exposed as materialized views + a Data API Builder endpoint (`mv_altinn_usage_monthly`); API security layer pending (FEL↔platform). **Complete billable basis on the 6th of each month** — Azure costs are final 5 days into the following month. MVP uses CSV upload behind a port. |
 | SMS costs | **Unresolved** (Varsling vs Datavarehus) | Source today: supplier extracts. Must be traceable to the right tjenesteeier. |
 | Prices, price versions, product catalog | **Forsystem (this system)** | No authoritative product catalog exists or will exist in time; products and prices are registered and maintained manually here, with a temporary stewardship process. |
@@ -53,6 +53,11 @@ The 2026-08-18 revision sharpens two boundaries that matter to us:
 
 These break the old system's assumptions (one line per customer, one reference per customer,
 1:1 orgnr↔kundenummer) and must be native in the new model:
+
+> **Since specs/018 (2026-11-24)** forsystem takes one kundenummer, one fakturareferanse and one
+> bestillingsnummer per orgnr from the DWH, and the fakturamottaker is the orgnr itself. Rules 1–4
+> below are therefore **not supported** unless CRM/DWH starts delivering them (OQ-28). Invoices
+> generated before specs/018 keep their snapshots.
 
 1. **Deviating invoice recipient**: another legal entity than the usage-generating orgnr can
    receive the invoice (example: Digitale Helgeland's usage invoiced to Brønnøy kommune).
@@ -66,7 +71,8 @@ These break the old system's assumptions (one line per customer, one reference p
 4. **Multiple invoice lines per customer**, driven by business rules (servicekode,
    tilleggstekst, product).
 5. **Controls before invoicing**: avtalestatus must be active; orgnr/name validated against
-   BRREG (Brønnøysundregistrene).
+   BRREG (Brønnøysundregistrene). Both now happen upstream: the DWH filters out usage without an
+   active agreement, and orgnr/name are CRM's data (specs/018 removed forsystem's own checks).
 
 ## The old system (`../agresso`) — what it teaches
 
@@ -127,10 +133,10 @@ lock the format character-by-character.
 | FinMod | The finance/price model program this work belongs to |
 | Kundenummer | Customer id in Unit4 (apar_id in LG04); **4 characters** (FEL contact, 2026-08-18) |
 | Orgnr | Organisasjonsnummer, 9-digit legal entity id |
-| Avtalestatus | Agreement status; must be active to invoice. In CRM only *aktiv*/*inaktiv*; the exact meaning of "aktiv" is unresolved (OQ-13) |
+| Avtalestatus | Agreement status; must be active to invoice. In CRM only *aktiv*/*inaktiv*; the exact meaning of "aktiv" is unresolved (OQ-13). Checked by the DWH, not by forsystem |
 | Prisversjon | Versioned price list (yearly) |
 | Bruksdata | Usage data (volume/costs) per orgnr, product, period |
 | Avregning | Settlement/true-up mechanism — undefined, future scope |
 | Bestillingsnummer | The customer's own PO/order number, printed on the invoice; Unit4's and the FinMod sheet's name for what CRM first called "kundens PO-/ordrenummer" |
 | Artikkel-ID | Unit4 article number that drives correct kontering; mastered in Unit4, copied into `produkt` |
-| BRREG | Brønnøysund register — validation source for orgnr/names |
+| BRREG | Brønnøysund register — validation source for orgnr/names. Forsystem no longer looks it up (the lookup served manual customer registration, removed in specs/018) |

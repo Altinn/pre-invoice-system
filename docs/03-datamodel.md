@@ -11,14 +11,12 @@ data-element sheet (Norwegian). Requires PostgreSQL 15+ (`unique nulls not disti
 erDiagram
   produkt ||--o{ pris : ""
   prisversjon ||--o{ pris : ""
-  kunde ||--o{ kunde_referanse : ""
-  produkt ||--o{ kunde_referanse : ""
-  kunde ||--o{ kundenummer_regel : ""
 ```
 
 ```mermaid
 erDiagram
   bruksdata_import ||--o{ bruksdata : ""
+  bruksdata_import ||--o{ bruksdata_kunde : ""
   fakturakjoring ||--o{ faktura : ""
   faktura ||--o{ fakturalinje : ""
   bruksdata ||--o{ fakturalinje : ""
@@ -26,8 +24,9 @@ erDiagram
   fakturakjoring ||--o{ eksportfil : ""
 ```
 
-Cross-links not drawn: `faktura → kunde`, `fakturalinje → produkt/pris`,
-`fakturakjoring → prisversjon`, `bruksdata → produkt`.
+Cross-links not drawn: `fakturalinje → produkt/pris`,
+`fakturakjoring → prisversjon`, `fakturakjoring → bruksdata_import`, `bruksdata → produkt`. An
+invoice identifies its customer by `organisasjonsnummer` (V17); there is no customer table.
 
 ## V1__grunnregistre.sql — products and prices
 
@@ -63,40 +62,15 @@ create table pris (
 );
 ```
 
-## V2__kunderegister.sql — temporary customer registry (until CRM)
+## V2__kunderegister.sql — customer registry (dropped in V18)
 
-```sql
-create table kunde (
-    id                    bigint generated always as identity primary key,
-    organisasjonsnummer   text not null unique check (organisasjonsnummer ~ '^[0-9]{9}$'),
-    virksomhetsnavn       text not null,
-    fakturamottaker_orgnr text,              -- deviating recipient: another legal entity
-    avtalestatus          text not null default 'AKTIV'
-        check (avtalestatus in ('AKTIV', 'INAKTIV', 'UNDER_AVKLARING')),
-    kilde                 text not null default 'MANUELL',   -- becomes 'CRM' when D365 takes over
-    oppdatert_av          text not null,
-    oppdatert_at          timestamptz not null default now()
-);
-
-create table kunde_referanse (
-    id                bigint generated always as identity primary key,
-    kunde_id          bigint not null references kunde,
-    produkt_id        bigint references produkt,   -- null = customer default; product row overrides
-    fakturareferanse  text,
-    bestillingsnummer text,
-    unique nulls not distinct (kunde_id, produkt_id)
-);
-
-create table kundenummer_regel (
-    id            bigint generated always as identity primary key,
-    kunde_id      bigint not null references kunde,
-    kundenummer   text not null,               -- master: Unit4
-    produkt_id    bigint references produkt,
-    servicekode   text,                        -- e.g. Utdanningsdirektoratet: two servicekoder
-    tilleggstekst text,                        -- e.g. Politiet: shared kundenummer, distinct text
-    unique nulls not distinct (kunde_id, produkt_id, servicekode)
-);
-```
+V2 created a local customer registry: `kunde` (orgnr, name, fakturamottaker, avtalestatus, kilde),
+`kunde_referanse` (fakturareferanse/bestillingsnummer per customer, optionally per product) and
+`kundenummer_regel` (Unit4 kundenummer per customer, optionally per product/servicekode, with
+tilleggstekst). Økonomi decided on 2026-11-24 that forsystem keeps no customer registry: CRM is the
+master and reaches forsystem through the DWH (docs/09 B-24, specs/018). Customer values now come
+with each import (`bruksdata_kunde`, V17), and V18 drops the three tables. Their history is in
+`hendelseslogg` (entities `KUNDE`, `KUNDE_REFERANSE`, `KUNDENUMMER_REGEL`) and in invoice snapshots.
 
 ## V3__bruksdata.sql — usage input (CSV now, DWH later, same tables)
 
@@ -148,14 +122,14 @@ create unique index en_aktiv_kjoring_per_periode
 create table faktura (
     id                    bigint generated always as identity primary key,
     kjoring_id            bigint not null references fakturakjoring,
-    kunde_id              bigint not null references kunde,
+    kunde_id              bigint not null references kunde,  -- replaced by organisasjonsnummer (V17), dropped in V18
     faktura_uuid          uuid not null unique,   -- UUIDv7; used in PDF filenames
     ordre_nr              integer not null,       -- order_id within the LG04 file
     kundenummer           text not null,          -- snapshot at generation
-    tilleggstekst         text,
-    fakturamottaker_orgnr text not null,          -- snapshot at generation
+    tilleggstekst         text,                   -- NULL for invoices generated after specs/018
+    fakturamottaker_orgnr text not null,          -- snapshot at generation; = organisasjonsnummer since specs/018
     sum_belop             numeric(12,2) not null,
-    unique (kjoring_id, kunde_id, kundenummer),
+    unique (kjoring_id, kunde_id, kundenummer),   -- V17: (kjoring_id, organisasjonsnummer, kundenummer)
     unique (kjoring_id, ordre_nr)
 );
 
@@ -169,7 +143,7 @@ create table fakturalinje (
     belop             numeric(12,2) not null,
     pris_id           bigint references pris,       -- traceability to the price used
     bruksdata_id      bigint references bruksdata,  -- traceability to the usage basis
-    servicekode       text,
+    servicekode       text,                         -- NULL for lines generated after specs/018
     fakturareferanse  text,                         -- snapshot at generation
     bestillingsnummer text                          -- snapshot at generation; empty → fakturareferanse (specs/012)
 );
@@ -179,7 +153,7 @@ create table kontrollfunn (
     kjoring_id  bigint not null references fakturakjoring,
     faktura_id  bigint references faktura,
     alvorlighet text not null check (alvorlighet in ('BLOKKERENDE', 'ADVARSEL')),
-    kode        text not null,      -- 'MANGLER_KUNDENUMMER','INAKTIV_AVTALE','STORT_AVVIK',...
+    kode        text not null,      -- 'MANGLER_KUNDENUMMER','MOTSTRIDENDE_KUNDEDATA','STORT_AVVIK',...
     melding     text not null
 );
 
@@ -289,7 +263,7 @@ create table kontrollfunn_bruksdata (
     primary key (kontrollfunn_id, bruksdata_id)
 );
 
--- V11: customer name frozen at generation (NULL for older invoices).
+-- V11: customer name frozen at generation (NULL for older invoices; backfilled and NOT NULL since V17).
 alter table faktura add column kundenavn text;
 ```
 
@@ -311,7 +285,7 @@ alter table fakturakjoring add constraint fakturakjoring_tekster_satt check (
 ## V14 — invoice threshold (specs/011-terskelverdi)
 
 ```sql
--- Kroner ex. mva per customer per month; NULL = no threshold. Locked with the version on activation.
+-- Kroner ex. mva per customer (orgnr since specs/018) per month; NULL = no threshold. Locked with the version on activation.
 alter table prisversjon add column terskelverdi numeric(12,2) check (terskelverdi >= 0);
 update prisversjon set terskelverdi = 40.00;
 
@@ -320,14 +294,14 @@ update prisversjon set terskelverdi = 40.00;
 create table faktura_under_terskel (
     id bigint generated always as identity primary key,
     kjoring_id bigint not null references fakturakjoring,
-    kunde_id bigint not null references kunde,
+    kunde_id bigint not null references kunde,  -- nullable in V17, dropped in V18
     organisasjonsnummer text not null, kundenavn text not null, kundenummer text not null,
     tilleggstekst text,
     sum_belop numeric(12,2) not null, antall_linjer integer not null check (antall_linjer >= 1),
     kundesum numeric(12,2) not null,
     terskelverdi numeric(12,2) not null check (kundesum <= terskelverdi),
     kontrollfunn_id bigint not null references kontrollfunn,
-    unique (kjoring_id, kunde_id, kundenummer)
+    unique (kjoring_id, kunde_id, kundenummer)  -- V17: (kjoring_id, organisasjonsnummer, kundenummer)
 );
 ```
 
@@ -343,15 +317,64 @@ alter table kontrollfunn
     add constraint kontrollfunn_aksept_bare_advarsel check (akseptert_at is null or alvorlighet = 'ADVARSEL');
 ```
 
+## V17–V18 — customer data from the DWH, registry removed (specs/018-fjern-kunderegister)
+
+```sql
+-- V17 (additive). The customer values one import delivered for one organisation. Insert-only like
+-- bruksdata and bruksdata_kilde; a superseded import keeps its rows.
+create table bruksdata_kunde (
+    id                  bigint generated always as identity primary key,
+    import_id           bigint not null references bruksdata_import,
+    organisasjonsnummer text not null,
+    virksomhetsnavn     text,                    -- as delivered (the DWH sends lower case)
+    kundenummer         text,                    -- NULL => MANGLER_KUNDENUMMER at generation
+    fakturareferanse    text,                    -- NULL => MANGLER_FAKTURAREFERANSE (warning)
+    bestillingsnummer   text,                    -- NULL => fallback to fakturareferanse (specs/012)
+    motstridende        text[] not null default '{}',  -- e.g. 'kundenummer: 5663 | 5664' => MOTSTRIDENDE_KUNDEDATA
+    constraint bruksdata_kunde_unik unique (import_id, organisasjonsnummer)
+);
+-- Backfilled for existing imports from the registry: customer default reference, kundenummer of the rule
+-- without product (else the lowest rule); an orgnr without a customer gets an empty row.
+
+alter table faktura add column organisasjonsnummer text;       -- backfilled from kunde, then NOT NULL
+alter table faktura
+    alter column kundenavn set not null,                         -- backfilled from kunde where NULL
+    alter column kunde_id drop not null,
+    add constraint faktura_unik_orgnr unique (kjoring_id, organisasjonsnummer, kundenummer);
+alter table faktura_under_terskel
+    alter column kunde_id drop not null,
+    add constraint faktura_under_terskel_unik_orgnr unique (kjoring_id, organisasjonsnummer, kundenummer);
+
+-- V18. Take a pg_dump of the three tables first (docs/runbook.md).
+alter table faktura drop column kunde_id;
+alter table faktura_under_terskel drop column kunde_id;
+drop table kunde_referanse;
+drop table kundenummer_regel;
+drop table kunde;
+```
+
+One `bruksdata_kunde` row per organisation with at least one used usage row in the import (flagged DWH
+file: flag-1 rows in the period; other formats: all valid rows), so every orgnr in an import's
+`bruksdata` has exactly one row. Generation reads the rows of the run's import
+(`fakturakjoring.bruksdata_import_id`; for a correction run, its kandidat import). Old runs keep
+`tilleggstekst`/`servicekode` values and may have several kundenummer per orgnr, which is why
+`kundenummer` stays in the new unique keys. `kontrollfunn.kode` may hold the retired codes
+`MANGLER_KUNDE`, `INAKTIV_AVTALE` and `AKTIV_KUNDE_UTEN_BRUK` on old runs.
+
 ## Design decisions (preserve these)
 
 1. **Traceability is structural**: `fakturalinje → bruksdata` (which usage),
    `fakturalinje → pris` + `fakturakjoring → prisversjon` (which price), snapshot columns
-   on `faktura`/`fakturalinje` (which reference/recipient *at generation time* — later
-   registry edits must not rewrite history).
-2. **Invoices group by kundenummer, not by customer**: `unique (kjoring_id, kunde_id,
-   kundenummer)`. A customer with two servicekoder naturally yields two invoices; the LG04
-   header (one apar_id per invoice) stays consistent.
+   on `faktura`/`fakturalinje` (which name/kundenummer/reference/recipient *at generation
+   time* — a later import with other customer values must not rewrite history), and
+   `bruksdata_kunde` per import (which customer values the DWH delivered).
+2. **One invoice per organisation, customer values from the run's import** (specs/018):
+   `unique (kjoring_id, organisasjonsnummer, kundenummer)`. The kundenummer, fakturareferanse,
+   bestillingsnummer and name come from `bruksdata_kunde`; the fakturamottaker is the organisation
+   itself. Forsystem never picks between conflicting values (MOTSTRIDENDE_KUNDEDATA blocks). Several
+   kundenummer per orgnr (servicekode/tilleggstekst) and product-specific references are no longer
+   supported (OQ-28); before specs/018 invoices grouped by (kunde, kundenummer) via
+   `kundenummer_regel`.
 3. **Run idempotency**: several runs per period allowed only if older ones are FORKASTET
    (partial unique index) — the clean version of the old system's delete-and-rerun.
 4. **Usage re-import**: a new import for a period marks the previous one AVVIST (application

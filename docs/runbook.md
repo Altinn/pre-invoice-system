@@ -18,15 +18,18 @@ exports.
 The billing period is always chosen explicitly (the first day of the measured month) — never
 derived from today's date.
 
-1. **Registries up to date** (FORVALTER). Under *Produkter*, *Prisversjoner*, *Kunder*:
+1. **Registries up to date** (FORVALTER). Under *Produkter* and *Prisversjoner*:
    - the year's price version is `AKTIV` and covers the period;
    - every product that will be billed has kontering (konto + dimensjoner + artikkel-id) — until
-     Økonomi delivers these (OQ-2), generation will block with `MANGLER_KONTERING`;
-   - customers, references and kundenummer-rules reflect current agreements.
+     Økonomi delivers these (OQ-2), generation will block with `MANGLER_KONTERING`.
+   There is no customer step: customer data (name, kundenummer, fakturareferanse, bestillingsnummer)
+   is maintained in CRM and arrives with the DWH usage (specs/018).
 2. **Import usage** (FORVALTER) under *Bruksdata*, from the 7th (the DWH basis is complete on the
    6th): pick the period and **Hent fra datavarehus** — or, if the scheduler is on, open the `MOTTATT`
    import it staged. Fallback: upload the CSV (format in [csv-format.md](csv-format.md)). Review the
-   staging report (per-product sums, warnings, any rejects), then **Bekreft import**. An unknown DWH
+   staging report (per-product sums, warnings, any rejects, and *Kundedata*: organisations without
+   kundenummer or with conflicting customer values — have them corrected in CRM before the run, they
+   block generation), then **Bekreft import**. An unknown DWH
    product name must be mapped under *Produkter → Kildenavn* first. A file with any reject imports nothing —
    fix it and re-upload. Re-importing a period supersedes it: the previous import becomes `AVVIST`
    and its rows are kept for traceability.
@@ -39,7 +42,8 @@ derived from today's date.
 3. **Generate** (FORVALTER) under *Kjøringer*: choose the period and **Generer**. Review the run:
    the invoice table and the control findings.
    - **BLOKKERENDE** findings must be resolved before approval (fix the data, **Forkast** the run,
-     regenerate).
+     regenerate). `MANGLER_KUNDENUMMER` and `MOTSTRIDENDE_KUNDEDATA` are fixed in CRM, then the usage
+     is imported again once the DWH has the correction.
    - **ADVARSEL** findings (±30 % deviation vs the previous period, zero-amount lines, new
      customers) are informational — check them, then proceed.
    - Control before approval (BF1 T01/T06/T10): the *Sammendrag* on the run page, **Avstemming
@@ -60,7 +64,7 @@ derived from today's date.
 ## Re-run a period
 
 A period may only have one active run. To redo one: open the run, **Forkast** it, fix the data
-(registries and/or re-import usage), then **Generer** again. The discarded run keeps its own usage
+(products/prices in forsystem; customer data in CRM, then re-import usage), then **Generer** again. The discarded run keeps its own usage
 import and stays explainable (its *Avstemming bruksdata* still works).
 
 **Test environments only (local, tt02): Nullstill periode.** To repeat a month end to end — including
@@ -88,8 +92,9 @@ reconciled one. Forkasting is blocked once a run is
 
 Errors come back to humans by email (no machine ingestion in the MVP). Typical causes and fixes:
 
-- **Unknown kundenummer / account** in Unit4 → correct the `kundenummer_regel` or product kontering,
-  then forkast + regenerate + re-export the period.
+- **Unknown kundenummer / account** in Unit4 → have the kundenummer corrected in CRM (and re-import
+  usage once the DWH carries it), or correct the product kontering; then forkast + regenerate +
+  re-export the period.
 - **File rejected on format** → re-download and resend; if it recurs, capture the exact bytes and
   compare against the golden format (the LG04 layout is locked by `Lg04SkriverTest`). A deliberate
   format change must be a conscious golden-file update.
@@ -106,19 +111,19 @@ docker compose up --build
 
 Brings up the app (`:8080`) + PostgreSQL, and on first start the `demo` profile seeds a realistic,
 clearly-fake dataset (see `Demodata`): products with demo kontering, an active *Prisliste 2027
-(DEMO)*, six customers covering every special case (deviating recipient, product-specific reference,
-two kundenummer, shared kundenummer), and an imported January-2027 usage batch.
+(DEMO)*, and an imported January-2027 usage batch for six organisations whose customer values come in
+the CSV's optional customer columns (one without fakturareferanse, one with a bestillingsnummer, two
+sharing a kundenummer). There is no customer registry to browse.
 
 Demo walkthrough:
 
 1. Open http://localhost:8080 — you are logged in as the dev user (all roles).
-2. Browse *Produkter*, *Prisversjoner*, *Kunder* to show the registries and the special cases.
+2. Browse *Produkter* and *Prisversjoner* to show the registries.
 3. *Bruksdata* shows the pre-imported January batch. (To show the import flow live, download
    `src/main/resources/demo/bruk-2027-01.csv`, delete the batch is not needed — just re-upload it
-   for a new period, or upload for another month.)
-4. *Kjøringer* → **Generer** period `2027-01` → open the run: invoices grouped by kundenummer, the
-   deviating recipient, two Utdanningsdirektoratet invoices, the shared Politi kundenummer, and
-   control findings.
+   for a new period, or upload for another month. Its preview shows the *Kundedata* section.)
+4. *Kjøringer* → **Generer** period `2027-01` → open the run: one invoice per organisation with the
+   customer values from the file, the shared Politi kundenummer, and control findings.
 5. **Godkjenn**, then **Eksporter**. Download the LG04, the PDF zip, and the CSV/XLSX.
 6. *Hendelseslogg* shows every step audited.
 
@@ -126,6 +131,21 @@ Demo walkthrough:
 provider, files archived to a local directory.
 
 ---
+
+## Upgrading to V18 (specs/018 — customer registry dropped)
+
+Flyway V18 drops the tables `kunde`, `kunde_referanse` and `kundenummer_regel` (V17, which runs
+just before it, copies what invoices need onto `faktura` and `bruksdata_kunde`). Their
+change history stays in hendelseslogg, but the rows themselves are gone after V18. **Before deploying
+V18 to an environment that has registry data (tt02, prod), dump the three tables** and keep the file
+with the deployment record:
+
+```bash
+pg_dump --data-only -t kunde -t kunde_referanse -t kundenummer_regel "$DATABASE_URL" > kunderegister-før-018.sql
+```
+
+The dump is also the data to check OQ-28 against (customers with several kundenummer, product-specific
+references or a deviating fakturamottaker).
 
 ## Naming the product dimensions
 

@@ -19,30 +19,22 @@ prepares for it*. Build the seams now, the features later.
 - **Data timing**: the previous month is complete on the **6th** (Azure costs final 5 days in).
 - CSV upload stays as the fallback.
 
-## 2. Dynamics 365 CRM as customer source
-- **What**: customer/agreement data read from CRM instead of the local registry.
-- **How (known since 2026-08-18)**: CRM *is* the agreed short-term solution, so this moved
-  from "maybe later" to "the expected path". The fields already exist in the CRM SANDKASSE
-  environment on an **`Integrasjon`** row with `Integrasjonstype = Altinn`, linked to a
-  `Virksomhet`. Caveat: we have **no CRM access** — this mapping is read off a single
-  screenshot and must be verified against real field names/metadata before any import code:
-  organisasjonsnummer → `kunde.organisasjonsnummer`, fakturaadresse/fakturamottaker →
-  `kunde.fakturamottaker_orgnr` (careful: not always an orgnr, OQ-7), referanse →
-  `kunde_referanse.fakturareferanse`, bestillingsnummer →
-  `kunde_referanse.bestillingsnummer`, kundenummer i Unit4 → `kundenummer_regel.kundenummer`,
-  avtalestatus → `kunde.avtalestatus` (value shown as `Active`, so values need mapping, not
-  copying). Fields with no counterpart in our model: `Kundetype Altinn`,
-  `Bruksvilkår Altinn - Dato`/`- Signatar`, `Beskrivelse`.
-  Two shape gaps to raise when the interface is designed: CRM has **one referanse per Altinn
-  avtale** while FinMod rule 2 needs it **per product**, and **one kundenummer field** while
-  rule 3 allows several per orgnr (`servicekode`/`tilleggstekst` have no CRM counterpart).
-  Our model is the richer one — the import must either flatten or CRM must grow.
-- **Blocked on**: the interface itself (API vs export) is unmapped and undated (OQ-5).
-- **When**: unknown; the December dry-run must therefore be assumed to run on the registry.
-- **Prepared by**: `CustomerSource` port; `kunde.kilde` column; snapshots on faktura mean a
-  source switch never rewrites history. Expect a sync/import mode first (CRM → local
-  tables) rather than live reads — the registry tables then become a cache with
-  `kilde='CRM'` rows read-only in the UI.
+## 2. Dynamics 365 CRM as customer source — settled: through the DWH
+- **Decided 2026-11-24** (Økonomi, docs/09 B-24, specs/018): CRM is the only customer master and
+  reaches forsystem **through the datavarehus** («kunderegister = DWH = integrasjon mot CRM»). The
+  DWH export carries organisation name, kundenummer, fakturareferanse and bestillingsnummer per
+  orgnr; forsystem stores them per import (`bruksdata_kunde`) and uses them at generation. The local
+  customer registry is removed (V18). **A direct CRM import is no longer planned**, and the
+  `CustomerSource` seam is gone with the registry.
+- **What remains**: CRM data the DWH does not deliver — product-specific fakturareferanser, several
+  kundenummer per orgnr (`servicekode`/`tilleggstekst`), an avvikende fakturamottaker — is not
+  supported. If Økonomi needs it, CRM/DWH must deliver it in the export (OQ-28); forsystem would then
+  read more columns, not a new source. Avtalestatus is checked by the DWH, not forsystem (OQ-13).
+- **Background** (2026-08-18): the fields exist in CRM on an **`Integrasjon`** row with
+  `Integrasjonstype = Altinn`, linked to a `Virksomhet`: organisasjonsnummer,
+  fakturaadresse/fakturamottaker (not always an orgnr, OQ-7), referanse, bestillingsnummer,
+  kundenummer i Unit4, avtalestatus. CRM has one referanse per avtale and one kundenummer field —
+  the same shape forsystem now uses.
 
 ## 3. Automated delivery to DFØ + receipt handling
 - **What**: replace manual download-and-send with SFTP/API delivery; ingest kvittering /
@@ -81,7 +73,7 @@ prepares for it*. Build the seams now, the features later.
 - **What**: FinMod wants a real product master eventually; forsystem's product table is
   explicitly *temporary* master.
 - **Prepared by**: products referenced by id everywhere; a future sync flips the UI to
-  read-only, same pattern as CRM.
+  read-only.
 
 ## 8. PDF detail views served to tjenesteeiere
 - **What**: today PDFs are downloaded and distributed manually; the FEL contact/FEL handles the
