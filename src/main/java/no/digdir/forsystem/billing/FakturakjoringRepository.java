@@ -20,6 +20,8 @@ public interface FakturakjoringRepository extends ListCrudRepository<Fakturakjor
 
     Optional<Fakturakjoring> findFirstByPeriodeAndStatusOrderByVersjonDesc(LocalDate periode, String status);
 
+    List<Fakturakjoring> findByPeriodeAndStatusOrderByVersjonDesc(LocalDate periode, String status);
+
     Optional<Fakturakjoring> findFirstByPeriodeAndTypeAndStatusOrderByVersjonAsc(
             LocalDate periode, String type, String status);
 

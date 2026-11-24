@@ -230,9 +230,10 @@ public class UsageImportService {
 
     /**
      * The customer values of the committed usage (specs/018): one row per organisation in the valid rows, also
-     * when the source delivered nothing for it, so generation can tell «no kundenummer» from «no row».
+     * when the source delivered nothing for it, so generation can tell «no kundenummer» from «no row». Also used
+     * for a correction candidate, whose run reads its customer values the same way.
      */
-    private void lagreKunder(Forhaandsvisning fv, Long importId) {
+    void lagreKunder(Forhaandsvisning fv, Long importId) {
         Map<String, Kundedata> perOrgnr = new LinkedHashMap<>();
         fv.kunder().forEach(k -> perOrgnr.put(k.organisasjonsnummer(), k));
         Set<String> orgnr = new java.util.TreeSet<>();

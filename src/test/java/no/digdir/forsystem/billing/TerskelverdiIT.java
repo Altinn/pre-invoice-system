@@ -161,7 +161,7 @@ class TerskelverdiIT extends BillingFixture {
                 List.of(), List.of(), List.of("eksportert kjøring finnes"), List.of(),
                 new Raadata("terskel-korrigering".getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null),
                 null);
-        var sammenligning = kandidater.opprettHvisEksportert(fv).orElseThrow();
+        var sammenligning = kandidater.opprettHvisEksportert(fraDwh(fv)).orElseThrow();
         Fakturakjoring v2 = genererKorrigering(sammenligning.sammenligning().id(),
                 List.of(sammenligning.endringer().getFirst().id()), "DWH rettet volumet");
 

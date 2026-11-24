@@ -164,7 +164,7 @@ class NullstillingIT extends BillingFixture {
                         Bruksdatatype.BRUKSVOLUM.name(), new BigDecimal("120"), null)),
                 List.of(), List.of(), List.of("eksportert kjøring finnes"), List.of(),
                 new Raadata("candidate".getBytes(StandardCharsets.UTF_8), OffsetDateTime.now(), null, null), null);
-        var sammenligning = kandidater.opprettHvisEksportert(fv).orElseThrow();
+        var sammenligning = kandidater.opprettHvisEksportert(fraDwh(fv)).orElseThrow();
         var valgt = sammenligning.endringer().getFirst();
         var v2 = genererKorrigering(sammenligning.sammenligning().id(), List.of(valgt.id()), "Rettelse");
 

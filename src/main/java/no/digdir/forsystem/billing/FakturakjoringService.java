@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -136,7 +137,7 @@ public class FakturakjoringService {
                 OffsetDateTime.now(), null, null, null, Kjoringstype.ORDINAER.name(), kjoringVersjon,
                 forrigeKjoringId, null, null, tekster.topptekst(), tekster.bunntekst(), tekster.varReferanse()));
 
-        var ctx = new Byggekontekst(periode, versjon, kjoring.id(), importId, false);
+        var ctx = new Byggekontekst(periode, versjon, kjoring.id(), List.of(importId), false);
         bygg(ctx, bruk);
         audit.logg(Handling.GENERERTE, "FAKTURAKJORING", kjoring.id(),
                 Map.of("periode", periode.toString(), "antallFakturaer", ctx.antallFakturaer));
@@ -199,8 +200,16 @@ public class FakturakjoringService {
         List<Bruksdata> differanser = valgte.stream().map(e -> new Bruksdata(
                 e.id(), kandidat.id(), sammenligning.periode(), e.organisasjonsnummer(), e.produktId(),
                 e.type(), e.deltaAntall(), e.deltaBelop())).toList();
-        var ctx = new Byggekontekst(new Periode(sammenligning.periode()), prisversjon, kjoring.id(), kandidat.id(),
-                true);
+        // The candidate's customer values first: they are what CRM says now. A removal can concern an orgnr the
+        // candidate no longer has at all; it is credited with the values it was invoiced with, so the period's
+        // exported imports follow, newest first (specs/007 FR-014).
+        List<Long> kundedataImporter = new ArrayList<>();
+        kundedataImporter.add(kandidat.id());
+        kjoringer.findByPeriodeAndStatusOrderByVersjonDesc(sammenligning.periode(), Kjoringstatus.EKSPORTERT.name())
+                .stream().map(Fakturakjoring::bruksdataImportId).filter(Objects::nonNull)
+                .filter(id -> !kundedataImporter.contains(id)).forEach(kundedataImporter::add);
+        var ctx = new Byggekontekst(new Periode(sammenligning.periode()), prisversjon, kjoring.id(),
+                kundedataImporter, true);
         bygg(ctx, differanser);
         List<Faktura> korrigeringsfakturaer = fakturaer.findByKjoringIdOrderByOrdreNr(kjoring.id());
         if (!korrigeringsfakturaer.isEmpty() && korrigeringsfakturaer.stream()
@@ -229,7 +238,9 @@ public class FakturakjoringService {
         // Customer data comes with the usage (specs/018): the values the run's import delivered per orgnr, from
         // CRM through the DWH. Loaded once, so per-row work is in-memory (docs/04 Phase 5 load sanity).
         Map<String, BruksdataKunde> kundeByOrgnr = new LinkedHashMap<>();
-        usage.kundedata(ctx.importId).forEach(k -> kundeByOrgnr.put(k.organisasjonsnummer(), k));
+        for (Long importId : ctx.kundedataImporter) {
+            usage.kundedata(importId).forEach(k -> kundeByOrgnr.putIfAbsent(k.organisasjonsnummer(), k));
+        }
 
         List<Kontrollfunn> funnListe = new ArrayList<>();
         Map<Gruppe, Gruppedata> grupper = new LinkedHashMap<>();
@@ -859,16 +870,20 @@ public class FakturakjoringService {
         final Periode periode;
         final Prisversjon versjon;
         final Long kjoringId;
-        /** The usage import whose customer values the run uses (specs/018). */
-        final Long importId;
+        /**
+         * The usage imports whose customer values the run uses (specs/018), first match per orgnr wins. An
+         * ordinary run has one; a correction has its candidate followed by the period's exported imports.
+         */
+        final List<Long> kundedataImporter;
         final boolean korrigering;
         int antallFakturaer;
 
-        Byggekontekst(Periode periode, Prisversjon versjon, Long kjoringId, Long importId, boolean korrigering) {
+        Byggekontekst(Periode periode, Prisversjon versjon, Long kjoringId, List<Long> kundedataImporter,
+                      boolean korrigering) {
             this.periode = periode;
             this.versjon = versjon;
             this.kjoringId = kjoringId;
-            this.importId = importId;
+            this.kundedataImporter = List.copyOf(kundedataImporter);
             this.korrigering = korrigering;
         }
     }
