@@ -234,7 +234,7 @@ MVP» and docs/06.
 | N-04 | Datavarehus direct read | Contract undefined; CSV is source + fallback. | OQ-4, docs/06 §1 |
 | N-05 | Automated delivery to DFØ + receipt ingestion | Manual download/send in MVP. | OQ-8, docs/06 §3 |
 | N-06 | Scheduling (cron generation) | Manual «Generer» in MVP; generation is a service method with an explicit period. | docs/06 §4 |
-| N-07 | Avregning (corrections/crediting/retroactive prices) | Mechanism undefined. | OQ-6, docs/06 §5 |
+| N-07 | Avregning (corrections/crediting/retroactive prices) | Partly built: settlement of real transaction price per year on the Avregning tab (specs/020, OQ-30). Crediting and retroactive prices remain undefined. | OQ-6, docs/06 §5 |
 | N-09 | Hosted PDF detail views for tjenesteeiere | PDFs are downloaded/distributed manually in MVP. | OQ-9, docs/06 §8 |
 | N-10 | Onboarding old services (dp, e-signering, Altinn current, BOD) | Out of scope; period type isolated for future extension. | docs/06 §6 |
 | N-11 | UX pass with real approvers | Needs the actual people. | docs/04 P5 |

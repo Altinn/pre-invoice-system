@@ -45,11 +45,30 @@ public record Fakturakjoring(
 
     /** The billing period as Norwegian month and year, e.g. "januar 2027" (specs/005 FR-009). */
     public String periodeLabel() {
-        return new Periode(periode).norskLabel();
+        return erAvregning() ? "avregning " + periode.getYear() : new Periode(periode).norskLabel();
+    }
+
+    public boolean erAvregning() {
+        return Kjoringstype.AVREGNING.name().equals(type);
     }
 
     public boolean erKorrigering() {
         return Kjoringstype.KORRIGERING.name().equals(type);
+    }
+
+    /** False for a settlement run: its usage is a year's months, not one month, so the monthly checks do not apply. */
+    public boolean harMaanedsavstemming() {
+        return !erKorrigering() && !erAvregning();
+    }
+
+    /** The period as file names carry it: «2027-01», or «avregning-2027» for a settlement run. */
+    public String periodeFilnavn() {
+        return erAvregning() ? "avregning-" + periode.getYear() : periode.toString().substring(0, 7);
+    }
+
+    /** «-v2» for runs that exist in several versions per period (corrections and settlements), else empty. */
+    public String versjonFilnavn() {
+        return erKorrigering() || erAvregning() ? "-v" + versjon : "";
     }
 
     public String versjonLabel() {

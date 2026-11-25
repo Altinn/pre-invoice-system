@@ -54,7 +54,7 @@ public class FakturagrunnlagRegneark {
     public Tabell bygg(Fakturakjoring kj) {
         Map<Long, String> kodeById = new HashMap<>();
         produkter.findAllByOrderByKode().forEach(p -> kodeById.put(p.id(), p.kode()));
-        String periode = kj.periode().toString().substring(0, 7);
+        String periode = kj.periodeFilnavn();
         Map<Long, BruksdataEndring> endringById = new HashMap<>();
         if (kj.erKorrigering()) {
             endringer.findAllById(kjoringer.valgteEndringIder(kj.id()))

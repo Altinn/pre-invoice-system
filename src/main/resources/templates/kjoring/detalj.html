@@ -21,7 +21,7 @@
         <th:block th:if="${generert}">
             <h2 class="ds-heading" data-size="xs" id="neste-steg-tittel">Neste steg: kontroller og godkjenn</h2>
             <ul class="sjekkliste" th:with="b=${bruksdataavstemming}">
-                <th:block th:unless="${kjoring.erKorrigering()}">
+                <th:block th:if="${kjoring.harMaanedsavstemming()}">
                 <li class="feil" th:if="${b.invariantBrudd()}"><span class="ds-sr-only">Feil: </span>
                     Bruksdata går ikke opp mot fakturagrunnlaget. Dette er en feil i forsystemet — kontakt forsystem-teamet.
                     <a class="ds-link" th:href="@{/kjoringer/{id}/kontroller(id=${kjoring.id()})} + '#bruksdata'">Se avstemming</a></li>
@@ -129,7 +129,7 @@
 
 Område: Altinn
 Buntnummer: ${a != null and a.buntnummer() != null ? a.buntnummer() : 'ukjent'}
-Periode: ${sammendrag.periode()} (${sammendrag.periode().norskLabel()})
+Periode: ${kjoring.erAvregning() ? kjoring.periodeLabel() : sammendrag.periode() + ' (' + sammendrag.periode().norskLabel() + ')'}
 Antall fakturaer: ${fraFil ? a.antallOrdrerFil() : sammendrag.antallFakturaer()}
 Samlet beløp eksl. mva: ${@tall.belop(sammendrag.sumBelop())} kr
 Samlet beløp inkl. mva: ${@tall.belop(sammendrag.sumInklMva())} kr|">…</pre>
@@ -143,14 +143,18 @@ Samlet beløp inkl. mva: ${@tall.belop(sammendrag.sumInklMva())} kr|">…</pre>
 
         <th:block th:if="${status == 'FORKASTET'}">
             <h2 class="ds-heading" data-size="xs" id="neste-steg-tittel">Kjøringen er forkastet</h2>
-            <p class="ds-paragraph" th:unless="${kjoring.erKorrigering()}">En forkastet kjøring kan ikke godkjennes eller eksporteres. Rett det som trengs i
+            <p class="ds-paragraph" th:if="${kjoring.erAvregning()}">En forkastet avregning kan ikke godkjennes eller eksporteres.
+                Lag en ny under Avregning.</p>
+            <p class="ds-paragraph" th:if="${kjoring.harMaanedsavstemming()}">En forkastet kjøring kan ikke godkjennes eller eksporteres. Rett det som trengs i
                 registrene eller bruksdata, og generer perioden på nytt.</p>
             <p class="ds-paragraph" th:if="${kjoring.erKorrigering()}">
                 Den eksporterte forrige versjonen er uendret. Sammenligningen er åpnet igjen, og et nytt
                 utkast får neste ledige versjonsnummer.
             </p>
             <!-- Explicit period: the run's own month, never derived from today (Constitution IV). -->
-            <form th:unless="${kjoring.erKorrigering()}" th:action="@{/kjoringer}" method="post" class="rad ikke-utskrift">
+            <a class="ds-button ikke-utskrift" data-color="accent" th:if="${kjoring.erAvregning()}"
+               th:href="@{/avregning(aar=${kjoring.periode().getYear()})}">Til Avregning</a>
+            <form th:if="${kjoring.harMaanedsavstemming()}" th:action="@{/kjoringer}" method="post" class="rad ikke-utskrift">
                 <th:block th:replace="~{layout :: csrf}"></th:block>
                 <input type="hidden" name="periode" th:value="${sammendrag.periode()}">
                 <button class="ds-button" data-color="accent" type="submit"
@@ -226,7 +230,7 @@ Samlet beløp inkl. mva: ${@tall.belop(sammendrag.sumInklMva())} kr|">…</pre>
     </div>
     <table class="ds-table smal" data-size="sm">
         <tbody>
-        <tr><th scope="row">Periode</th><td class="hoyre" th:text="${sammendrag.periode()}">2027-01</td></tr>
+        <tr><th scope="row">Periode</th><td class="hoyre" th:text="${kjoring.erAvregning() ? kjoring.periodeLabel() : sammendrag.periode()}">2027-01</td></tr>
         <tr><th scope="row">Antall fakturaer</th><td class="hoyre" th:text="${@tall.antall(sammendrag.antallFakturaer())}">0</td></tr>
         <tr><th scope="row">Antall LG04-ordrer <span class="liten">(én per faktura, flere ved ulike referanser)</span></th>
             <td class="hoyre" th:text="${@tall.antall(antallOrdrer)}">0</td></tr>

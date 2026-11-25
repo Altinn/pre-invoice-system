@@ -10,7 +10,7 @@ Ordene her er brukt i appen og i læringssenteret. Forklaringene er korte. Der d
 | Ord | Betyr |
 |---|---|
 | **Artikkel-id** | Unit4s artikkelnummer, som styrer riktig kontering. Det opprettes i Unit4 og registreres på produktet i forsystem som en kopi. Flere produkter kan dele samme nummer. |
-| **Avregning** | Mekanisme for korrigering og kreditering etter at en faktura er eksportert. Hvordan den skal fungere, er ikke avklart (OQ-6). Se [Korrigering og avregning](../forsta-systemet/korrigering-og-avregning.md). |
+| **Avregning** | Fakturering av reell transaksjonspris for valgte måneder (fanen Avregning, se [Avregn et år](../slik-gjor-du/avregn-et-ar.md)), og mekanismen for korrigering og kreditering etter eksport, som ikke er avklart (OQ-6). Se [Korrigering og avregning](../forsta-systemet/korrigering-og-avregning.md). |
 | **Avtalestatus** | Om kunden har en aktiv avtale i CRM. Datavarehuset tar bare med bruk under aktiv avtale. Forsystem ser ikke statusen selv. |
 | **Bestillingsnummer** | Kundens eget bestillings- eller ordrenummer, som skrives på fakturaen. Er det tomt, brukes fakturareferansen. Maks 25 tegn. |
 | **Bruksdata** | Bruken som skal faktureres, per organisasjonsnummer, produkt og periode. Enten et antall (volum) eller en kostnad. |

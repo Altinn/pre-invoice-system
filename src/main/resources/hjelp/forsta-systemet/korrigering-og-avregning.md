@@ -5,10 +5,14 @@ oppdatert: 2026-11-24
 rolle: LESER
 apne-i-appen: /bruksdata
 apne-i-appen-tekst: Åpne Bruksdata
-relatert: [slik-gjor-du/lag-korrigeringskjoring, nar-noe-gar-galt/eksportert-kan-ikke-forkastes, forsta-systemet/sporbarhet]
+relatert: [slik-gjor-du/lag-korrigeringskjoring, slik-gjor-du/avregn-et-ar, nar-noe-gar-galt/eksportert-kan-ikke-forkastes, forsta-systemet/sporbarhet]
 nokkelord: [avregning, korrigering, kreditering, kreditnota, negativ, V1, V2, OQ-6]
 ---
 En eksportert kjøring er endelig. Du kan ikke forkaste den eller generere måneden på nytt. Endres bruksdata etter eksport, brukes en korrigeringskjøring.
+
+## Avregning av reell transaksjonspris
+
+Som et eget spor kan du avregne et helt år til reell transaksjonspris: du velger måneder og legger inn en prisjustering per produkt, og får et utkast til fakturakjøring. Applikasjonsinfrastruktur avregnes ikke. Se [Avregn et år](../slik-gjor-du/avregn-et-ar.md).
 
 ## Hva som er avklart og bygget
 

@@ -20,7 +20,7 @@ seksjoner:
         artikler: [last-opp-csv, importer-periode-pa-nytt, rett-kundedata]
       - tittel: Kjøringer
         artikler: [endre-fakturatekster, forkast-og-generer-pa-nytt, sjekk-ut-advarsler, finn-en-faktura,
-                   last-ned-fakturagrunnlag, kopier-epost-til-regnskap, lag-korrigeringskjoring]
+                   last-ned-fakturagrunnlag, kopier-epost-til-regnskap, lag-korrigeringskjoring, avregn-et-ar]
       - tittel: Spor
         artikler: [hvem-endret-hva, er-lg04-lastet-ned]
 

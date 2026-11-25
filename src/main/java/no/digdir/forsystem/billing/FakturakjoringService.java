@@ -78,6 +78,7 @@ public class FakturakjoringService {
     private final KundeavvikRepository kundeavvik;
     private final KorrigeringskjoringEndringRepository valgteEndringer;
     private final KjoringVersjonService versjoner;
+    private final AvregningRepository avregninger;
     private final AuditService audit;
     private final BrukerContext brukerContext;
 
@@ -90,7 +91,7 @@ public class FakturakjoringService {
                           BruksdataSammenligningRepository sammenligninger,
                           BruksdataEndringRepository endringer, KundeavvikRepository kundeavvik,
                           KorrigeringskjoringEndringRepository valgteEndringer,
-                          KjoringVersjonService versjoner,
+                          KjoringVersjonService versjoner, AvregningRepository avregninger,
                           AuditService audit, BrukerContext brukerContext) {
         this.kjoringer = kjoringer;
         this.fakturaer = fakturaer;
@@ -109,6 +110,7 @@ public class FakturakjoringService {
         this.kundeavvik = kundeavvik;
         this.valgteEndringer = valgteEndringer;
         this.versjoner = versjoner;
+        this.avregninger = avregninger;
         this.audit = audit;
         this.brukerContext = brukerContext;
     }
@@ -237,7 +239,11 @@ public class FakturakjoringService {
     @Transactional(readOnly = true)
     public Map<Long, BigDecimal> enhetspriser(Long kjoringId) {
         Map<Long, BigDecimal> ut = new LinkedHashMap<>();
-        priser.findByPrisversjonId(hent(kjoringId).prisversjonId())
+        Long versjonId = hent(kjoringId).prisversjonId();
+        if (versjonId == null) {
+            return ut;
+        }
+        priser.findByPrisversjonId(versjonId)
                 .forEach(p -> ut.put(p.produktId(), p.enhetspris()));
         return ut;
     }
@@ -329,11 +335,102 @@ public class FakturakjoringService {
         return kjoring;
     }
 
+    /**
+     * Generate a settlement run (specs/020): per customer and product, the usage of the ticked months of {@code aar}
+     * times the price adjustment entered for the product, in kr per unit. Products without an adjustment (or with 0)
+     * are not settled; the application infrastructure never is (1:1 between booked cost and invoiced amount).
+     */
+    @Transactional
+    public Fakturakjoring genererAvregning(int aar, List<Periode> maaneder, Map<Long, BigDecimal> justeringer) {
+        List<Periode> valgte = maaneder == null ? List.of()
+                : maaneder.stream().distinct().sorted(Comparator.comparing(Periode::førsteDag)).toList();
+        if (valgte.isEmpty()) {
+            throw new Regelbrudd("Velg minst én måned å avregne");
+        }
+        if (valgte.stream().anyMatch(m -> m.førsteDag().getYear() != aar)) {
+            throw new Regelbrudd("Alle månedene må være i " + aar);
+        }
+        Map<Long, Produkt> produktById = new LinkedHashMap<>();
+        produkter.findAllByOrderByKode().forEach(p -> produktById.put(p.id(), p));
+        Map<Long, BigDecimal> aktive = new LinkedHashMap<>();
+        for (var e : (justeringer == null ? Map.<Long, BigDecimal>of() : justeringer).entrySet()) {
+            Produkt p = produktById.get(e.getKey());
+            if (p == null) {
+                throw new Regelbrudd("Fant ikke produkt " + e.getKey());
+            }
+            if (AvregningService.UNNTATT_PRODUKTKODE.equals(p.kode())) {
+                throw new Regelbrudd(p.navn() + " avregnes ikke: bokført kostnad viderefaktureres 1:1");
+            }
+            if (e.getValue() != null && e.getValue().signum() != 0) {
+                aktive.put(e.getKey(), e.getValue());
+            }
+        }
+        if (aktive.isEmpty()) {
+            throw new Regelbrudd("Legg inn prisjustering for minst ett produkt");
+        }
+        LocalDate anker = Periode.av(aar, 1).førsteDag();
+        versjoner.laas(anker);
+        if (kjoringer.finnesPaagaaendeAvregning(anker)) {
+            throw new Regelbrudd("Det finnes allerede en avregning for " + aar
+                    + " som ikke er eksportert eller forkastet. Forkast den før du lager en ny.");
+        }
+
+        // Each month's usage is what its current import holds; a month without usage cannot be settled.
+        List<AvregningRepository.Maaned> grunnlag = new ArrayList<>();
+        Map<List<Object>, BigDecimal> sumPerKundeOgProdukt = new LinkedHashMap<>();
+        for (Periode m : valgte) {
+            Long importId = usage.gjeldendeImport(m).map(BruksdataImport::id)
+                    .orElseThrow(() -> new Regelbrudd("Ingen bruksdata for " + m + " — importer bruk først."));
+            grunnlag.add(new AvregningRepository.Maaned(m.førsteDag(), importId));
+            for (Bruksdata b : usage.bruksdataFor(m)) {
+                if (aktive.containsKey(b.produktId()) && Bruksdatatype.valueOf(b.type()).erVolum()) {
+                    sumPerKundeOgProdukt.merge(List.of(b.organisasjonsnummer(), b.produktId()),
+                            b.antall() == null ? BigDecimal.ZERO : b.antall(), BigDecimal::add);
+                }
+            }
+        }
+        Long sisteImport = grunnlag.getLast().importId();
+        List<Bruksdata> bruk = new ArrayList<>();
+        sumPerKundeOgProdukt.forEach((nokkel, antall) -> {
+            if (antall.signum() != 0) {
+                bruk.add(new Bruksdata(null, sisteImport, anker, (String) nokkel.get(0), (Long) nokkel.get(1),
+                        Bruksdatatype.BRUKSVOLUM.name(), antall, null));
+            }
+        });
+        if (bruk.isEmpty()) {
+            throw new Regelbrudd("Ingen bruk å avregne for produktene og månedene du valgte");
+        }
+
+        Fakturatekster tekster = Fakturatekster.standardAvregning(aar);
+        Fakturakjoring kjoring = kjoringer.save(new Fakturakjoring(null, anker, Kjoringstatus.GENERERT.name(), null,
+                sisteImport, brukerContext.naavaerendeBruker(), OffsetDateTime.now(), null, null, null,
+                Kjoringstype.AVREGNING.name(), kjoringer.nesteAvregningsversjon(anker), null, null, null,
+                tekster.topptekst(), tekster.bunntekst(), tekster.varReferanse()));
+        avregninger.lagre(kjoring.id(), grunnlag, aktive);
+
+        // Customer values: the newest ticked month first, as in a correction (first match per orgnr wins).
+        List<Long> kundedataImporter = grunnlag.reversed().stream().map(AvregningRepository.Maaned::importId).toList();
+        var ctx = new Byggekontekst(Periode.av(aar, 1), null, kjoring.id(), kundedataImporter, false, aktive, aar);
+        bygg(ctx, bruk);
+        if (ctx.antallFakturaer == 0) {
+            throw new Regelbrudd("Avregningen ga ingen fakturaer. Sjekk kontrollfunnene: kundedata mangler for "
+                    + "kundene i bruksdataene.");
+        }
+        audit.logg(Handling.GENERERTE, "FAKTURAKJORING", kjoring.id(), Map.of(
+                "periode", Periode.av(aar, 1).toString(), "versjon", kjoring.versjon(),
+                "type", Kjoringstype.AVREGNING.name(), "aar", aar,
+                "maaneder", valgte.stream().map(Periode::toString).toList(),
+                "antallFakturaer", ctx.antallFakturaer));
+        return kjoring;
+    }
+
     private void bygg(Byggekontekst ctx, List<Bruksdata> bruk) {
         Map<Long, Produkt> produktById = new LinkedHashMap<>();
         produkter.findAllByOrderByKode().forEach(p -> produktById.put(p.id(), p));
         Map<Long, Pris> prisByProdukt = new LinkedHashMap<>();
-        priser.findByPrisversjonId(ctx.versjon.id()).forEach(pr -> prisByProdukt.put(pr.produktId(), pr));
+        if (ctx.versjon != null) {
+            priser.findByPrisversjonId(ctx.versjon.id()).forEach(pr -> prisByProdukt.put(pr.produktId(), pr));
+        }
 
         // Customer data comes with the usage (specs/018): the values the run's import delivered per orgnr, from
         // CRM through the DWH. Loaded once, so per-row work is in-memory (docs/04 Phase 5 load sanity).
@@ -386,7 +483,13 @@ public class FakturakjoringService {
             Long prisId = null;
             BigDecimal belop;
             String beskrivelse;
-            if (Bruksdatatype.valueOf(b.type()).erVolum()) {
+            if (ctx.avregning) {
+                // A settlement bills the entered adjustment per unit, not a price from a price version.
+                antall = b.antall();
+                enhetspris = ctx.justeringer.get(p.id());
+                belop = antall.multiply(enhetspris).setScale(2, RoundingMode.HALF_UP);
+                beskrivelse = "Avregning " + p.navn() + " " + ctx.aar;
+            } else if (Bruksdatatype.valueOf(b.type()).erVolum()) {
                 Pris pris = prisByProdukt.get(p.id());
                 if (pris == null) {
                     manglerPris.computeIfAbsent(p.kode(), x -> new ArrayList<>()).add(b.id());
@@ -455,11 +558,11 @@ public class FakturakjoringService {
         // nothing downstream (LG04, PDF, sums) sees them; they are kept as faktura_under_terskel rows and
         // explained by one UNDER_TERSKEL finding linked to their usage. Correction runs carry signed
         // differences against an exported run and are exempt.
-        BigDecimal terskel = ctx.versjon.terskelverdi();
+        BigDecimal terskel = ctx.versjon == null ? null : ctx.versjon.terskelverdi();
         Map<String, BigDecimal> kundesum = new LinkedHashMap<>();
         Map<Gruppe, Gruppedata> underTerskelGrupper = new LinkedHashMap<>();
         Integer underTerskelFunn = null;
-        if (!ctx.korrigering && terskel != null) {
+        if (!ctx.korrigering && !ctx.avregning && terskel != null) {
             grupper.forEach((g, data) -> kundesum.merge(g.organisasjonsnummer(), sum(data.linjer), BigDecimal::add));
             grupper.keySet().stream()
                     .filter(g -> kundesum.get(g.organisasjonsnummer()).compareTo(terskel) <= 0)
@@ -539,12 +642,12 @@ public class FakturakjoringService {
             forsteFakturaPerKunde.putIfAbsent(g.organisasjonsnummer(), faktura.id());
         }
 
-        if (!ctx.korrigering) {
+        if (!ctx.korrigering && !ctx.avregning) {
             leggTilForrigePeriodeAdvarsler(ctx, sumPerKunde, forsteFakturaPerKunde, funnListe);
         }
         List<Kontrollfunn> lagret = funn.saveAll(funnListe);
         List<KontrollfunnBruksdata> lenker = new ArrayList<>();
-        if (!ctx.korrigering) {
+        if (!ctx.korrigering && !ctx.avregning) {
             utelattePerFunn.forEach((indeks, ider) ->
                     ider.forEach(id -> lenker.add(new KontrollfunnBruksdata(lagret.get(indeks).id(), id))));
         }
@@ -976,15 +1079,27 @@ public class FakturakjoringService {
          */
         final List<Long> kundedataImporter;
         final boolean korrigering;
+        /** Product id to price adjustment (kr per unit) for a settlement run (specs/020); null otherwise. */
+        final Map<Long, BigDecimal> justeringer;
+        final int aar;
+        final boolean avregning;
         int antallFakturaer;
 
         Byggekontekst(Periode periode, Prisversjon versjon, Long kjoringId, List<Long> kundedataImporter,
                       boolean korrigering) {
+            this(periode, versjon, kjoringId, kundedataImporter, korrigering, null, 0);
+        }
+
+        Byggekontekst(Periode periode, Prisversjon versjon, Long kjoringId, List<Long> kundedataImporter,
+                      boolean korrigering, Map<Long, BigDecimal> justeringer, int aar) {
             this.periode = periode;
             this.versjon = versjon;
             this.kjoringId = kjoringId;
             this.kundedataImporter = List.copyOf(kundedataImporter);
             this.korrigering = korrigering;
+            this.justeringer = justeringer;
+            this.aar = aar;
+            this.avregning = justeringer != null;
         }
     }
 

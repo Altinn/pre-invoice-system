@@ -34,7 +34,7 @@
         <tbody>
         <tr th:each="r : ${kjoringer}" th:with="k=${r.kjoring()}">
             <td class="periode" th:text="${k.periodeLabel()}">januar 2027</td>
-            <td th:text="|${k.erKorrigering() ? 'Korrigering' : 'Ordinær'} ${k.versjonLabel()}|">Ordinær V1</td>
+            <td th:text="|${k.erKorrigering() ? 'Korrigering' : (k.erAvregning() ? 'Avregning' : 'Ordinær')} ${k.versjonLabel()}|">Ordinær V1</td>
             <td><th:block th:replace="~{kjoring/fragmenter :: status(${k.status()})}"></th:block></td>
             <td class="hoyre" th:text="${@tall.antall(r.antallFakturaer())}">0</td>
             <td class="hoyre" th:text="${@tall.belop(r.sumBelop())}">0,00</td>

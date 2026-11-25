@@ -42,6 +42,11 @@ public record Fakturatekster(String topptekst, String bunntekst, String varRefer
                 STANDARD_VAR_REFERANSE);
     }
 
+    /** The defaults for the settlement of {@code aar} (specs/020): header «Avregning bruk av Altinn 2027». */
+    public static Fakturatekster standardAvregning(int aar) {
+        return new Fakturatekster("Avregning bruk av Altinn " + aar, STANDARD_BUNNTEKST, STANDARD_VAR_REFERANSE);
+    }
+
     /** The same texts with leading and trailing whitespace removed; null stays null. */
     public Fakturatekster normalisert() {
         return new Fakturatekster(trim(topptekst), trim(bunntekst), trim(varReferanse));
