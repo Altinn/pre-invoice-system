@@ -34,7 +34,8 @@ public class NullstillingService {
 
     private static final Logger LOG = LoggerFactory.getLogger(NullstillingService.class);
 
-    private static final String KJORINGER = "select id from fakturakjoring where periode = ?";
+    // A settlement (AVREGNING) is anchored on 1 January but is not part of January's data (specs/020).
+    private static final String KJORINGER = "select id from fakturakjoring where periode = ? and type <> 'AVREGNING'";
     private static final String IMPORTER = "select id from bruksdata_import where periode = ?";
 
     /** A period that has something to reset. */
@@ -61,11 +62,11 @@ public class NullstillingService {
     public List<Periodedata> perioderMedData() {
         return jdbc.query("""
                 select p.periode,
-                       (select count(*) from fakturakjoring k where k.periode = p.periode) as kjoringer,
+                       (select count(*) from fakturakjoring k where k.periode = p.periode and k.type <> 'AVREGNING') as kjoringer,
                        (select count(*) from bruksdata_import i where i.periode = p.periode) as importer,
                        exists (select 1 from fakturakjoring k
-                                where k.periode = p.periode and k.status = 'EKSPORTERT') as eksportert
-                  from (select periode from fakturakjoring union select periode from bruksdata_import) p
+                                where k.periode = p.periode and k.status = 'EKSPORTERT' and k.type <> 'AVREGNING') as eksportert
+                  from (select periode from fakturakjoring where type <> 'AVREGNING' union select periode from bruksdata_import) p
                  order by p.periode desc
                 """, (rs, i) -> new Periodedata(new Periode(rs.getDate("periode").toLocalDate()),
                 rs.getInt("kjoringer"), rs.getInt("importer"), rs.getBoolean("eksportert")));
@@ -108,7 +109,7 @@ public class NullstillingService {
         jdbc.update("delete from bruksdata_kundeavvik where sammenligning_id in "
                 + "(select id from bruksdata_sammenligning where periode = ?)", p);
         jdbc.queryForList("""
-                with k as (delete from fakturakjoring where periode = ?),
+                with k as (delete from fakturakjoring where periode = ? and type <> 'AVREGNING'),
                      s as (delete from bruksdata_sammenligning where periode = ?)
                 select 1
                 """, p, p);

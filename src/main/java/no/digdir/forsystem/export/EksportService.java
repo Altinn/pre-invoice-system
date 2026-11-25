@@ -117,12 +117,17 @@ public class EksportService {
             throw new Regelbrudd("Korrigeringen kan ikke eksporteres før avregningsmåten er avklart "
                     + "og testet med regnskap (OQ-6)");
         }
+        if (kj.erAvregning() && kjoringer.fakturaer(kjoringId).stream()
+                .anyMatch(f -> f.sumBelop().signum() < 0)) {
+            throw new Regelbrudd("Avregningen har fakturaer med negativt beløp. Hvordan kreditt skal leveres til "
+                    + "Unit4 er ikke avklart (OQ-6), så avregningen kan ikke eksporteres.");
+        }
         if (kj.tekster() == null) {
             throw new Regelbrudd("Kjøringen har ingen tekster på fakturaen (topptekst, bunntekst, Vår referanse)");
         }
         Map<Long, Produkt> produktById = produktById();
         List<Faktura> fakturaer = kjoringer.fakturaer(kjoringId);
-        String periode = kj.periode().toString();
+        String periode = kj.erAvregning() ? kj.periodeFilnavn() : kj.periode().toString();
 
         // Buntnummer is the date the file is made (FEL); the billing period comes from the run.
         OffsetDateTime naa = OffsetDateTime.now(OSLO);
@@ -179,8 +184,8 @@ public class EksportService {
             throw new Regelbrudd("Forkastede kjøringer kan ikke lastes ned som fakturagrunnlag");
         }
         FakturagrunnlagRegneark.Tabell tabell = grunnlag.bygg(kj);
-        String versjon = kj.erKorrigering() ? "-v" + kj.versjon() : "";
-        String navn = "fakturagrunnlag-" + kj.periode().toString().substring(0, 7)
+        String versjon = kj.versjonFilnavn();
+        String navn = "fakturagrunnlag-" + kj.periodeFilnavn()
                 + versjon + "-" + kj.status();
         Nedlasting n = switch (format) {
             case "csv" -> new Nedlasting(navn + ".csv", "text/csv",
@@ -204,7 +209,7 @@ public class EksportService {
     @Transactional   // not read-only: it writes the LASTET_NED audit row
     public Nedlasting liste(Long kjoringId, String liste, String format) {
         Fakturakjoring kj = kjoringer.hent(kjoringId);
-        String periode = kj.periode().toString().substring(0, 7);
+        String periode = kj.periodeFilnavn();
         List<String> kolonner;
         List<List<Object>> rader = new ArrayList<>();
         String navn;
@@ -282,7 +287,7 @@ public class EksportService {
             }
             default -> throw new Regelbrudd("Ukjent liste: " + liste);
         }
-        String filnavn = navn + "-" + periode + (kj.erKorrigering() ? "-v" + kj.versjon() : "") + "-" + kj.status();
+        String filnavn = navn + "-" + periode + kj.versjonFilnavn() + "-" + kj.status();
         Nedlasting n = switch (format) {
             case "csv" -> new Nedlasting(filnavn + ".csv", "text/csv", regneark.csv(kolonner, rader));
             case "xlsx" -> new Nedlasting(filnavn + ".xlsx",
@@ -313,8 +318,8 @@ public class EksportService {
                     l.enhetspris(), l.belop()));
         }
         rader.add(Arrays.asList(f.ordreNr(), "Sum eksl. mva", null, null, null, f.sumBelop()));
-        String periode = kj.periode().toString().substring(0, 7);
-        String filnavn = "faktura-" + f.ordreNr() + "-" + periode + (kj.erKorrigering() ? "-v" + kj.versjon() : "");
+        String periode = kj.periodeFilnavn();
+        String filnavn = "faktura-" + f.ordreNr() + "-" + periode + kj.versjonFilnavn();
         Nedlasting n = switch (format) {
             case "csv" -> new Nedlasting(filnavn + ".csv", "text/csv", regneark.csv(kolonner, rader));
             case "xlsx" -> new Nedlasting(filnavn + ".xlsx",
@@ -528,7 +533,7 @@ public class EksportService {
                 <tbody>%s</tbody></table>
                 <p><strong>Sum: %s</strong></p>
                 </body></html>
-                """.formatted(esc(kundenavn), esc(kj.periode().toString()), esc(f.kundenummer()),
+                """.formatted(esc(kundenavn), esc(kj.erAvregning() ? kj.periodeLabel() : kj.periode().toString()), esc(f.kundenummer()),
                 esc(f.fakturamottakerOrgnr()), f.ordreNr(), rader, f.sumBelop().toPlainString());
     }
 

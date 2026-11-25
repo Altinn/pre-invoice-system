@@ -373,9 +373,11 @@ public class ForsideService {
                          group by k.id, k.periode, k.type order by k.periode, k.id""",
                 new MapSqlParameterSource(), rs -> {
                     long id = rs.getLong("id");
-                    String p = new Periode(rs.getObject("periode", LocalDate.class)).norskLabel();
+                    boolean avregning = "AVREGNING".equals(rs.getString("type"));
+                    String p = avregning ? Integer.toString(rs.getObject("periode", LocalDate.class).getYear())
+                            : new Periode(rs.getObject("periode", LocalDate.class)).norskLabel();
                     boolean korrigering = "KORRIGERING".equals(rs.getString("type"));
-                    String hva = (korrigering ? "korrigeringen" : "kjøringen") + " for " + p;
+                    String hva = (avregning ? "avregningen" : korrigering ? "korrigeringen" : "kjøringen") + " for " + p;
                     long b = rs.getLong("blokkerende");
                     long a = rs.getLong("advarsler");
                     if (b > 0) {

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="nb" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Avregning')}"></head>
+<body data-color-scheme="auto" data-size="md" data-color="neutral" hx-boost="true">
+<th:block th:replace="~{layout :: topbar('avregning')}"></th:block>
+<main id="hovedinnhold" class="side" tabindex="-1">
+    <h1 class="ds-heading" data-size="lg">Avregning</h1>
+    <th:block th:replace="~{layout :: hjelp('slik-gjor-du/avregn-et-ar')}"></th:block>
+    <p class="ds-paragraph ingress">Avregning fakturerer reell transaksjonspris for månedene du velger. Beløpet er
+        bruken i månedene ganger prisjusteringen du legger inn per produkt. Resultatet er et utkast til
+        fakturakjøring som kontrolleres, godkjennes og eksporteres som vanlig.</p>
+
+    <form method="get" th:action="@{/avregning}" class="rad rad-slutt">
+        <div class="ds-field">
+            <label class="ds-label" for="aar">Avregningsår</label>
+            <input class="ds-input felt-smal" id="aar" name="aar" type="number" min="2027" max="2100"
+                   th:value="${aar}" required>
+        </div>
+        <button class="ds-button" data-variant="secondary" type="submit">Vis år</button>
+    </form>
+
+    <form th:action="@{/avregning}" method="post" id="avregningsskjema">
+        <th:block th:replace="~{layout :: csrf}"></th:block>
+        <input type="hidden" name="aar" th:value="${aar}">
+
+        <h2 class="ds-heading" data-size="xs">Måneder som avregnes</h2>
+        <p class="ds-paragraph">Du kan bare velge måneder med importert bruksdata.</p>
+        <fieldset class="ds-fieldset">
+            <legend class="ds-sr-only">Måneder som avregnes</legend>
+            <ul class="uten-punkt">
+                <li th:each="m : ${maaneder}">
+                    <label class="ds-label">
+                        <input class="ds-input" type="checkbox" name="maaned" th:value="${m.periode()}"
+                               th:disabled="${!m.harBruksdata()}">
+                        <span th:text="${m.periode().norskLabel()}">januar 2027</span>
+                    </label>
+                    <span class="liten" th:if="${!m.harBruksdata()}">ingen bruksdata</span>
+                    <span class="liten" th:if="${m.harBruksdata() and m.eksportert()}">fakturert månedlig</span>
+                    <span class="liten" th:if="${m.harBruksdata() and !m.eksportert()}">ikke eksportert ennå</span>
+                </li>
+            </ul>
+        </fieldset>
+
+        <h2 class="ds-heading" data-size="xs">Prisjustering per produkt</h2>
+        <p class="ds-paragraph">Oppgi justeringen i kroner per enhet, eksklusive mva. Et negativt tall gir kreditt.
+            Produkter uten justering avregnes ikke.</p>
+        <table class="ds-table" data-size="sm">
+            <thead>
+            <tr><th>Produkt</th><th>Enhet</th><th>Prisjustering (kr per enhet)</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${produkter}">
+                <td th:text="${r.produkt().navn()}">Melding</td>
+                <td th:text="${r.produkt().enhet()}">STK</td>
+                <td th:if="${!r.unntatt()}">
+                    <input class="ds-input felt-smal" data-size="sm" type="text" inputmode="decimal"
+                           th:name="|justering-${r.produkt().id()}|"
+                           th:attr="aria-label=|Prisjustering for ${r.produkt().navn()}|">
+                </td>
+                <td th:if="${r.unntatt()}">
+                    <span class="ds-tag" data-color="neutral" data-size="sm">Avregnes ikke</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <div class="ds-alert bred" data-color="info" id="forklaring-unntak">
+            <p><strong>Hvorfor avregnes ikke Altinn Studio applikasjonsinfrastruktur?</strong>
+                Produktet faktureres til bokført Azure-kostnad, uten påslag. Beløpet på fakturaen er derfor
+                allerede lik kostnaden som er bokført (1:1), og det er ingen pris å justere i ettertid.</p>
+        </div>
+
+        <p class="ds-paragraph">Fakturatekst: <strong th:text="|Avregning bruk av Altinn ${aar}|">Avregning bruk av Altinn 2027</strong>.
+            Du kan endre den på kjøringen før den godkjennes.</p>
+        <button class="ds-button" data-color="accent" type="submit">Generer utkast til fakturakjøring</button>
+    </form>
+
+    <h2 class="ds-heading" data-size="xs">Tidligere avregninger</h2>
+    <table class="ds-table" data-size="sm" data-hover>
+        <thead>
+        <tr><th>Avregning</th><th>Versjon</th><th>Status</th><th>Generert av</th><th><span class="ds-sr-only">Handling</span></th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="k : ${avregninger}">
+            <td class="periode" th:text="${k.periodeLabel()}">avregning 2027</td>
+            <td th:text="${k.versjonLabel()}">V1</td>
+            <td><th:block th:replace="~{kjoring/fragmenter :: status(${k.status()})}"></th:block></td>
+            <td th:text="${k.generertAv()}">dev</td>
+            <td class="hoyre"><a class="ds-button" data-variant="tertiary" data-size="sm"
+                                 th:href="@{/kjoringer/{id}(id=${k.id()})}">Åpne</a></td>
+        </tr>
+        <tr th:if="${avregninger.isEmpty()}"><td colspan="5" class="tom">Ingen avregninger ennå.</td></tr>
+        </tbody>
+    </table>
+</main>
+</body>
+</html>
