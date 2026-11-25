@@ -13,9 +13,13 @@ management:
     health:
       show-details: always
 
-# Test tools ("Nullstill periode") are available locally, as in tt02.
 forsystem:
+  # The offline stub has a single user ("dev") holding every role, so four-eyes approval would make
+  # the local demo impossible to approve. Everywhere else it is on (application.yaml).
+  godkjenning:
+    sidemannskontroll: false
   korrigering:
     eksport-enabled: false
+  # Test tools ("Nullstill periode") are available locally, as in tt02.
   testverktoy:
     enabled: true

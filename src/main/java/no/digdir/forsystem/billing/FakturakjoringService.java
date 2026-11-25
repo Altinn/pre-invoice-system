@@ -81,6 +81,7 @@ public class FakturakjoringService {
     private final AvregningRepository avregninger;
     private final AuditService audit;
     private final BrukerContext brukerContext;
+    private final GodkjenningKonfig godkjenning;
 
     FakturakjoringService(FakturakjoringRepository kjoringer, FakturaRepository fakturaer,
                           FakturalinjeRepository linjer, KontrollfunnRepository funn,
@@ -92,7 +93,8 @@ public class FakturakjoringService {
                           BruksdataEndringRepository endringer, KundeavvikRepository kundeavvik,
                           KorrigeringskjoringEndringRepository valgteEndringer,
                           KjoringVersjonService versjoner, AvregningRepository avregninger,
-                          AuditService audit, BrukerContext brukerContext) {
+                          AuditService audit, BrukerContext brukerContext,
+                          GodkjenningKonfig godkjenning) {
         this.kjoringer = kjoringer;
         this.fakturaer = fakturaer;
         this.linjer = linjer;
@@ -113,6 +115,7 @@ public class FakturakjoringService {
         this.avregninger = avregninger;
         this.audit = audit;
         this.brukerContext = brukerContext;
+        this.godkjenning = godkjenning;
     }
 
     // ---- Generation -------------------------------------------------------------------------
@@ -717,6 +720,10 @@ public class FakturakjoringService {
                     + " ikke sjekket ut. Kryss av «Funn akseptert» på fanen Kontroller før kjøringen godkjennes.");
         }
         String bruker = brukerContext.naavaerendeBruker();
+        if (maaGodkjennesAvAnnen(kj, bruker)) {
+            throw new Regelbrudd("Du genererte denne kjøringen og kan ikke godkjenne den selv (sidemannskontroll)."
+                    + " En annen med godkjennerrolle må godkjenne.");
+        }
         kjoringer.save(kj.medStatus(Kjoringstatus.GODKJENT.name(), bruker, OffsetDateTime.now()));
         audit.logg(Handling.GODKJENTE, "FAKTURAKJORING", kjoringId, Map.of(
                 "periode", kj.periode().toString(), "versjon", kj.versjon(), "type", kj.type()));
@@ -826,6 +833,17 @@ public class FakturakjoringService {
             throw new Regelbrudd("Bare en godkjent kjøring kan eksporteres (status er " + kj.status() + ")");
         }
         kjoringer.save(kj.medStatus(Kjoringstatus.EKSPORTERT.name(), kj.godkjentAv(), kj.godkjentAt()));
+    }
+
+    /** Four-eyes: true when the rule is on and {@code bruker} generated the run (BF1 T13). */
+    public boolean maaGodkjennesAvAnnen(Fakturakjoring kj, String bruker) {
+        return godkjenning.sidemannskontroll() && bruker.equals(kj.generertAv());
+    }
+
+    /** For the run page: whether the signed-in user is barred from approving this run. */
+    @Transactional(readOnly = true)
+    public boolean maaGodkjennesAvAnnen(Long kjoringId) {
+        return maaGodkjennesAvAnnen(hent(kjoringId), brukerContext.naavaerendeBruker());
     }
 
     @Transactional

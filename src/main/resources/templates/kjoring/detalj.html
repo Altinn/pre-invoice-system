@@ -58,7 +58,7 @@
                 <form th:action="@{/kjoringer/{id}/godkjenn(id=${kjoring.id()})}" method="post">
                     <th:block th:replace="~{layout :: csrf}"></th:block>
                     <button class="ds-button" data-color="accent" type="submit" data-bekreft="bekreft-godkjenn"
-                            th:disabled="${!funnstatus.kanGodkjennes()}">Godkjenn</button>
+                            th:disabled="${!funnstatus.kanGodkjennes() or maaGodkjennesAvAnnen}">Godkjenn</button>
                     <dialog class="ds-dialog" id="bekreft-godkjenn" closedby="any" aria-labelledby="bekreft-godkjenn-tittel">
                         <h2 class="ds-heading" data-size="xs" id="bekreft-godkjenn-tittel" th:text="|Godkjenne kjøringen for ${maaned}?|">Bekreft</h2>
                         <p class="ds-paragraph">Etter godkjenning kan kjøringen eksporteres til regnskap. Den kan fortsatt forkastes før eksport.</p>
@@ -75,6 +75,8 @@
                 Godkjenning er låst til de blokkerende funnene er løst (forkast, rett data, generer på nytt).</p>
             <p th:if="${funnstatus.antallBlokkerende() == 0 and funnstatus.antallAapne() > 0}" class="ds-paragraph liten">
                 Godkjenning er låst til alle advarsler er sjekket ut på fanen Kontroller.</p>
+            <p th:if="${funnstatus.kanGodkjennes() and maaGodkjennesAvAnnen}" class="ds-paragraph liten">
+                Du genererte denne kjøringen, så en annen med godkjennerrolle må godkjenne den (sidemannskontroll).</p>
         </th:block>
 
         <th:block th:if="${status == 'GODKJENT'}">
